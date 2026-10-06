@@ -4,6 +4,7 @@
 PlayerSettings:
   productName: ULTRAKILL
   allowUnsafeCode: 1
+  assemblyVersionValidation: 0
   scriptingDefineSymbols:
     iPhone: ULTRAKILL_FULL_PORT
     iOS: ULTRAKILL_FULL_PORT

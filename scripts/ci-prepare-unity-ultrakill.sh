@@ -24,8 +24,14 @@ copy_third_party_dll() {
   for dll in "$MANAGED_SRC"/*.dll; do
     base="$(basename "$dll")"
     case "$base" in
-      Assembly-CSharp.dll|Unity.*|UnityEngine.*|mscorlib.dll|netstandard.dll|System.*|Mono.Security.dll)
+      Assembly-CSharp.dll|UnityEngine.*|UnityEngine.dll|mscorlib.dll|netstandard.dll|Mono.Security.dll)
         continue
+        ;;
+      System.*)
+        case "$base" in
+          System.Runtime.CompilerServices.Unsafe.dll) ;;
+          *) continue ;;
+        esac
         ;;
     esac
     cp "$dll" "$MANAGED_DST/"
