@@ -35,6 +35,11 @@ After `.\scripts\patch-assembly.ps1`:
 
 Replace the DLL in a copy of `ULTRAKILL_Data/Managed`, launch with `-screen-fullscreen 0 -screen-width 1280 -screen-height 720`, and enable touch simulation in the Unity editor or on a touch laptop.
 
-## iOS build
+## iOS build (recommended: scripts, not DLL-only)
 
-After AssetRipper (or your port workflow) produces a Unity project, drop the patched `Assembly-CSharp.dll` into `Managed`, set **iOS** build target, and run the GitHub Action or `unity-ios` build script.
+1. Decompile once (dnSpy export, AssetRipper Scripts, or `scripts/Decompile-GameScripts.ps1`).
+2. Run `scripts/Setup-UnityPortFromDecompile.ps1` to create **`unity-ultrakill`** with `Assets/Game` → decompiled sources, mobile overlay, and external zip loader.
+3. Open in Unity **2022.3.62f1**, resolve compile errors (Steam/Discord stubs on mobile), build **iOS** on a Mac.
+4. Install engine/data split on device: IPA + `ULTRAKILL-Content.zip` in Documents.
+
+You can still merge touch types into `Assembly-CSharp.dll` with dnSpy for PC testing; the mobile port compiles the same C# from `Assets/Game` instead of shipping the PC DLL.

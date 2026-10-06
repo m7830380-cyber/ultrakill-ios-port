@@ -14,54 +14,30 @@ if (-not (Test-Path $RetailData)) {
 }
 
 $staging = Join-Path $env:TEMP "ultrakill-content-staging"
-if ($RepackOnly) {
-    if (-not (Test-Path (Join-Path $staging "ULTRAKILL_Data"))) {
-        throw "RepackOnly: staging missing at $staging — run full build first"
-    }
-    Write-Host "RepackOnly: using existing staging at $staging"
+if (Test-Path $staging) {
+    Remove-Item -Recurse -Force $staging
 }
-else {
-    if (Test-Path $staging) {
-        Remove-Item -Recurse -Force $staging
-    }
-    New-Item -ItemType Directory -Force -Path (Join-Path $staging "ULTRAKILL_Data") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $staging "ULTRAKILL_Data") | Out-Null
 
-    Write-Host "Copying ULTRAKILL_Data from Steam (this takes a while)..."
-    robocopy $RetailData (Join-Path $staging "ULTRAKILL_Data") /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
-    if ($LASTEXITCODE -ge 8) {
-        throw "robocopy failed with exit code $LASTEXITCODE"
-    }
-
-    if ($RipRoot -and (Test-Path $RipRoot)) {
-        Write-Host "Merging AssetRipper Scripts from $RipRoot"
-        $scriptsDest = Join-Path $staging "ULTRAKILL_Data\RipScripts"
-        New-Item -ItemType Directory -Force -Path $scriptsDest | Out-Null
-        robocopy (Join-Path $RipRoot "Scripts") $scriptsDest /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
-    }
-
-    $managed = Join-Path $staging "ULTRAKILL_Data\Managed"
-    $root = Split-Path $PSScriptRoot -Parent
-    & (Join-Path $PSScriptRoot "patch-assembly.ps1") -GameManaged (Join-Path $RetailData "Managed") -OutputDir (Join-Path $root "artifacts\patched")
-    Copy-Item (Join-Path $root "artifacts\patched\UltrakillMobileTouch.dll") (Join-Path $managed "UltrakillMobileTouch.dll") -Force
-    $patchScripting = Get-Content (Join-Path $root "artifacts\patched\ScriptingAssemblies.json") -Raw | ConvertFrom-Json
-    $liveScriptingPath = Join-Path $staging "ULTRAKILL_Data\ScriptingAssemblies.json"
-    $live = Get-Content $liveScriptingPath -Raw | ConvertFrom-Json
-    for ($i = 0; $i -lt $patchScripting.names.Count; $i++) {
-        $name = $patchScripting.names[$i]
-        if ($live.names -notcontains $name) {
-            $live.names += $name
-            $live.types += $patchScripting.types[$i]
-        }
-    }
-    $live | ConvertTo-Json -Compress | Set-Content $liveScriptingPath -Encoding UTF8
-
-    $manifest = @{
-        builtUtc   = (Get-Date).ToUniversalTime().ToString("o")
-        source     = $RetailData
-        zipLayout  = "Extract to cache; app expects ULTRAKILL_Data at zip root"
-    } | ConvertTo-Json
-    $manifest | Set-Content (Join-Path $staging "manifest.json") -Encoding UTF8
+Write-Host "Copying ULTRAKILL_Data from Steam (this takes a while)..."
+robocopy $RetailData (Join-Path $staging "ULTRAKILL_Data") /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+if ($LASTEXITCODE -ge 8) {
+    throw "robocopy failed with exit code $LASTEXITCODE"
 }
+
+if ($RipRoot -and (Test-Path $RipRoot)) {
+    Write-Host "Merging AssetRipper Scripts from $RipRoot"
+    $scriptsDest = Join-Path $staging "ULTRAKILL_Data\RipScripts"
+    New-Item -ItemType Directory -Force -Path $scriptsDest | Out-Null
+    robocopy (Join-Path $RipRoot "Scripts") $scriptsDest /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+}
+
+$manifest = @{
+    builtUtc   = (Get-Date).ToUniversalTime().ToString("o")
+    source     = $RetailData
+    zipLayout  = "Extract to cache; app expects ULTRAKILL_Data at zip root"
+} | ConvertTo-Json
+$manifest | Set-Content (Join-Path $staging "manifest.json") -Encoding UTF8
 
 New-Item -ItemType Directory -Force -Path (Split-Path $OutputZip) | Out-Null
 if (Test-Path $OutputZip) {

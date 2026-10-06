@@ -23,13 +23,31 @@ Zip layout at extract:
 - `ULTRAKILL_Data/` — full Steam `ULTRAKILL_Data` tree  
 - `manifest.json` — build metadata  
 
-## Engine project (touch + external loader)
+## Full port (decompiled scripts + dnSpy path)
+
+The gray-screen engine IPA is only a loader. Real gameplay needs **Assembly-CSharp** sources (AssetRipper / **ilspycmd** / dnSpy) in a Unity project:
+
+```powershell
+# Optional: fresh decompile from retail DLL (same output as dnSpy)
+.\scripts\Decompile-GameScripts.ps1
+
+# Wire rip + retail Managed refs + boot scene + touch + zip loader
+$env:ULTRAKILL_RIP = "C:\Users\v0id\Downloads\cockadoodledo\fdadsfsadfff"
+.\scripts\Setup-UnityPortFromDecompile.ps1
+# Open unity-ultrakill in Unity 2022.3.62f1, fix compile (Steam etc.), build iOS
+```
+
+`Assets/Game` junctions to your rip’s `Scripts/Assembly-CSharp` (~1500 files). Retail `Managed` DLLs (except `Assembly-CSharp.dll`) go to `Assets/Plugins/RetailManaged` as references. Boot scene is copied from `ULTRAKILL_Data/level0`. Define `ULTRAKILL_FULL_PORT` enables Addressables remap into the Documents zip.
+
+CI still builds **`unity-ios`** (shell only). Build the game IPA locally on a Mac from `unity-ultrakill`, or pack that folder for a custom workflow.
+
+## Engine shell (touch + external loader)
 
 ```powershell
 .\scripts\Sync-EngineScripts.ps1
 ```
 
-Opens `unity-ios` in Unity 2022.3.62f1 for local tweaks; CI builds the same tree.
+CI artifact `ultrakill-ios-engine-ipa` builds this tree.
 
 ## GitHub Actions
 

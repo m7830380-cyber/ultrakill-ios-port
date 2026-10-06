@@ -10,7 +10,15 @@ New-Item -ItemType Directory -Force -Path $dest | Out-Null
 Get-ChildItem $src -Filter "*.cs" |
     Where-Object { $_.Name -notmatch '\.Engine\.cs$' -and $_.Name -ne 'LegacyInputSynthesizer.cs' } |
     Copy-Item -Destination $dest -Force
-Copy-Item (Join-Path $src "LegacyInputSynthesizer.Engine.cs") (Join-Path $dest "LegacyInputSynthesizer.cs") -Force
+if ($UnityProject -match 'unity-ultrakill') {
+    Copy-Item (Join-Path $src "LegacyInputSynthesizer.cs") (Join-Path $dest "LegacyInputSynthesizer.cs") -Force -ErrorAction SilentlyContinue
+    if (-not (Test-Path (Join-Path $dest "LegacyInputSynthesizer.cs"))) {
+        Copy-Item (Join-Path $src "LegacyInputSynthesizer.Engine.cs") (Join-Path $dest "LegacyInputSynthesizer.cs") -Force
+    }
+}
+else {
+    Copy-Item (Join-Path $src "LegacyInputSynthesizer.Engine.cs") (Join-Path $dest "LegacyInputSynthesizer.cs") -Force
+}
 
 if (Test-Path $RipRoot) {
     $ripScripts = Join-Path $UnityProject "Assets\RipScripts"

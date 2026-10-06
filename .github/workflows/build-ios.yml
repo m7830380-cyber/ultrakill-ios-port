@@ -23,22 +23,6 @@ jobs:
           restore-keys: |
             Library-
 
-      - name: Install retail Managed DLLs (IL2CPP input)
-        run: |
-          set -euo pipefail
-          PLUGINS="$GITHUB_WORKSPACE/$PROJECT_PATH/Assets/Plugins"
-          mkdir -p "$PLUGINS"
-          URL="https://github.com/${{ github.repository }}/releases/download/build-deps/ultrakill-managed.tar.gz"
-          if ! curl -fsSL "$URL" -o /tmp/ultrakill-managed.tar.gz; then
-            echo "::error::Missing release asset build-deps/ultrakill-managed.tar.gz. On Windows run: .\\scripts\\Package-ManagedTarball.ps1 then gh release upload build-deps artifacts/ultrakill-managed.tar.gz"
-            exit 1
-          fi
-          tar -xzf /tmp/ultrakill-managed.tar.gz -C "$PLUGINS"
-          if [ -f "$PLUGINS/link.xml" ]; then
-            cp "$PLUGINS/link.xml" "$GITHUB_WORKSPACE/$PROJECT_PATH/Assets/link.xml"
-          fi
-          test -f "$PLUGINS/UltrakillManaged/Assembly-CSharp.dll"
-
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
