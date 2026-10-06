@@ -1,74 +1,46 @@
 # ultrakill-ios-port
 
-Toolchain to add **on-screen touch controls** to a ULTRAKILL iOS Unity export, patch `Assembly-CSharp.dll` with **dnSpy** or automation, and produce an **unsigned `.ipa`** via GitHub Actions.
+**Split install:** small **engine IPA** (GitHub Actions) + large **`ULTRAKILL-Content.zip`** (you copy to the phone). No multi‑GB uploads to GitHub.
 
-You must own ULTRAKILL on PC. This repo does **not** ship game assets or decompiled game code—only the mobile input overlay and build glue.
+## Phone setup
 
-## Quick start (Windows)
+1. Install the unsigned engine IPA (`ULTRAKILL-Engine-unsigned.ipa` from Actions artifacts).
+2. On PC, build the content zip (see below).
+3. Copy `ULTRAKILL-Content.zip` to the phone (AirDrop, USB, iCloud Drive, etc.).
+4. In **Files**, put the zip in **On My iPhone → ULTRAKILL** (the app’s Documents folder).
+5. Launch the app — it extracts once into app storage and remaps `StreamingAssets` / Addressables paths.
 
-1. Copy `ULTRAKILL_Data/Managed` to `game-managed/` (gitignored), or set:
+## Build content zip (Windows, needs Steam ULTRAKILL)
 
-   ```powershell
-   $env:ULTRAKILL_MANAGED = "C:\Program Files (x86)\Steam\steamapps\common\ULTRAKILL\ULTRAKILL_Data\Managed"
-   ```
+```powershell
+$env:ULTRAKILL_RIP = "C:\Users\v0id\Downloads\cockadoodledo\fdadsfsadfff"   # optional AssetRipper scripts merge
+.\scripts\Build-ContentZip.ps1
+# → artifacts\ULTRAKILL-Content.zip
+```
 
-2. Build the touch patch:
+Zip layout at extract:
 
-   ```powershell
-   .\scripts\patch-assembly.ps1
-   ```
+- `ULTRAKILL_Data/` — full Steam `ULTRAKILL_Data` tree  
+- `manifest.json` — build metadata  
 
-3. Copy `artifacts/patched/UltrakillMobileTouch.dll` and update `ScriptingAssemblies.json` (generated beside it) in your iOS Unity port’s `Data/Managed` tree.
+## Engine project (touch + external loader)
 
-   Optional: `.\scripts\patch-assembly.ps1 -MergeIntoAssemblyCSharp` or dnSpy merge into `Assembly-CSharp.dll`.
+```powershell
+.\scripts\Sync-EngineScripts.ps1
+```
 
-4. Build iOS locally or push to GitHub (see below).
-
-## dnSpy (manual)
-
-See [docs/dnspy.md](docs/dnspy.md).
-
-## Touch layout
-
-| Zone | Action |
-|------|--------|
-| Left stick | Move (W/A/S/D via `LegacyInput`) |
-| Right drag | Look (mouse delta) |
-| FIRE / ALT / JMP / SLD / DSH | Combat buttons |
-
-Sources: `patches/MobileTouch/`.
+Opens `unity-ios` in Unity 2022.3.62f1 for local tweaks; CI builds the same tree.
 
 ## GitHub Actions
 
-1. Add repo secrets for [game-ci Unity activation](https://game.ci/docs/github/activation):
-   - `UNITY_LICENSE` (or `UNITY_EMAIL` + `UNITY_PASSWORD`)
-2. Optional: add `game-managed/` on a self-hosted runner or private fork for the patch job.
-3. Workflow [`.github/workflows/build-ios.yml`](.github/workflows/build-ios.yml):
-   - **patch-assembly** — builds `UltrakillMobileTouch.dll` and merged `Assembly-CSharp.dll` when `game-managed/` exists
-   - **ios-unsigned** — Unity iOS export + zip **unsigned.ipa** artifact
+Secrets: `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD` (GameCI personal license).
 
-## One IPA (full game + touch patch)
+Artifact: **`ultrakill-ios-engine-ipa`** — engine only (~tens of MB).
 
-CI builds **ULTRAKILL + touch controls** from a bundled Unity export (not the empty smoke app).
+## dnSpy / PC patch
 
-On your PC (ULTRAKILL installed):
-
-```powershell
-# 1) Export with AssetRipper GUI, OR:
-.\scripts\Export-UnityViaAssetRipper.ps1
-
-# 2) Inject touch DLL + scripts into the export
-.\scripts\Apply-TouchPatchToUnity.ps1
-
-# 3) Tarball for GitHub Actions (~several GB)
-.\scripts\Package-UnityExport.ps1
-
-# 4) Upload once (private release is fine)
-gh release create unity-export artifacts/unity-export.tar.gz --repo YOUR_USER/ultrakill-ios-port --title "Unity export for CI"
-```
-
-Then run **Build unsigned iOS IPA** on GitHub. Artifact: `ultrakill-ios-unsigned-ipa` → `ULTRAKILL-iOS-unsigned.ipa`.
+Touch overlay sources: `patches/MobileTouch/`. For PC DLL patch see `docs/dnspy.md` and `scripts/patch-assembly.ps1`.
 
 ## Legal
 
-For personal use with assets you already own. Do not redistribute Hakita/Arsi “Hakita” game files.
+You must own ULTRAKILL. Do not redistribute Hakita’s game files publicly.
