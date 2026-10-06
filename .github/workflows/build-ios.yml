@@ -1,0 +1,87 @@
+name: Build unsigned iOS IPA
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  UNITY_VERSION: 2022.3.62f1
+  PROJECT_PATH: unity-ios
+
+jobs:
+  patch-assembly:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build mobile touch patch
+        shell: pwsh
+        run: |
+          $managed = Join-Path $env:GITHUB_WORKSPACE "game-managed"
+          if (-not (Test-Path (Join-Path $managed "Assembly-CSharp.dll"))) {
+            Write-Host "game-managed/ not present — skipping merge (add Managed DLLs for patched Assembly-CSharp)."
+            exit 0
+          }
+          ./scripts/patch-assembly.ps1 -GameManaged $managed -OutputDir ./artifacts/patched
+
+      - name: Upload patched DLL artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ultrakill-mobile-touch
+          path: |
+            patches/MobileTouch/bin/**/UltrakillMobileTouch.dll
+            artifacts/patched/Assembly-CSharp.dll
+
+  ios-unsigned:
+    needs: patch-assembly
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('unity-ios/**') }}
+          restore-keys: |
+            Library-
+
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          projectPath: ${{ env.PROJECT_PATH }}
+          targetPlatform: iOS
+          buildMethod: IosUnsignedBuild.Build
+          versioning: None
+          customParameters: -nographics -batchmode
+
+      - name: Build unsigned IPA from Xcode output
+        run: |
+          set -euo pipefail
+          BUILD_DIR="${{ env.PROJECT_PATH }}/build/iOS"
+          APP_PATH="$(find "$BUILD_DIR" -maxdepth 3 -name '*.app' | head -n 1)"
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app found under $BUILD_DIR — export Unity iOS player first."
+            ls -la "$BUILD_DIR" || true
+            exit 1
+          fi
+          rm -rf Payload unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qr unsigned.ipa Payload
+          echo "Created unsigned.ipa ($(du -h unsigned.ipa | cut -f1))"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ultrakill-ios-unsigned-ipa
+          path: unsigned.ipa

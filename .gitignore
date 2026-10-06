@@ -1,0 +1,14 @@
+artifacts/
+.tools/
+!.tools/.gitkeep
+game-managed/
+*.user
+*.suo
+.vs/
+[Bb]in/
+[Oo]bj/
+[Ll]ibrary/
+[Tt]emp/
+[Ll]ogs/
+*.ipa
+*.dSYM.zip
