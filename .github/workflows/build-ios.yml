@@ -8,7 +8,8 @@ on:
 
 env:
   UNITY_VERSION: 2022.3.62f1
-  PROJECT_PATH: unity-ios
+  PROJECT_PATH: unity-ultrakill
+  EXPORT_ARCHIVE: unity-export.tar.gz
 
 jobs:
   patch-assembly:
@@ -24,20 +25,19 @@ jobs:
         shell: pwsh
         run: |
           $managed = Join-Path $env:GITHUB_WORKSPACE "game-managed"
-          if (-not (Test-Path (Join-Path $managed "Assembly-CSharp.dll"))) {
-            Write-Host "game-managed/ not present — skipping merge (add Managed DLLs for patched Assembly-CSharp)."
-            exit 0
+          if (Test-Path (Join-Path $managed "UnityEngine.CoreModule.dll")) {
+            ./scripts/patch-assembly.ps1 -GameManaged $managed -OutputDir ./artifacts/patched
+          } else {
+            Write-Host "game-managed/ not present — patch DLL built only when Managed folder is supplied."
           }
-          ./scripts/patch-assembly.ps1 -GameManaged $managed -OutputDir ./artifacts/patched
 
-      - name: Upload patched DLL artifact
+      - name: Upload touch patch
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ultrakill-mobile-touch
-          path: |
-            patches/MobileTouch/bin/**/UltrakillMobileTouch.dll
-            artifacts/patched/Assembly-CSharp.dll
+          path: artifacts/patched/**
+          if-no-files-found: ignore
 
   ios-unsigned:
     needs: patch-assembly
@@ -45,10 +45,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fetch Unity export (game + touch patch)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view unity-export --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release download unity-export --repo "${{ github.repository }}" -p "$EXPORT_ARCHIVE" -D .
+          else
+            echo "::error::No GitHub release tag 'unity-export' with $EXPORT_ARCHIVE. On a Windows PC with ULTRAKILL installed, run: scripts/Export-UnityViaAssetRipper.ps1; scripts/Apply-TouchPatchToUnity.ps1; scripts/Package-UnityExport.ps1; then gh release create unity-export artifacts/unity-export.tar.gz"
+            exit 1
+          fi
+          tar -xzf "$EXPORT_ARCHIVE"
+          test -f "$PROJECT_PATH/ProjectSettings/ProjectVersion.txt"
+
       - uses: actions/cache@v4
         with:
           path: ${{ env.PROJECT_PATH }}/Library
-          key: Library-${{ hashFiles('unity-ios/**') }}
+          key: Library-${{ hashFiles(format('{0}/**', env.PROJECT_PATH)) }}
           restore-keys: |
             Library-
 
@@ -68,7 +82,7 @@ jobs:
       - name: Xcode build (unsigned)
         run: |
           set -euo pipefail
-          BUILD_DIR="$GITHUB_WORKSPACE/${{ env.PROJECT_PATH }}/build/iOS"
+          BUILD_DIR="$GITHUB_WORKSPACE/$PROJECT_PATH/build/iOS"
           DERIVED_DATA="$BUILD_DIR/DerivedData"
           cd "$BUILD_DIR"
           xcodebuild \
@@ -86,20 +100,19 @@ jobs:
       - name: Package unsigned IPA
         run: |
           set -euo pipefail
-          BUILD_DIR="$GITHUB_WORKSPACE/${{ env.PROJECT_PATH }}/build/iOS"
+          BUILD_DIR="$GITHUB_WORKSPACE/$PROJECT_PATH/build/iOS"
           APP_PATH="$(find "$BUILD_DIR" -name '*.app' -path '*/Build/Products/*' | head -n 1)"
           if [ -z "$APP_PATH" ]; then
             echo "No .app found after xcodebuild"
-            find "$BUILD_DIR" -maxdepth 5 -type d -name '*.app' || true
             exit 1
           fi
-          rm -rf Payload unsigned.ipa
+          rm -rf Payload ULTRAKILL-iOS-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
-          zip -qr unsigned.ipa Payload
-          echo "Created unsigned.ipa ($(du -h unsigned.ipa | cut -f1)) from $APP_PATH"
+          zip -qr ULTRAKILL-iOS-unsigned.ipa Payload
+          echo "Created ULTRAKILL-iOS-unsigned.ipa ($(du -h ULTRAKILL-iOS-unsigned.ipa | cut -f1))"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ultrakill-ios-unsigned-ipa
-          path: unsigned.ipa
+          path: ULTRAKILL-iOS-unsigned.ipa

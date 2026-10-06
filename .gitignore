@@ -1,4 +1,5 @@
 artifacts/
+unity-ultrakill/
 .tools/
 !.tools/.gitkeep
 game-managed/
