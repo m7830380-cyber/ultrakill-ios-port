@@ -5,10 +5,10 @@ public class CyberGrindNavHelper : MonoBehaviour
 {
 	private enum BridgeDirection
 	{
-		Left = 0,
-		Right = 1,
-		Top = 2,
-		Bottom = 3
+		Left,
+		Right,
+		Top,
+		Bottom
 	}
 
 	private struct BridgeBlock

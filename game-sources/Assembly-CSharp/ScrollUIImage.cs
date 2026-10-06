@@ -19,19 +19,19 @@ public class ScrollUIImage : MonoBehaviour
 		Vector2 vector = img.uvRect.position + new Vector2(xSpeed, ySpeed) * Time.deltaTime;
 		while (vector.x > 1f)
 		{
-			vector.x--;
+			vector.x -= 1f;
 		}
 		while (vector.x < -1f)
 		{
-			vector.x++;
+			vector.x += 1f;
 		}
 		while (vector.y > 1f)
 		{
-			vector.y--;
+			vector.y -= 1f;
 		}
 		while (vector.y < -1f)
 		{
-			vector.y++;
+			vector.y += 1f;
 		}
 		img.uvRect = new Rect(img.uvRect.position + new Vector2(xSpeed, ySpeed) * Time.deltaTime, img.uvRect.size);
 	}

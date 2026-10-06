@@ -66,7 +66,7 @@ public class ComplexSplasher : MonoBehaviour
 			}
 			currentSplash.Key.EmissionOff();
 		}
-		list.ForEach((ParticleCluster x) =>
+		list.ForEach(delegate(ParticleCluster x)
 		{
 			Object.Destroy(x.gameObject);
 			currentSplashes.Remove(x);

@@ -383,7 +383,7 @@ public class InputManager : MonoSingleton<InputManager>
 		rebinding?.Dispose();
 		currentCancelCallback = onCancel;
 		IsRebinding = true;
-		rebinding = new InputActionRebindingExtensions.RebindingOperation().OnApplyBinding((InputActionRebindingExtensions.RebindingOperation op, string path) =>
+		rebinding = new InputActionRebindingExtensions.RebindingOperation().OnApplyBinding(delegate(InputActionRebindingExtensions.RebindingOperation op, string path)
 		{
 			rebinding = null;
 			op.Dispose();
@@ -419,7 +419,7 @@ public class InputManager : MonoSingleton<InputManager>
 		}
 		string part = partNames.Dequeue();
 		onBeginPart?.Invoke(part);
-		WaitForButton((string path) =>
+		WaitForButton(delegate(string path)
 		{
 			onCompletePart?.Invoke(part, path);
 			WaitForButtonSequence(partNames, onBeginPart, onCompletePart, onComplete, onCancel);
@@ -450,7 +450,7 @@ public class InputManager : MonoSingleton<InputManager>
 	public void Rebind(InputAction action, int? existingIndex, Action onComplete, Action onCancel, InputControlScheme scheme)
 	{
 		List<string> allowedPaths = scheme.deviceRequirements.Select((InputControlScheme.DeviceRequirement requirement) => requirement.controlPath).ToList();
-		WaitForButton((string path) =>
+		WaitForButton(delegate(string path)
 		{
 			foreach (InputBinding binding in action.bindings)
 			{
@@ -474,7 +474,7 @@ public class InputManager : MonoSingleton<InputManager>
 			bindingSyntax2.WithPath(path).WithGroup(scheme.bindingGroup);
 			actionModified?.Invoke(action);
 			onComplete?.Invoke();
-		}, () =>
+		}, delegate
 		{
 			onCancel?.Invoke();
 		}, allowedPaths);
@@ -487,10 +487,10 @@ public class InputManager : MonoSingleton<InputManager>
 		{
 			string[] collection = new string[4] { "Up", "Down", "Left", "Right" };
 			Dictionary<string, string> partPathDict = new Dictionary<string, string>();
-			WaitForButtonSequence(new Queue<string>(collection), onBeginPart, (string part, string path) =>
+			WaitForButtonSequence(new Queue<string>(collection), onBeginPart, delegate(string part, string path)
 			{
 				partPathDict.Add(part, path);
-			}, () =>
+			}, delegate
 			{
 				if (existingIndex.HasValue)
 				{

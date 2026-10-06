@@ -32,7 +32,7 @@ public class DropdownCombinationRestoreDefaultButton : MonoBehaviour
 
 	private void Start()
 	{
-		dropdown.onValueChanged.AddListener((int _) =>
+		dropdown.onValueChanged.AddListener(delegate
 		{
 			isValueDirty = true;
 		});

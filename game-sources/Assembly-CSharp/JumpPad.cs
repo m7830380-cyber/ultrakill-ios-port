@@ -28,7 +28,7 @@ public class JumpPad : MonoBehaviour, IAlter, IAlterOptions<float>
 			name = "Force",
 			key = "force",
 			value = force,
-			callback = (float value) =>
+			callback = delegate(float value)
 			{
 				force = value;
 			}

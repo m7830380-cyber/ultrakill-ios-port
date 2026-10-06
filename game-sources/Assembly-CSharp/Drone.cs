@@ -190,7 +190,7 @@ public class Drone : EnemyScript
 
 	public override EnemyMovementData GetSpeed(int difficulty)
 	{
-		return default;
+		return default(EnemyMovementData);
 	}
 
 	private void Awake()
@@ -373,7 +373,7 @@ public class Drone : EnemyScript
 		}
 		UpdateRigidbodySettings();
 		bool flag = hasAnyTarget || (eid.enemyType == EnemyType.Virtue && eid.target != null);
-		if ((targetSpotted || eid.enemyType == EnemyType.Virtue) & flag)
+		if ((targetSpotted || eid.enemyType == EnemyType.Virtue) && flag)
 		{
 			if (hasDroneVision)
 			{
@@ -582,7 +582,7 @@ public class Drone : EnemyScript
 			{
 				flag = true;
 			}
-			if (((homeRunnable && !fleshDrone && !eid.puppet) & flag) && (eid.hitter == "punch" || eid.hitter == "heavypunch" || eid.hitter == "hammer"))
+			if (homeRunnable && !fleshDrone && !eid.puppet && flag && (eid.hitter == "punch" || eid.hitter == "heavypunch" || eid.hitter == "hammer"))
 			{
 				MonoSingleton<StyleHUD>.Instance.AddPoints(100, "ultrakill.homerun", sourceWeapon, eid);
 				MonoSingleton<StyleCalculator>.Instance.AddToMultiKill();
@@ -1016,7 +1016,7 @@ public class Drone : EnemyScript
 		}
 		Invoke("SightCheck", 0.25f);
 		bool flag = false;
-		TargetDataRef data = default;
+		TargetDataRef data = default(TargetDataRef);
 		if (eid.target != null)
 		{
 			flag = vision.TrySee(droneTargetQuery, out data);
@@ -1048,7 +1048,7 @@ public class Drone : EnemyScript
 		{
 			TargetLost();
 		}
-		else if ((!targetSpotted || (!hasDroneVision && !hasDimensionalTarget)) & flag)
+		else if ((!targetSpotted || (!hasDroneVision && !hasDimensionalTarget)) && flag)
 		{
 			PlaySound(spotSound);
 			targetSpotted = true;
@@ -1113,7 +1113,7 @@ public class Drone : EnemyScript
 		if (force || (difficulty != 0 && (difficulty != 1 || (eid.enemyType != EnemyType.Providence && !(UnityEngine.Random.Range(0f, 1f) > 0.75f)))))
 		{
 			Dodge();
-			if (difficulty >= 2 && ((difficulty >= 4) | force) && eid.enemyType == EnemyType.Providence)
+			if (difficulty >= 2 && (difficulty >= 4 || force) && eid.enemyType == EnemyType.Providence)
 			{
 				Invoke("Dodge", 0.1f);
 			}
@@ -1203,7 +1203,7 @@ public class Drone : EnemyScript
 		Vector3 position = base.transform.position;
 		Vector3 forward = base.transform.forward;
 		Vector3 position2 = position + forward;
-		Quaternion quaternion2 = base.transform.rotation;
+		Quaternion quaternion = base.transform.rotation;
 		PortalPhysicsV2.ProjectThroughPortals(position, forward, default(LayerMask), out var _, out var endPoint, out var traversals);
 		bool flag = false;
 		if (traversals.Length != 0)
@@ -1215,7 +1215,7 @@ public class Drone : EnemyScript
 			{
 				Matrix4x4 travelMatrix = PortalUtils.GetTravelMatrix(traversals);
 				position2 = endPoint;
-				quaternion2 = travelMatrix.rotation * quaternion2;
+				quaternion = travelMatrix.rotation * quaternion;
 			}
 			else
 			{
@@ -1224,7 +1224,7 @@ public class Drone : EnemyScript
 			}
 		}
 		List<Projectile> list = new List<Projectile>();
-		GameObject gameObject = UnityEngine.Object.Instantiate(projectile.ToAsset(), position2, quaternion2);
+		GameObject gameObject = UnityEngine.Object.Instantiate(projectile.ToAsset(), position2, quaternion);
 		if (eid.enemyType == EnemyType.Drone)
 		{
 			Transform obj = gameObject.transform;

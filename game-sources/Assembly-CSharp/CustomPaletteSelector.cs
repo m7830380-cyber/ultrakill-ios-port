@@ -77,7 +77,7 @@ public class CustomPaletteSelector : MonoBehaviour
 			templateFileName.text = Path.GetFileNameWithoutExtension(palette);
 			Button button = Object.Instantiate(buttonTemplate, container, worldPositionStays: false);
 			button.gameObject.SetActive(value: true);
-			button.onClick.AddListener(() =>
+			button.onClick.AddListener(delegate
 			{
 				SetGamePalette(txt, palette);
 			});

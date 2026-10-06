@@ -102,7 +102,7 @@ public class CausticVolumeManager : MonoSingleton<CausticVolumeManager>
 		}
 		causticVolumeBuffer?.Release();
 		causticDataArray.Clear();
-		CausticData item = default;
+		CausticData item = default(CausticData);
 		foreach (CausticVolume causticVolume in causticVolumes)
 		{
 			Vector4 position_nearRadius = causticVolume.transform.position;

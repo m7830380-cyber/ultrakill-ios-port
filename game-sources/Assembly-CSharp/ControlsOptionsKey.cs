@@ -115,19 +115,19 @@ public class ControlsOptionsKey : MonoBehaviour, ISelectHandler, IEventSystemHan
 				txt.color = Color.red;
 			}
 			int index = num2;
-			item.onClick.AddListener(() =>
+			item.onClick.AddListener(delegate
 			{
 				_ = img.color;
 				img.color = Color.red;
 				if (binding.isComposite)
 				{
-					MonoSingleton<InputManager>.Instance.RebindComposite(action, index, (string part) =>
+					MonoSingleton<InputManager>.Instance.RebindComposite(action, index, delegate(string part)
 					{
 						txt.text = "PRESS " + part.ToUpper();
-					}, () =>
+					}, delegate
 					{
 						RebuildBindings(action, controlScheme);
-					}, () =>
+					}, delegate
 					{
 						action.ChangeBinding(index).Erase();
 						MonoSingleton<InputManager>.Instance.actionModified?.Invoke(action);
@@ -135,10 +135,10 @@ public class ControlsOptionsKey : MonoBehaviour, ISelectHandler, IEventSystemHan
 				}
 				else
 				{
-					MonoSingleton<InputManager>.Instance.Rebind(action, index, () =>
+					MonoSingleton<InputManager>.Instance.Rebind(action, index, delegate
 					{
 						RebuildBindings(action, controlScheme);
-					}, () =>
+					}, delegate
 					{
 						action.ChangeBinding(index).Erase();
 						MonoSingleton<InputManager>.Instance.actionModified?.Invoke(action);
@@ -149,30 +149,30 @@ public class ControlsOptionsKey : MonoBehaviour, ISelectHandler, IEventSystemHan
 		if (num < 4)
 		{
 			var (button, txt2, img2) = BuildNewBindButton();
-			button.onClick.AddListener(() =>
+			button.onClick.AddListener(delegate
 			{
 				img2.color = Color.red;
 				txt2.color = Color.white;
 				txt2.text = "...";
 				if (action.expectedControlType == "Button")
 				{
-					MonoSingleton<InputManager>.Instance.Rebind(action, null, () =>
+					MonoSingleton<InputManager>.Instance.Rebind(action, null, delegate
 					{
 						RebuildBindings(action, controlScheme);
-					}, () =>
+					}, delegate
 					{
 						RebuildBindings(action, controlScheme);
 					}, controlScheme);
 				}
 				else if (action.expectedControlType == "Vector2")
 				{
-					MonoSingleton<InputManager>.Instance.RebindComposite(action, null, (string part) =>
+					MonoSingleton<InputManager>.Instance.RebindComposite(action, null, delegate(string part)
 					{
 						txt2.text = "PRESS " + part.ToUpper();
-					}, () =>
+					}, delegate
 					{
 						RebuildBindings(action, controlScheme);
-					}, () =>
+					}, delegate
 					{
 						RebuildBindings(action, controlScheme);
 					}, controlScheme);
@@ -182,7 +182,7 @@ public class ControlsOptionsKey : MonoBehaviour, ISelectHandler, IEventSystemHan
 		bool flag2 = action.IsActionEqual(MonoSingleton<InputManager>.Instance.defaultActions.FindAction(action.id), controlScheme.bindingGroup);
 		restoreDefaultsButton.gameObject.SetActive(!flag2);
 		restoreDefaultsButton.onClick.RemoveAllListeners();
-		restoreDefaultsButton.onClick.AddListener(() =>
+		restoreDefaultsButton.onClick.AddListener(delegate
 		{
 			MonoSingleton<InputManager>.Instance.ResetToDefault(action, controlScheme);
 			RebuildBindings(action, controlScheme);

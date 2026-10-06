@@ -51,7 +51,7 @@ public class StencilValuesByLayer : MonoBehaviour
 					continue;
 				}
 				bool flag2 = shader == masterShader;
-				flag |= flag2;
+				flag = flag || flag2;
 				if (flag2)
 				{
 					if (applyStencilValue)
@@ -98,7 +98,7 @@ public class StencilValuesByLayer : MonoBehaviour
 					continue;
 				}
 				bool flag2 = shader == masterShader;
-				flag |= flag2;
+				flag = flag || flag2;
 				if (flag2 && renderer.gameObject.layer == 24)
 				{
 					if (doEnable)

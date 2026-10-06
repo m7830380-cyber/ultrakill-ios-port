@@ -605,7 +605,7 @@ public class MaliciousFace : EnemyScript
 			bool num2 = beamProbability > 5f || UnityEngine.Random.Range(0f, spider.health * 0.4f) < beamProbability;
 			bool flag = num <= 50f || (eid.target.isPlayer && (bool)MonoSingleton<NewMovement>.Instance.ridingRocket);
 			bool flag2 = (bool)eid.buffTargeter && Vector3.Distance(base.transform.position, eid.buffTargeter.transform.position) <= 15f;
-			if ((num2 & flag) && !flag2 && !spider.isTraversingPortalLink)
+			if (num2 && flag && !flag2 && !spider.isTraversingPortalLink)
 			{
 				ChargeBeam(targetData);
 				if (difficulty > 2 && isEnraged)
@@ -617,7 +617,7 @@ public class MaliciousFace : EnemyScript
 			else
 			{
 				ShootProj(targetData);
-				beamProbability++;
+				beamProbability += 1f;
 			}
 		}
 	}
@@ -1104,7 +1104,7 @@ public class MaliciousFace : EnemyScript
 				Transform transform2 = base.transform;
 				transform2.position -= transform2.up * 1.5f;
 				spiderFalling = false;
-				rb.excludeLayers = default;
+				rb.excludeLayers = default(LayerMask);
 				if (!other.gameObject.TryGetComponent<MaliciousFaceCatcher>(out var _))
 				{
 					UnityEngine.Object.Instantiate(impactSprite, spritePos, spriteRot).transform.SetParent(gz.goreZone, worldPositionStays: true);

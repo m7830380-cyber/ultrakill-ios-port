@@ -85,7 +85,7 @@ public class ImageManager
 
 	public ImageDimensions GetDimensions(ImageHandle handle)
 	{
-		ImageDimensions dimensions = default;
+		ImageDimensions dimensions = default(ImageDimensions);
 		Result result = Methods.GetDimensions(MethodsPtr, handle, ref dimensions);
 		if (result != Result.Ok)
 		{

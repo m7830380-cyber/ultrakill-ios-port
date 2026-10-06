@@ -65,12 +65,12 @@ public class SandboxHud : MonoSingleton<SandboxHud>
 			sandboxSaveItem.transform.SetParent(savesContainer, worldPositionStays: false);
 			sandboxSaveItem.gameObject.SetActive(value: true);
 			sandboxSaveItem.saveName.text = save + "<color=#7A7A7A>.pitr</color>";
-			sandboxSaveItem.deleteButton.onClick.AddListener(() =>
+			sandboxSaveItem.deleteButton.onClick.AddListener(delegate
 			{
 				MonoSingleton<SandboxSaver>.Instance.Delete(save);
 				BuildSavesMenu();
 			});
-			sandboxSaveItem.loadButton.onClick.AddListener(() =>
+			sandboxSaveItem.loadButton.onClick.AddListener(delegate
 			{
 				MonoSingleton<SandboxSaver>.Instance.Load(save);
 				HideSavesMenu();
@@ -80,7 +80,7 @@ public class SandboxHud : MonoSingleton<SandboxHud>
 					MonoSingleton<OptionsManager>.Instance.UnPause();
 				}
 			});
-			sandboxSaveItem.saveButton.onClick.AddListener(() =>
+			sandboxSaveItem.saveButton.onClick.AddListener(delegate
 			{
 				MonoSingleton<SandboxSaver>.Instance.Save(save);
 				BuildSavesMenu();

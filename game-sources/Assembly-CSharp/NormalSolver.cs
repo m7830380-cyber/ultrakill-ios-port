@@ -4,19 +4,26 @@ using UnityEngine;
 
 public static class NormalSolver
 {
-	private struct VertexKey(Vector3 position)
+	private struct VertexKey
 	{
-		private readonly long _x = (long)Mathf.Round(position.x * 100000f);
+		private readonly long _x;
 
-		private readonly long _y = (long)Mathf.Round(position.y * 100000f);
+		private readonly long _y;
 
-		private readonly long _z = (long)Mathf.Round(position.z * 100000f);
+		private readonly long _z;
 
 		private const int Tolerance = 100000;
 
 		private const long FNV32Init = 2166136261L;
 
 		private const long FNV32Prime = 16777619L;
+
+		public VertexKey(Vector3 position)
+		{
+			_x = (long)Mathf.Round(position.x * 100000f);
+			_y = (long)Mathf.Round(position.y * 100000f);
+			_z = (long)Mathf.Round(position.z * 100000f);
+		}
 
 		public override bool Equals(object obj)
 		{
@@ -40,13 +47,20 @@ public static class NormalSolver
 		}
 	}
 
-	private struct VertexEntry(int meshIndex, int triIndex, int vertIndex)
+	private struct VertexEntry
 	{
-		public int MeshIndex = meshIndex;
+		public int MeshIndex;
 
-		public int TriangleIndex = triIndex;
+		public int TriangleIndex;
 
-		public int VertexIndex = vertIndex;
+		public int VertexIndex;
+
+		public VertexEntry(int meshIndex, int triIndex, int vertIndex)
+		{
+			MeshIndex = meshIndex;
+			TriangleIndex = triIndex;
+			VertexIndex = vertIndex;
+		}
 	}
 
 	public static void RecalculateNormals(this Mesh mesh, float angle)
@@ -97,7 +111,7 @@ public static class NormalSolver
 		{
 			for (int k = 0; k < value2.Count; k++)
 			{
-				Vector3 vector = default;
+				Vector3 vector = default(Vector3);
 				VertexEntry vertexEntry = value2[k];
 				for (int l = 0; l < value2.Count; l++)
 				{

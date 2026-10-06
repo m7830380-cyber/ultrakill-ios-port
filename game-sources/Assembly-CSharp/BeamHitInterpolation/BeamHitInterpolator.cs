@@ -248,11 +248,11 @@ public static class BeamHitInterpolator
 	{
 		results.Clear();
 		float3 prevOrigin = rayA.origin;
-		float3 float5 = rayA.direction;
-		float3 prevEnd = prevOrigin + float5 * distanceA;
+		float3 @float = rayA.direction;
+		float3 prevEnd = prevOrigin + @float * distanceA;
 		float3 currOrigin = rayB.origin;
-		float3 float6 = rayB.direction;
-		float3 currEnd = currOrigin + float6 * distanceB;
+		float3 float2 = rayB.direction;
+		float3 currEnd = currOrigin + float2 * distanceB;
 		CalculateSweptObb(in prevOrigin, in prevEnd, in currOrigin, in currEnd, in beamRadius, out var center, out var halfExtents, out var orientation);
 		Collider[] colliders = ArrayPool.GetColliders();
 		int num = Physics.OverlapBoxNonAlloc(center, halfExtents, colliders, orientation, hitMask, queryTriggerInteraction);
@@ -290,8 +290,8 @@ public static class BeamHitInterpolator
 		}
 		if (!(collider is MeshCollider { convex: false }))
 		{
-			float3 float5 = (prevOrigin + prevEnd + currOrigin + currEnd) * 0.25f;
-			float3 point2 = collider.ClosestPoint(float5);
+			float3 @float = (prevOrigin + prevEnd + currOrigin + currEnd) * 0.25f;
+			float3 point2 = collider.ClosestPoint(@float);
 			float3 closest = float3.zero;
 			finalMinDistSq = float.PositiveInfinity;
 			for (int i = 0; i < 3; i++)
@@ -301,15 +301,15 @@ public static class BeamHitInterpolator
 				ClosestPointOnSegment(in point2, math.lerp(prevOrigin, currOrigin, optimalTime), math.lerp(prevEnd, currEnd, optimalTime), out var closest2);
 				closest = closest2;
 				finalMinDistSq = math.distancesq(point2, closest);
-				float3 float6 = collider.ClosestPoint(closest);
-				if (math.distancesq(float6, point2) < 1E-06f)
+				float3 float2 = collider.ClosestPoint(closest);
+				if (math.distancesq(float2, point2) < 1E-06f)
 				{
-					point2 = float6;
+					point2 = float2;
 					ClosestPointOnSegment(in point2, math.lerp(prevOrigin, currOrigin, optimalTime), math.lerp(prevEnd, currEnd, optimalTime), out closest);
 					finalMinDistSq = math.distancesq(point2, closest);
 					break;
 				}
-				point2 = float6;
+				point2 = float2;
 			}
 			finalPointOnCollider = point2;
 			finalClosestPointOnAxis = closest;
@@ -347,12 +347,12 @@ public static class BeamHitInterpolator
 
 	private static InterpolatedHit CreateInterpolatedHit(Collider collider, float3 finalPointOnCollider, float3 finalClosestPointOnAxis, float finalMinDistSq)
 	{
-		float3 float5 = collider.ClosestPoint(finalClosestPointOnAxis);
-		float3 x = finalClosestPointOnAxis - float5;
+		float3 @float = collider.ClosestPoint(finalClosestPointOnAxis);
+		float3 x = finalClosestPointOnAxis - @float;
 		if (math.lengthsq(x) < 1E-12f)
 		{
-			float3 float6 = collider.bounds.center;
-			x = float5 - float6;
+			float3 float2 = collider.bounds.center;
+			x = @float - float2;
 			if (math.lengthsq(x) < 1E-12f)
 			{
 				x = collider.transform.up;
@@ -362,7 +362,7 @@ public static class BeamHitInterpolator
 		float distance = math.sqrt(finalMinDistSq);
 		return new InterpolatedHit
 		{
-			point = float5,
+			point = @float,
 			normal = x,
 			distance = distance,
 			collider = collider,
@@ -428,15 +428,15 @@ public static class BeamHitInterpolator
 	[BurstCompile]
 	internal static float DistanceSqPointSegment_0024BurstManaged(in float3 point, in float3 segmentStart, in float3 segmentEnd)
 	{
-		float3 float5 = segmentEnd - segmentStart;
-		float num = math.lengthsq(float5);
+		float3 @float = segmentEnd - segmentStart;
+		float num = math.lengthsq(@float);
 		if (num < 1E-12f)
 		{
 			return math.distancesq(point, segmentStart);
 		}
-		float valueToClamp = math.dot(point - segmentStart, float5) / num;
+		float valueToClamp = math.dot(point - segmentStart, @float) / num;
 		valueToClamp = math.clamp(valueToClamp, 0f, 1f);
-		float3 y = segmentStart + valueToClamp * float5;
+		float3 y = segmentStart + valueToClamp * @float;
 		return math.distancesq(point, y);
 	}
 
@@ -444,16 +444,16 @@ public static class BeamHitInterpolator
 	[BurstCompile]
 	internal static void ClosestPointOnSegment_0024BurstManaged(in float3 point, in float3 segmentStart, in float3 segmentEnd, out float3 closest)
 	{
-		float3 float5 = segmentEnd - segmentStart;
-		float num = math.lengthsq(float5);
+		float3 @float = segmentEnd - segmentStart;
+		float num = math.lengthsq(@float);
 		if (num < 1E-12f)
 		{
 			closest = segmentStart;
 			return;
 		}
-		float valueToClamp = math.dot(point - segmentStart, float5) / num;
+		float valueToClamp = math.dot(point - segmentStart, @float) / num;
 		valueToClamp = math.clamp(valueToClamp, 0f, 1f);
-		closest = segmentStart + valueToClamp * float5;
+		closest = segmentStart + valueToClamp * @float;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -461,13 +461,13 @@ public static class BeamHitInterpolator
 	internal static void CalculateSweptObb_0024BurstManaged(in float3 prevOrigin, in float3 prevEnd, in float3 currOrigin, in float3 currEnd, in float radius, out float3 center, out float3 halfExtents, out quaternion orientation)
 	{
 		center = (prevOrigin + prevEnd + currOrigin + currEnd) * 0.25f;
-		float3 float5 = prevEnd - prevOrigin;
-		float3 float6 = currEnd - currOrigin;
-		float num = math.length(float5);
-		float num2 = math.length(float6);
-		float5 = ((num > 1E-12f) ? (float5 / num) : new float3(0f, 0f, 1f));
-		float6 = ((num2 > 1E-12f) ? (float6 / num2) : float5);
-		float3 x = float5 + float6;
+		float3 @float = prevEnd - prevOrigin;
+		float3 float2 = currEnd - currOrigin;
+		float num = math.length(@float);
+		float num2 = math.length(float2);
+		@float = ((num > 1E-12f) ? (@float / num) : new float3(0f, 0f, 1f));
+		float2 = ((num2 > 1E-12f) ? (float2 / num2) : @float);
+		float3 x = @float + float2;
 		if (math.lengthsq(x) < 1E-12f)
 		{
 			x = currOrigin - prevOrigin;
@@ -477,13 +477,13 @@ public static class BeamHitInterpolator
 			}
 		}
 		x = math.normalize(x);
-		float3 float7 = (prevOrigin + prevEnd) * 0.5f;
-		float3 float8 = (currOrigin + currEnd) * 0.5f - float7;
+		float3 float3 = (prevOrigin + prevEnd) * 0.5f;
+		float3 float4 = (currOrigin + currEnd) * 0.5f - float3;
 		float3 y = ((math.abs(math.dot(x, new float3(0f, 1f, 0f))) > 0.999f) ? new float3(1f, 0f, 0f) : new float3(0f, 1f, 0f));
 		float3 x2;
-		if (math.lengthsq(float8) > 1E-12f)
+		if (math.lengthsq(float4) > 1E-12f)
 		{
-			x2 = float8 - math.dot(float8, x) * x;
+			x2 = float4 - math.dot(float4, x) * x;
 			if (math.lengthsq(x2) < 1E-12f)
 			{
 				x2 = math.cross(x, y);

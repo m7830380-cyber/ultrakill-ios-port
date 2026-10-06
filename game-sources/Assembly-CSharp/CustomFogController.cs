@@ -7,25 +7,35 @@ public class CustomFogController : MonoBehaviour
 	[Serializable]
 	public enum FogState
 	{
-		Disabled = 0,
-		Static = 1,
-		Dynamic = 2
+		Disabled,
+		Static,
+		Dynamic
 	}
 
 	[Serializable]
-	private struct ValuePreset(FogState fogState, float redAmount, float greenAmount, float blueAmount, float startDistance, float endDistance)
+	private struct ValuePreset
 	{
-		public FogState fogState = fogState;
+		public FogState fogState;
 
-		public float redAmount = redAmount;
+		public float redAmount;
 
-		public float greenAmount = greenAmount;
+		public float greenAmount;
 
-		public float blueAmount = blueAmount;
+		public float blueAmount;
 
-		public float startDistance = startDistance;
+		public float startDistance;
 
-		public float endDistance = endDistance;
+		public float endDistance;
+
+		public ValuePreset(FogState fogState, float redAmount, float greenAmount, float blueAmount, float startDistance, float endDistance)
+		{
+			this.fogState = fogState;
+			this.redAmount = redAmount;
+			this.greenAmount = greenAmount;
+			this.blueAmount = blueAmount;
+			this.startDistance = startDistance;
+			this.endDistance = endDistance;
+		}
 	}
 
 	[SerializeField]
@@ -108,15 +118,15 @@ public class CustomFogController : MonoBehaviour
 		disabledShopButton = disabledButton.GetComponent<ShopButton>();
 		staticShopButton = staticButton.GetComponent<ShopButton>();
 		dynamicShopButton = dynamicButton.GetComponent<ShopButton>();
-		disabledShopButton.PointerClickSuccess += () =>
+		disabledShopButton.PointerClickSuccess += delegate
 		{
 			SetState(FogState.Disabled);
 		};
-		staticShopButton.PointerClickSuccess += () =>
+		staticShopButton.PointerClickSuccess += delegate
 		{
 			SetState(FogState.Static);
 		};
-		dynamicShopButton.PointerClickSuccess += () =>
+		dynamicShopButton.PointerClickSuccess += delegate
 		{
 			SetState(FogState.Dynamic);
 		};

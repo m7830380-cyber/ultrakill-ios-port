@@ -117,7 +117,7 @@ public class RelationshipManager
 
 	public Relationship Get(long userId)
 	{
-		Relationship relationship = default;
+		Relationship relationship = default(Relationship);
 		Result result = Methods.Get(MethodsPtr, userId, ref relationship);
 		if (result != Result.Ok)
 		{
@@ -128,7 +128,7 @@ public class RelationshipManager
 
 	public Relationship GetAt(uint index)
 	{
-		Relationship relationship = default;
+		Relationship relationship = default(Relationship);
 		Result result = Methods.GetAt(MethodsPtr, index, ref relationship);
 		if (result != Result.Ok)
 		{

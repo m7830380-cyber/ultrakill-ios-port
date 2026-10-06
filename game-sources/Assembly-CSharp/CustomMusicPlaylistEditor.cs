@@ -297,17 +297,17 @@ public class CustomMusicPlaylistEditor : DirectoryTreeBrowser<Playlist.SongIdent
 			}
 			selectedControls.gameObject.SetActive(value: true);
 			ChangeAnchorOf(selectedControls, anchors[currentIndex]);
-			return () =>
+			return delegate
 			{
 				selectedControls.gameObject.SetActive(value: false);
 				UnityEngine.Object.Destroy(go);
 			};
 		}
-		contentButton.button.onClick.AddListener(() =>
+		contentButton.button.onClick.AddListener(delegate
 		{
 			Select(buttons.IndexOf(contentButton.transform) + currentPage * maxPageLength);
 		});
-		return () =>
+		return delegate
 		{
 			UnityEngine.Object.Destroy(go);
 		};

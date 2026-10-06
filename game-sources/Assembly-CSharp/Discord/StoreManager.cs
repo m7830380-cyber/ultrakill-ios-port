@@ -156,7 +156,7 @@ public class StoreManager
 
 	public Sku GetSku(long skuId)
 	{
-		Sku sku = default;
+		Sku sku = default(Sku);
 		Result result = Methods.GetSku(MethodsPtr, skuId, ref sku);
 		if (result != Result.Ok)
 		{
@@ -167,7 +167,7 @@ public class StoreManager
 
 	public Sku GetSkuAt(int index)
 	{
-		Sku sku = default;
+		Sku sku = default(Sku);
 		Result result = Methods.GetSkuAt(MethodsPtr, index, ref sku);
 		if (result != Result.Ok)
 		{
@@ -200,7 +200,7 @@ public class StoreManager
 
 	public Entitlement GetEntitlement(long entitlementId)
 	{
-		Entitlement entitlement = default;
+		Entitlement entitlement = default(Entitlement);
 		Result result = Methods.GetEntitlement(MethodsPtr, entitlementId, ref entitlement);
 		if (result != Result.Ok)
 		{
@@ -211,7 +211,7 @@ public class StoreManager
 
 	public Entitlement GetEntitlementAt(int index)
 	{
-		Entitlement entitlement = default;
+		Entitlement entitlement = default(Entitlement);
 		Result result = Methods.GetEntitlementAt(MethodsPtr, index, ref entitlement);
 		if (result != Result.Ok)
 		{

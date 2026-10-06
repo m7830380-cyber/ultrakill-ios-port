@@ -15,7 +15,7 @@ public class StaticSceneOptimizer : MonoSingleton<StaticSceneOptimizer>
 {
 	public enum BakingMode
 	{
-		Stationary = 0
+		Stationary
 	}
 
 	private struct VertexData
@@ -375,7 +375,7 @@ public class StaticSceneOptimizer : MonoSingleton<StaticSceneOptimizer>
 				light = null;
 				continue;
 			}
-			light.gameObject.AddComponent<CancellationTokenHelper>().destroyCancellationToken.Register(() =>
+			light.gameObject.AddComponent<CancellationTokenHelper>().destroyCancellationToken.Register(delegate
 			{
 				light = null;
 			});

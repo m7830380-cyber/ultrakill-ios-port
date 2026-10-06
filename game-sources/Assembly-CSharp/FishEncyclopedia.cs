@@ -47,7 +47,7 @@ public class FishEncyclopedia : MonoBehaviour
 				fishMenuButton.gameObject.SetActive(value: true);
 				fishMenuButton.Populate(fish, !value);
 				fishMenuButton.GetComponent<ControllerPointer>().OnPressed.RemoveAllListeners();
-				fishMenuButton.GetComponent<ControllerPointer>().OnPressed.AddListener(() =>
+				fishMenuButton.GetComponent<ControllerPointer>().OnPressed.AddListener(delegate
 				{
 					SelectFish(fish);
 				});

@@ -9,8 +9,8 @@ public class Playlist
 {
 	public enum LoopMode
 	{
-		Loop = 0,
-		LoopOne = 1
+		Loop,
+		LoopOne
 	}
 
 	public class SongMetadata
@@ -33,8 +33,8 @@ public class Playlist
 	{
 		public enum IdentifierType
 		{
-			Addressable = 0,
-			File = 1
+			Addressable,
+			File
 		}
 
 		public string path;
@@ -64,7 +64,7 @@ public class Playlist
 
 		public override int GetHashCode()
 		{
-			return (unchecked(-1056084179 * -1521134295) + EqualityComparer<string>.Default.GetHashCode(path)) * -1521134295 + type.GetHashCode();
+			return (-1056084179 * -1521134295 + EqualityComparer<string>.Default.GetHashCode(path)) * -1521134295 + type.GetHashCode();
 		}
 	}
 
@@ -107,7 +107,7 @@ public class Playlist
 		set
 		{
 			_loopMode = value;
-			OnChanged?.Invoke();
+			this.OnChanged?.Invoke();
 		}
 	}
 
@@ -120,7 +120,7 @@ public class Playlist
 		set
 		{
 			_selected = value;
-			OnChanged?.Invoke();
+			this.OnChanged?.Invoke();
 		}
 	}
 
@@ -133,7 +133,7 @@ public class Playlist
 		set
 		{
 			_shuffled = value;
-			OnChanged?.Invoke();
+			this.OnChanged?.Invoke();
 		}
 	}
 
@@ -153,7 +153,7 @@ public class Playlist
 	public void Add(SongIdentifier id)
 	{
 		_ids.Add(id);
-		OnChanged?.Invoke();
+		this.OnChanged?.Invoke();
 	}
 
 	public void Remove(int index)
@@ -169,7 +169,7 @@ public class Playlist
 			return;
 		}
 		_ids.RemoveAt(index);
-		OnChanged?.Invoke();
+		this.OnChanged?.Invoke();
 	}
 
 	public void Swap(int index1, int index2)
@@ -177,6 +177,6 @@ public class Playlist
 		SongIdentifier value = _ids[index1];
 		_ids[index1] = _ids[index2];
 		_ids[index2] = value;
-		OnChanged?.Invoke();
+		this.OnChanged?.Invoke();
 	}
 }

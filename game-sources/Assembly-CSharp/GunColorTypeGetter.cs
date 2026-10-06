@@ -52,7 +52,7 @@ public class GunColorTypeGetter : MonoBehaviour
 		for (int k = 0; k < templateButtons.Count; k++)
 		{
 			int index = k;
-			templateButtons[k].GetComponent<ShopButton>().PointerClickSuccess += () =>
+			templateButtons[k].GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetPreset(index);
 			};
@@ -62,11 +62,11 @@ public class GunColorTypeGetter : MonoBehaviour
 		{
 			originalTemplateTexts[num] = templateTexts[num].text;
 		}
-		presetsButton.GetComponent<ShopButton>().PointerClickSuccess += () =>
+		presetsButton.GetComponent<ShopButton>().PointerClickSuccess += delegate
 		{
 			SetType(isCustom: false);
 		};
-		customButton.GetComponent<ShopButton>().PointerClickSuccess += () =>
+		customButton.GetComponent<ShopButton>().PointerClickSuccess += delegate
 		{
 			SetType(isCustom: true);
 		};

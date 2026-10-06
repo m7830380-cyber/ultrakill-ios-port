@@ -235,7 +235,7 @@ public class SwordsMachine : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>, 
 		new AlterOption<bool>
 		{
 			value = isEnraged,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				if (value)
 				{
@@ -252,7 +252,7 @@ public class SwordsMachine : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>, 
 		new AlterOption<bool>
 		{
 			value = eternalRage,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				eternalRage = value;
 			},
@@ -1381,7 +1381,7 @@ public class SwordsMachine : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>, 
 		}
 		GetComponent<AudioSource>().volume = 0f;
 		bool flag = secondPhasePosTarget != null && !firstPhase;
-		if (gc.onGround | flag)
+		if (gc.onGround || flag)
 		{
 			nma.updatePosition = true;
 			nma.updateRotation = true;

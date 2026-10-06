@@ -339,7 +339,7 @@ public class Vacuum : MonoBehaviour
 		}
 		if (rigidbody == null)
 		{
-			_stuckObject = default;
+			_stuckObject = default(StuckObject);
 			return;
 		}
 		EnemyIdentifierIdentifier component4;

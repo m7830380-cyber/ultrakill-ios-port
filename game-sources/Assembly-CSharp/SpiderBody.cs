@@ -156,7 +156,7 @@ public class SpiderBody : MonoBehaviour, IEnrage, IAlter, IAlterOptions<bool>
 		new AlterOption<bool>
 		{
 			value = isEnraged,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				if (value)
 				{
@@ -358,7 +358,7 @@ public class SpiderBody : MonoBehaviour, IEnrage, IAlter, IAlterOptions<bool>
 			bool num = beamProbability > 5f || Random.Range(0f, health * 0.4f) < beamProbability;
 			bool flag = Vector3.Distance(base.transform.position, target.position) <= 50f || (bool)MonoSingleton<NewMovement>.Instance.ridingRocket;
 			bool flag2 = (bool)eid.buffTargeter && Vector3.Distance(base.transform.position, eid.buffTargeter.transform.position) <= 15f;
-			if ((num & flag) && !flag2)
+			if (num && flag && !flag2)
 			{
 				ChargeBeam();
 				if (difficulty > 2 && isEnraged)
@@ -370,7 +370,7 @@ public class SpiderBody : MonoBehaviour, IEnrage, IAlter, IAlterOptions<bool>
 			else
 			{
 				ShootProj();
-				beamProbability++;
+				beamProbability += 1f;
 			}
 		}
 	}

@@ -514,7 +514,7 @@ public class Revolver : MonoBehaviour
 				ceaud.Play(tracked: true);
 			}
 			ceaud.SetPitch(0.5f + twirlLevel / 2f);
-			if ((twirlRecovery & flag) && latestTwirlRotation >= 0f)
+			if (twirlRecovery && flag && latestTwirlRotation >= 0f)
 			{
 				latestTwirlRotation = 0f;
 				twirlRecovery = false;

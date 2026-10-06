@@ -466,7 +466,7 @@ public class Door : MonoBehaviour
 				}
 			}
 		}
-		if (!(!open | skull) || (!(base.transform.localPosition != openPosRelative) && doorType == DoorType.Normal))
+		if (!(!open || skull) || (!(base.transform.localPosition != openPosRelative) && doorType == DoorType.Normal))
 		{
 			return;
 		}

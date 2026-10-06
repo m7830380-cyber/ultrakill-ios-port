@@ -76,7 +76,7 @@ public class HurtZone : MonoBehaviour, IAlter, IAlterOptions<float>
 			key = "damage",
 			name = "Damage",
 			value = setDamage,
-			callback = (float f) =>
+			callback = delegate(float f)
 			{
 				setDamage = f;
 			},
@@ -91,7 +91,7 @@ public class HurtZone : MonoBehaviour, IAlter, IAlterOptions<float>
 			key = "hurt_cooldown",
 			name = "Hurt Cooldown",
 			value = hurtCooldown,
-			callback = (float f) =>
+			callback = delegate(float f)
 			{
 				hurtCooldown = f;
 			},

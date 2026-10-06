@@ -192,17 +192,34 @@ public class ZombieProjectiles : EnemyScript
 
 	public override EnemyMovementData GetSpeed(int difficulty)
 	{
+		float num = default(float);
 		if (eid.enemyType == EnemyType.Soldier)
 		{
-			float speed = difficulty switch
+			switch (difficulty)
 			{
-				0 => 7.5f, 
-				1 => 11.25f, 
-				2 => 15f, 
-				3 => 18.75f, 
-				4 => 26.25f, 
-				5 => 30f, 
-			};
+			case 0:
+				num = 7.5f;
+				break;
+			case 1:
+				num = 11.25f;
+				break;
+			case 2:
+				num = 15f;
+				break;
+			case 3:
+				num = 18.75f;
+				break;
+			case 4:
+				num = 26.25f;
+				break;
+			case 5:
+				num = 30f;
+				break;
+			default:
+				global::_003CPrivateImplementationDetails_003E.ThrowSwitchExpressionException(difficulty);
+				break;
+			}
+			float speed = num;
 			return new EnemyMovementData
 			{
 				speed = speed,
@@ -210,13 +227,31 @@ public class ZombieProjectiles : EnemyScript
 				acceleration = 480f
 			};
 		}
-		float num = ((difficulty >= 4) ? 15f : (difficulty switch
+		if (difficulty < 4)
 		{
-			0 => 5f, 
-			1 => 7.5f, 
-			2 => 10f, 
-			3 => 12.5f, 
-		}));
+			switch (difficulty)
+			{
+			case 0:
+				num = 5f;
+				break;
+			case 1:
+				num = 7.5f;
+				break;
+			case 2:
+				num = 10f;
+				break;
+			case 3:
+				num = 12.5f;
+				break;
+			default:
+				global::_003CPrivateImplementationDetails_003E.ThrowSwitchExpressionException(difficulty);
+				break;
+			}
+		}
+		else
+		{
+			num = 15f;
+		}
 		float speed2 = num;
 		return new EnemyMovementData
 		{
@@ -414,7 +449,7 @@ public class ZombieProjectiles : EnemyScript
 		bool flag = (bool)nma && nma.isOnNavMesh;
 		bool flag2 = flag && nma.CalculatePath(eid.target.position, tempPath) && tempPath.status == NavMeshPathStatus.PathComplete;
 		lastDimensionalTarget = Vector3.zero;
-		if ((!flag2 & flag) && zmb.TryGetDimensionalTarget(eid.target.position, out lastDimensionalTarget))
+		if (!flag2 && flag && zmb.TryGetDimensionalTarget(eid.target.position, out lastDimensionalTarget))
 		{
 			flag2 = nma.CalculatePath(lastDimensionalTarget, tempPath) && tempPath.status == NavMeshPathStatus.PathComplete;
 		}
@@ -426,7 +461,7 @@ public class ZombieProjectiles : EnemyScript
 			}
 			if (hasVision && (!isFleeingPlayer || !afraid))
 			{
-				AttackCheck((!flag | flag2) && !hasDimensionalTarget);
+				AttackCheck((!flag || flag2) && !hasDimensionalTarget);
 			}
 		}
 		Navigate(flag2);
@@ -438,7 +473,10 @@ public class ZombieProjectiles : EnemyScript
 		{
 			isFleeingPlayer = true;
 			Vector3 vector = (hasDimensionalTarget ? lastDimensionalTarget : lastTargetData.position) - base.transform.position;
-			bool flag = PortalPhysicsV2.Raycast(head.transform.position, -vector.normalized, 5f, lm, out var hitInfo, out var portalTraversals, out var endPoint, QueryTriggerInteraction.Ignore);
+			PhysicsCastResult hitInfo;
+			PortalTraversalV2[] portalTraversals;
+			Vector3 endPoint;
+			bool flag = PortalPhysicsV2.Raycast(head.transform.position, -vector.normalized, 5f, lm, out hitInfo, out portalTraversals, out endPoint, QueryTriggerInteraction.Ignore);
 			Vector3 vector2;
 			if (portalTraversals.Length != 0)
 			{
@@ -495,7 +533,7 @@ public class ZombieProjectiles : EnemyScript
 			return;
 		}
 		bool flag = !nma || !nma.enabled || nma.velocity.magnitude <= 2.5f;
-		if (((coolDown <= 0f) & flag) && (inShootRange || !isPlayerPathable))
+		if (coolDown <= 0f && flag && (inShootRange || !isPlayerPathable))
 		{
 			Swing();
 		}
@@ -574,7 +612,7 @@ public class ZombieProjectiles : EnemyScript
 					nma.SetDestination(base.transform.position);
 					return;
 				}
-				if ((isVisionThroughPortal & isPlayerPathable) && lastTargetData.handle.portals[0].GetPortalIdentifier().IsValidLinkExist && ChasePortalTarget(nma, lastTargetData, tempPath))
+				if (isVisionThroughPortal && isPlayerPathable && lastTargetData.handle.portals[0].GetPortalIdentifier().IsValidLinkExist && ChasePortalTarget(nma, lastTargetData, tempPath))
 				{
 					return;
 				}
@@ -652,18 +690,34 @@ public class ZombieProjectiles : EnemyScript
 		Quaternion quaternion = Quaternion.LookRotation(new Vector3(vector2.x, 0f, vector2.z), Vector3.up);
 		if (wanderer && swinging)
 		{
-			if (difficulty >= 2)
+			if (difficulty < 2)
 			{
-				Quaternion b = Quaternion.LookRotation((ToPlanePos(vector) - base.transform.position).normalized);
-				Transform transform = base.transform;
-				int num = difficulty;
-				Quaternion rotation = ((num > 3) ? quaternion : (num switch
-				{
-					2 => Quaternion.Slerp(base.transform.rotation, b, Time.deltaTime * 3.5f * eid.totalSpeedModifier), 
-					3 => quaternion, 
-				}));
-				transform.rotation = rotation;
+				return;
 			}
+			Quaternion b = Quaternion.LookRotation((ToPlanePos(vector) - base.transform.position).normalized);
+			Transform transform = base.transform;
+			int num = difficulty;
+			Quaternion rotation = default(Quaternion);
+			if (num <= 3)
+			{
+				switch (num)
+				{
+				case 2:
+					rotation = Quaternion.Slerp(base.transform.rotation, b, Time.deltaTime * 3.5f * eid.totalSpeedModifier);
+					break;
+				case 3:
+					rotation = quaternion;
+					break;
+				default:
+					global::_003CPrivateImplementationDetails_003E.ThrowSwitchExpressionException(num);
+					break;
+				}
+			}
+			else
+			{
+				rotation = quaternion;
+			}
+			transform.rotation = rotation;
 		}
 		else
 		{
@@ -1169,7 +1223,10 @@ public class ZombieProjectiles : EnemyScript
 		Vector3 onUnitSphere = UnityEngine.Random.onUnitSphere;
 		onUnitSphere.y = 0f;
 		onUnitSphere = onUnitSphere.normalized;
-		bool flag = PortalPhysicsV2.Raycast(base.transform.position + Vector3.up, onUnitSphere, 15f, lm, out var hitInfo, out var portalTraversals, out var endPoint);
+		PhysicsCastResult hitInfo;
+		PortalTraversalV2[] portalTraversals;
+		Vector3 endPoint;
+		bool flag = PortalPhysicsV2.Raycast(base.transform.position + Vector3.up, onUnitSphere, 15f, lm, out hitInfo, out portalTraversals, out endPoint);
 		wanderTarget = endPoint;
 		if (portalTraversals.Length != 0)
 		{

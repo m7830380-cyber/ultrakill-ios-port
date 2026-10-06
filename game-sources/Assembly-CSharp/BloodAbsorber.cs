@@ -452,9 +452,9 @@ public class BloodAbsorber : MonoBehaviour, IBloodstainReceiver
 		Vector3 point = hit.point;
 		Vector3 normal = hit.normal;
 		Vector3 vector = normal * -1f;
-		Quaternion obj = Quaternion.LookRotation(normal, Vector3.up);
+		Quaternion quaternion = Quaternion.LookRotation(normal, Vector3.up);
 		Quaternion quaternion2 = Quaternion.AngleAxis(UnityEngine.Random.Range(0f, 360f), normal);
-		Matrix4x4 value = Matrix4x4.Rotate(obj * quaternion2);
+		Matrix4x4 value = Matrix4x4.Rotate(quaternion * quaternion2);
 		absMat.SetVector("_HitPos", point);
 		absMat.SetVector("_HitNorm", vector);
 		absMat.SetMatrix("_RotMat", value);

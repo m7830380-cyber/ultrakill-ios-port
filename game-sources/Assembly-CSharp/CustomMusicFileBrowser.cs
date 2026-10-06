@@ -54,7 +54,7 @@ public class CustomMusicFileBrowser : DirectoryTreeBrowser<FileInfo>
 		{
 			GameObject go = UnityEngine.Object.Instantiate(itemButtonTemplate, itemParent, worldPositionStays: false);
 			CustomContentButton component = go.GetComponent<CustomContentButton>();
-			component.button.onClick.AddListener(() =>
+			component.button.onClick.AddListener(delegate
 			{
 				int count = playlistEditorLogic.playlist.Count;
 				int page = playlistEditorLogic.PageOf(count);
@@ -70,7 +70,7 @@ public class CustomMusicFileBrowser : DirectoryTreeBrowser<FileInfo>
 				component.costText.text = "";
 			}
 			go.SetActive(value: true);
-			return () =>
+			return delegate
 			{
 				UnityEngine.Object.Destroy(go);
 			};

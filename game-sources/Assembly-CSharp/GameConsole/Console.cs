@@ -271,7 +271,7 @@ public class Console : MonoSingleton<Console>, plog.Handlers.ILogHandler
 			pconAdapter = null;
 			return;
 		}
-		pconAdapter.StartPConClient(ProcessInput, () =>
+		pconAdapter.StartPConClient(ProcessInput, delegate
 		{
 			MonoSingleton<CheatsController>.Instance.ActivateCheats();
 		});

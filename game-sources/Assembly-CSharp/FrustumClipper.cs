@@ -68,11 +68,11 @@ public static class FrustumClipper
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static void LinePlaneIntersection(in float3 p1, in float3 p2, in float3 planeNormal, float planeDistance, out float3 outVec)
 	{
-		float3 float5 = p2 - p1;
+		float3 @float = p2 - p1;
 		float3 y = planeNormal;
-		float num = math.dot(float5, y);
+		float num = math.dot(@float, y);
 		float num2 = (0f - math.dot(p1, y) - planeDistance) / num;
-		outVec = p1 + float5 * num2;
+		outVec = p1 + @float * num2;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -115,8 +115,8 @@ public static class FrustumClipper
 		int polyInCount = 4;
 		for (int i = 0; i < 5; i++)
 		{
-			float4 float5 = frustumPlanes[i];
-			finalCount = ClipPolygonWithPlane(float5.xyz, float5.w, polyIn, polyOut, polyInCount);
+			float4 @float = frustumPlanes[i];
+			finalCount = ClipPolygonWithPlane(@float.xyz, @float.w, polyIn, polyOut, polyInCount);
 			if (finalCount == 0)
 			{
 				break;

@@ -1,5 +1,5 @@
 public enum SubDoorType
 {
-	Standard = 0,
-	Animation = 1
+	Standard,
+	Animation
 }

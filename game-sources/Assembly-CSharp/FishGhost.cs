@@ -66,10 +66,11 @@ public class FishGhost : MonoBehaviour
 		{
 			return;
 		}
-		bool flag = Physics.Raycast(base.transform.position, -base.transform.forward, out var hitInfo, 10f, (int)LayerMaskDefaults.Get(LMD.Environment) | 0x10000, QueryTriggerInteraction.Collide);
+		RaycastHit hitInfo;
+		bool flag = Physics.Raycast(base.transform.position, -base.transform.forward, out hitInfo, 10f, (int)LayerMaskDefaults.Get(LMD.Environment) | 0x10000, QueryTriggerInteraction.Collide);
 		Vector3 position = MonoSingleton<NewMovement>.Instance.transform.position;
 		bool flag2 = constraints == null || constraints.area.Contains(base.transform.position);
-		if (((tiredness < 0.5f && Vector3.Distance(position, base.transform.position) < 15f) | flag) || !flag2)
+		if ((tiredness < 0.5f && Vector3.Distance(position, base.transform.position) < 15f) || flag || !flag2)
 		{
 			if (flag)
 			{

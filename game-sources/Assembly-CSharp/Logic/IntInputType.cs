@@ -2,9 +2,9 @@ namespace Logic;
 
 public enum IntInputType
 {
-	SetToNumber = 0,
-	AddNumber = 1,
-	RandomRange = 2,
-	RandomFromList = 3,
-	CopyDifferentVariable = 4
+	SetToNumber,
+	AddNumber,
+	RandomRange,
+	RandomFromList,
+	CopyDifferentVariable
 }

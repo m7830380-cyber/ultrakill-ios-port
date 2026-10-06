@@ -6,7 +6,7 @@ public class test : MonoBehaviour
 
 	private void FixedUpdate()
 	{
-		FixedUpdatesPerFrame++;
+		FixedUpdatesPerFrame += 1f;
 	}
 
 	private void Update()

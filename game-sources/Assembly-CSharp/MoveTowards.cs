@@ -96,7 +96,7 @@ public class MoveTowards : MonoBehaviour
 
 	public void UseRigidbody(bool use)
 	{
-		if (!rb & use)
+		if (!rb && use)
 		{
 			rb = GetComponent<Rigidbody>();
 		}
@@ -105,7 +105,7 @@ public class MoveTowards : MonoBehaviour
 
 	public void PitchAudioWithSpeed(bool use)
 	{
-		if (!aud & use)
+		if (!aud && use)
 		{
 			aud = GetComponent<AudioSource>();
 			originalPitch = aud.GetPitch();

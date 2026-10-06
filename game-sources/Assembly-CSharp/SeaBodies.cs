@@ -33,32 +33,32 @@ public class SeaBodies : MonoBehaviour
 
 		public void Execute(int i)
 		{
-			float3 float5 = currentPos[i];
-			float3 float6 = targetPos[i];
+			float3 @float = currentPos[i];
+			float3 float2 = targetPos[i];
 			float num = speeds[i];
-			float3 float7 = originalPos[i];
+			float3 float3 = originalPos[i];
 			Unity.Mathematics.Random value = randomArray[i];
-			math.distance(float5, float6);
-			if (math.distance(float5, float6) < 0.001f)
+			math.distance(@float, float2);
+			if (math.distance(@float, float2) < 0.001f)
 			{
-				float5 = float6;
-				float3 float8 = value.NextFloat3Direction() * intensity;
-				float6 = float7 + float8;
-				targetPos[i] = float6;
+				@float = float2;
+				float3 float4 = value.NextFloat3Direction() * intensity;
+				float2 = float3 + float4;
+				targetPos[i] = float2;
 			}
 			else
 			{
-				float5 = Vector3.MoveTowards(float5, float6, num * deltaTime);
+				@float = Vector3.MoveTowards(@float, float2, num * deltaTime);
 			}
-			currentPos[i] = float5;
-			float3 float9 = new float3(cameraPosition.x, float5.y, cameraPosition.z) - float5;
-			quaternion quaternion2 = quaternion.identity;
-			if (math.lengthsq(float9) > 0.0001f)
+			currentPos[i] = @float;
+			float3 float5 = new float3(cameraPosition.x, @float.y, cameraPosition.z) - @float;
+			quaternion quaternion = quaternion.identity;
+			if (math.lengthsq(float5) > 0.0001f)
 			{
-				quaternion2 = quaternion.LookRotationSafe(float9, math.up());
+				quaternion = quaternion.LookRotationSafe(float5, math.up());
 			}
 			randomArray[i] = value;
-			instanceMatrices[i] = Matrix4x4.TRS(float5, quaternion2, originalScale[i]);
+			instanceMatrices[i] = Matrix4x4.TRS(@float, quaternion, originalScale[i]);
 		}
 	}
 
@@ -126,15 +126,15 @@ public class SeaBodies : MonoBehaviour
 			SpriteRenderer component = leafChildrenOfAllChunks[i].GetComponent<SpriteRenderer>();
 			instanceColors[i] = component.color;
 			instanceAtlasOffset[i] = ((!component.sprite.name.Contains("1")) ? 1 : 0);
-			float3 float5 = leafChildrenOfAllChunks[i].position;
-			originalPositions[i] = float5;
-			targetPositions[i] = float5;
+			float3 @float = leafChildrenOfAllChunks[i].position;
+			originalPositions[i] = @float;
+			targetPositions[i] = @float;
 			speeds[i] = UnityEngine.Random.Range(speedMin, speedMax);
-			quaternion quaternion2 = leafChildrenOfAllChunks[i].rotation;
-			currentPositions[i] = float5;
-			float3 float6 = leafChildrenOfAllChunks[i].lossyScale * new float3(1f, 2f, 1f);
-			originalScales[i] = float6;
-			instanceMatricesNative[i] = Matrix4x4.TRS(float5, quaternion2, float6);
+			quaternion quaternion = leafChildrenOfAllChunks[i].rotation;
+			currentPositions[i] = @float;
+			float3 float2 = leafChildrenOfAllChunks[i].lossyScale * new float3(1f, 2f, 1f);
+			originalScales[i] = float2;
+			instanceMatricesNative[i] = Matrix4x4.TRS(@float, quaternion, float2);
 			randomStates[i] = new Unity.Mathematics.Random((uint)((int)(num + i * 31) | 1));
 			component.enabled = false;
 		}

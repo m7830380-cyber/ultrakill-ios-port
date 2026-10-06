@@ -158,13 +158,14 @@ public class PlayerAnimations : MonoSingleton<PlayerAnimations>
 			return;
 		}
 		int num = MonoSingleton<GunControl>.Instance.currentSlotIndex - 1;
-		bool flag = MonoSingleton<GunControl>.Instance.currentWeapon.TryGetComponent<WeaponIdentifier>(out var component) && component.alternateVersion;
+		WeaponIdentifier component;
+		bool flag = MonoSingleton<GunControl>.Instance.currentWeapon.TryGetComponent<WeaponIdentifier>(out component) && component.alternateVersion;
 		for (int i = 0; i < weapons.Length; i++)
 		{
 			weapons[i].SetActive(i == num && !flag);
 			if (i < altweapons.Length)
 			{
-				altweapons[i].SetActive((i == num) & flag);
+				altweapons[i].SetActive(i == num && flag);
 			}
 		}
 		bigWeapon = num >= 2;

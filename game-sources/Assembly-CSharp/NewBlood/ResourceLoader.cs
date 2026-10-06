@@ -10,7 +10,7 @@ internal static class ResourceLoader
 {
 	public static IEnumerator LoadAudioClip(string path, AudioClipLoadType loadType, Action<AudioClip> onCompleted)
 	{
-		return LoadAudioClip(path, loadType, AudioType.UNKNOWN, onCompleted, (Action<AudioClip> _, AudioClip clip) =>
+		return LoadAudioClip(path, loadType, AudioType.UNKNOWN, onCompleted, delegate(Action<AudioClip> _, AudioClip clip)
 		{
 			onCompleted(clip);
 		});
@@ -18,7 +18,7 @@ internal static class ResourceLoader
 
 	public static IEnumerator LoadAudioClip(string path, AudioClipLoadType loadType, AudioType audioType, Action<AudioClip> onCompleted)
 	{
-		return LoadAudioClip(path, loadType, audioType, onCompleted, (Action<AudioClip> _, AudioClip clip) =>
+		return LoadAudioClip(path, loadType, audioType, onCompleted, delegate(Action<AudioClip> _, AudioClip clip)
 		{
 			onCompleted(clip);
 		});

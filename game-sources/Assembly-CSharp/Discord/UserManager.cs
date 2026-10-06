@@ -83,7 +83,7 @@ public class UserManager
 
 	public User GetCurrentUser()
 	{
-		User currentUser = default;
+		User currentUser = default(User);
 		Result result = Methods.GetCurrentUser(MethodsPtr, ref currentUser);
 		if (result != Result.Ok)
 		{

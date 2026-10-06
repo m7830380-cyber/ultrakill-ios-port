@@ -153,7 +153,7 @@ public class CheatBinds : MonoSingleton<CheatBinds>
 	{
 		registeredCheatBinds.Add(cheatIdentifier, new InputActionState(new InputAction(cheatIdentifier)));
 		registeredCheatBinds[cheatIdentifier].Action.AddBinding(path).WithGroup("Keyboard");
-		registeredCheatBinds[cheatIdentifier].Action.performed += (InputAction.CallbackContext context) =>
+		registeredCheatBinds[cheatIdentifier].Action.performed += delegate
 		{
 			MonoSingleton<CheatsManager>.Instance.HandleCheatBind(cheatIdentifier);
 		};

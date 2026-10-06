@@ -202,7 +202,9 @@ public class ContinuousBeam : MonoBehaviour
 				vector = PortalUtils.GetTravelMatrix(portalHandleSequence).MultiplyPoint3x4(vector);
 			}
 			Vector3 vector2 = vector - position;
-			bool flag = PortalPhysicsV2.Raycast(position, vector2.normalized, vector2.magnitude, environmentMask, out var hitInfo, out portalTraversals, out var a);
+			PhysicsCastResult hitInfo;
+			Vector3 a;
+			bool flag = PortalPhysicsV2.Raycast(position, vector2.normalized, vector2.magnitude, environmentMask, out hitInfo, out portalTraversals, out a);
 			if (Vector3.Distance(a, position2) >= 0.1f)
 			{
 				DisableBeam();
@@ -313,7 +315,7 @@ public class ContinuousBeam : MonoBehaviour
 			trackOnBeamToPlayer.transform.position = position + vector6.normalized * num;
 		}
 		List<InterpolatedHit> list = ListPool<InterpolatedHit>.Get();
-		(Ray, float)[] array = new (Ray, float)[portalTraversals.Length + 1];
+		(Ray, float)[] array = new(Ray, float)[portalTraversals.Length + 1];
 		int num2 = Math.Min(portalTraversals.Length, lastTraversals.Length);
 		int num3 = num2 - 1;
 		for (int k = 0; k < num2; k++)

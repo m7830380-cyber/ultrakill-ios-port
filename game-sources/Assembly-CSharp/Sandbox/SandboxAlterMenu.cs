@@ -102,7 +102,7 @@ public class SandboxAlterMenu : MonoSingleton<SandboxAlterMenu>
 
 	public Vector3 SafeSize(Vector3 originalSize)
 	{
-		float min = 1f / 256f;
+		float min = 0.00390625f;
 		float max = 128f;
 		float x = Mathf.Clamp(originalSize.x, min, max);
 		float y = Mathf.Clamp(originalSize.y, min, max);
@@ -116,19 +116,19 @@ public class SandboxAlterMenu : MonoSingleton<SandboxAlterMenu>
 		sizeFieldY.onValueChanged.AddListener(SetSizeY);
 		sizeFieldZ.onValueChanged.AddListener(SetSizeZ);
 		sizeField.onValueChanged.AddListener(SetSize);
-		sizeFieldX.onEndEdit.AddListener((string _) =>
+		sizeFieldX.onEndEdit.AddListener(delegate
 		{
 			UpdateSizeValues();
 		});
-		sizeFieldY.onEndEdit.AddListener((string _) =>
+		sizeFieldY.onEndEdit.AddListener(delegate
 		{
 			UpdateSizeValues();
 		});
-		sizeFieldZ.onEndEdit.AddListener((string _) =>
+		sizeFieldZ.onEndEdit.AddListener(delegate
 		{
 			UpdateSizeValues();
 		});
-		sizeField.onEndEdit.AddListener((string _) =>
+		sizeField.onEndEdit.AddListener(delegate
 		{
 			UpdateSizeValues();
 		});

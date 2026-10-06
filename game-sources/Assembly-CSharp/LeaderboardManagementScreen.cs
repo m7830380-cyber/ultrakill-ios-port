@@ -142,7 +142,7 @@ public class LeaderboardManagementScreen : MonoBehaviour
 			{
 				UpdateAutoFixDetails();
 			}
-			CachedLevelScore cachedLevelScore = default;
+			CachedLevelScore cachedLevelScore = default(CachedLevelScore);
 			if (!anyTask.IsFaulted)
 			{
 				cachedLevelScore.anyPercentScore = anyTask.Result;
@@ -197,11 +197,11 @@ public class LeaderboardManagementScreen : MonoBehaviour
 			value.gameObject.SetActive(value: true);
 			value.missionNumber = missionNum;
 			entries[sceneName] = value;
-			value.anyPercentResetButton.onClick.AddListener(() =>
+			value.anyPercentResetButton.onClick.AddListener(delegate
 			{
 				RequestReset(sceneName + " Any%");
 			});
-			value.pRankResetButton.onClick.AddListener(() =>
+			value.pRankResetButton.onClick.AddListener(delegate
 			{
 				RequestReset(sceneName + " PRank");
 			});

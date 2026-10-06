@@ -136,7 +136,7 @@ public class LevelSelectPanel : MonoBehaviour
 					challengeChecker.SetActive(value: true);
 				}
 			}
-			if (LeaderboardController.ShowLevelLeaderboards & flag)
+			if (LeaderboardController.ShowLevelLeaderboards && flag)
 			{
 				rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, expandedHeight);
 				leaderboardPanel.SetActive(value: true);

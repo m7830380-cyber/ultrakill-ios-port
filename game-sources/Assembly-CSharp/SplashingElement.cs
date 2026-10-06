@@ -21,7 +21,8 @@ public class SplashingElement : MonoBehaviour
 			Ray ray = new Ray(position, position2 - position);
 			Ray ray2 = new Ray(position2, position - position2);
 			float maxDistance = Vector3.Distance(position2, base.transform.position);
-			bool flag = Physics.Raycast(ray, out var hitInfo, maxDistance, LayerMask.GetMask("Water"));
+			RaycastHit hitInfo;
+			bool flag = Physics.Raycast(ray, out hitInfo, maxDistance, LayerMask.GetMask("Water"));
 			if (!flag)
 			{
 				flag = Physics.Raycast(ray2, out hitInfo, maxDistance, LayerMask.GetMask("Water"));

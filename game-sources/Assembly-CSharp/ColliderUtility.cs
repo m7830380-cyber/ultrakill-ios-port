@@ -120,14 +120,14 @@ public static class ColliderUtility
 
 	private static bool InTriangleBurst(float3 a, float3 b, float3 c, float3 p)
 	{
-		float3 obj = b - a;
-		float3 float5 = c - a;
+		float3 @float = b - a;
+		float3 float2 = c - a;
 		float3 y = p - a;
-		float num = math.dot(obj, obj);
-		float num2 = math.dot(obj, float5);
-		float num3 = math.dot(obj, y);
-		float num4 = math.dot(float5, float5);
-		float num5 = math.dot(float5, y);
+		float num = math.dot(@float, @float);
+		float num2 = math.dot(@float, float2);
+		float num3 = math.dot(@float, y);
+		float num4 = math.dot(float2, float2);
+		float num5 = math.dot(float2, y);
 		float num6 = 1f / (num * num4 - num2 * num2);
 		float num7 = (num4 * num3 - num2 * num5) * num6;
 		float num8 = (num * num5 - num2 * num3) * num6;
@@ -194,24 +194,24 @@ public static class ColliderUtility
 		int i = 0;
 		for (int num2 = indexData.Length / 3; i < num2; i++)
 		{
-			float3 float5 = vertexAttributeSlice[indexData[3 * i]];
-			float3 float6 = vertexAttributeSlice[indexData[3 * i + 1]];
-			float3 float7 = vertexAttributeSlice[indexData[3 * i + 2]];
-			float3 float8 = math.normalize(math.cross(float6 - float5, float7 - float5));
-			float num3 = 0f - math.dot(float8, float5);
-			if (ignoreVerticalTriangles && math.abs(math.dot(float8, localUp)) >= 0.9f)
+			float3 @float = vertexAttributeSlice[indexData[3 * i]];
+			float3 float2 = vertexAttributeSlice[indexData[3 * i + 1]];
+			float3 float3 = vertexAttributeSlice[indexData[3 * i + 2]];
+			float3 float4 = math.normalize(math.cross(float2 - @float, float3 - @float));
+			float num3 = 0f - math.dot(float4, @float);
+			if (ignoreVerticalTriangles && math.abs(math.dot(float4, localUp)) >= 0.9f)
 			{
 				continue;
 			}
-			float num4 = math.dot(float8, testPosition) + num3;
+			float num4 = math.dot(float4, testPosition) + num3;
 			float num5 = math.abs(num4);
 			if (!(num5 >= num))
 			{
-				float3 float9 = testPosition - float8 * num4;
-				if (InTriangleBurst(float5, float6, float7, float9))
+				float3 float5 = testPosition - float4 * num4;
+				if (InTriangleBurst(@float, float2, float3, float5))
 				{
 					num = num5;
-					closestPoint = float9;
+					closestPoint = float5;
 				}
 			}
 		}
@@ -228,24 +228,24 @@ public static class ColliderUtility
 		int i = 0;
 		for (int num2 = indexData.Length / 3; i < num2; i++)
 		{
-			float3 float5 = vertexAttributeSlice[indexData[3 * i]];
-			float3 float6 = vertexAttributeSlice[indexData[3 * i + 1]];
-			float3 float7 = vertexAttributeSlice[indexData[3 * i + 2]];
-			float3 float8 = math.normalize(math.cross(float6 - float5, float7 - float5));
-			float num3 = 0f - math.dot(float8, float5);
-			if (ignoreVerticalTriangles && math.abs(math.dot(float8, localUp)) >= 0.9f)
+			float3 @float = vertexAttributeSlice[indexData[3 * i]];
+			float3 float2 = vertexAttributeSlice[indexData[3 * i + 1]];
+			float3 float3 = vertexAttributeSlice[indexData[3 * i + 2]];
+			float3 float4 = math.normalize(math.cross(float2 - @float, float3 - @float));
+			float num3 = 0f - math.dot(float4, @float);
+			if (ignoreVerticalTriangles && math.abs(math.dot(float4, localUp)) >= 0.9f)
 			{
 				continue;
 			}
-			float num4 = math.dot(float8, testPosition) + num3;
+			float num4 = math.dot(float4, testPosition) + num3;
 			float num5 = math.abs(num4);
 			if (!(num5 >= num))
 			{
-				float3 float9 = testPosition - float8 * num4;
-				if (InTriangleBurst(float5, float6, float7, float9))
+				float3 float5 = testPosition - float4 * num4;
+				if (InTriangleBurst(@float, float2, float3, float5))
 				{
 					num = num5;
-					closestPoint = float9;
+					closestPoint = float5;
 				}
 			}
 		}

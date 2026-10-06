@@ -68,14 +68,14 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 
 		public void Reset()
 		{
-			data = default;
+			data = default(OffMeshLinkData);
 			portalHandle = PortalHandle.None;
 			hasCrossed = false;
 			wasOnLink = false;
-			portalTargetPos = default;
+			portalTargetPos = default(Vector3);
 			waitTimer = 0f;
 			hasWarped = false;
-			linkEndPos = default;
+			linkEndPos = default(Vector3);
 		}
 
 		public readonly float GetExitPosDisplacement(PortalTransform currentTransform, Matrix4x4 currentEnterToExit)
@@ -373,7 +373,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 			key = "health",
 			name = "Health",
 			value = health,
-			callback = (float value) =>
+			callback = delegate(float value)
 			{
 				health = value;
 			}
@@ -721,7 +721,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 	{
 		if (!eid)
 		{
-			return default;
+			return default(VisionTypeFilter);
 		}
 		if (EnemiesHateEnemies.Active)
 		{
@@ -766,7 +766,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 
 	public bool TryGetDimensionalTarget(Vector3 targetPosition, out Vector3 dimensionalTargetPosition)
 	{
-		dimensionalTargetPosition = default;
+		dimensionalTargetPosition = default(Vector3);
 		if (gz == null || !gz.TryGetComponent<DimensionalArena>(out var component))
 		{
 			return false;
@@ -818,7 +818,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 			}
 			grounded = gc.onGround;
 		}
-		if (!(isZombie & hasNma))
+		if (!(isZombie && hasNma))
 		{
 			return;
 		}
@@ -1036,7 +1036,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 		else if (IsStatue() && gc.onGround && falling)
 		{
 			bool flag = !InvincibleEnemies.Enabled && !eid.blessed && !noFallDamage;
-			if ((fallSpeed <= GetSplatVelocity()) & flag)
+			if (fallSpeed <= GetSplatVelocity() && flag)
 			{
 				eid.Splatter();
 				return;
@@ -1128,7 +1128,8 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 		}
 		else if (fallTime > 0.05f && speedDiff < 0f)
 		{
-			bool flag = Physics.Raycast(base.transform.position, Vector3.down, out var hitInfo, 42f, lmaskEnv, QueryTriggerInteraction.Ignore);
+			RaycastHit hitInfo;
+			bool flag = Physics.Raycast(base.transform.position, Vector3.down, out hitInfo, 42f, lmaskEnv, QueryTriggerInteraction.Ignore);
 			bool flag2 = flag && hitInfo.transform.gameObject.layer == 4;
 			bool flag3 = false;
 			int layerMask = (int)lmaskEnv | 1;
@@ -1137,7 +1138,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 				flag3 = true;
 				flag2 = false;
 			}
-			if ((flag3 || !((fallSpeed > GetSplatVelocity()) | flag2)) && !aud.isPlaying && !limp)
+			if ((flag3 || !(fallSpeed > GetSplatVelocity() || flag2)) && !aud.isPlaying && !limp)
 			{
 				aud.clip = scream;
 				aud.volume = 1f;
@@ -1583,7 +1584,8 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 			{
 				return;
 			}
-			bool flag = Physics.Raycast(base.transform.position + Vector3.up * 0.1f, Vector3.down, out var hitInfo, float.PositiveInfinity, lmask);
+			RaycastHit hitInfo;
+			bool flag = Physics.Raycast(base.transform.position + Vector3.up * 0.1f, Vector3.down, out hitInfo, float.PositiveInfinity, lmask);
 			if (IsMachine() || IsSpider())
 			{
 				flag = flag && gc.onGround;
@@ -1898,14 +1900,14 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 				gameObject = bsm.GetGore(GoreType.Smallest, eid, fromExplosion);
 			}
 		}
-		if ((IsStatue() & extraDamageZone) && (damage >= 1f || (eid.hitter == "shotgun" && UnityEngine.Random.Range(0f, 1f) > 0.5f) || (eid.hitter == "nail" && UnityEngine.Random.Range(0f, 1f) > 0.85f)))
+		if (IsStatue() && extraDamageZone && (damage >= 1f || (eid.hitter == "shotgun" && UnityEngine.Random.Range(0f, 1f) > 0.5f) || (eid.hitter == "nail" && UnityEngine.Random.Range(0f, 1f) > 0.85f)))
 		{
 			gameObject = ((!(extraDamageMultiplier >= 2f)) ? bsm.GetGore(GoreType.Limb, eid, fromExplosion) : bsm.GetGore(GoreType.Head, eid, fromExplosion));
 		}
 		if (gameObject == null && eid.hitter != "fire" && damage > 0f)
 		{
 			bool flag = damage >= 1f || health <= 0f;
-			bool num = (target.CompareTag("Head") & flag) || eid.hitter == "hammer" || eid.hitter == "heavypunch";
+			bool num = (target.CompareTag("Head") && flag) || eid.hitter == "hammer" || eid.hitter == "heavypunch";
 			bool flag2 = (eid.hitter == "explosion" && target.CompareTag("EndLimb")) || (flag && eid.hitter != "explosion");
 			if (num)
 			{
@@ -2707,7 +2709,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 			{
 				bool flag2 = false;
 				flag2 = (parryables != null && parryables.Count > 0 && parryables.Contains(hitTarget.transform)) || (parryFramesLeft > 0 && parryFramesOnPartial);
-				if (parryable || (partiallyParryable & flag2))
+				if (parryable || (partiallyParryable && flag2))
 				{
 					parryable = false;
 					partiallyParryable = false;
@@ -2749,9 +2751,9 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 				bool flag3 = hitTarget == chest || MonoSingleton<PlayerTracker>.Instance.GetPlayerVelocity().magnitude > 18f;
 				bool flag4 = health - data.damage <= 0f;
 				bool flag5 = partiallyParryable && parryables != null && parryables.Contains(hitTarget.transform);
-				if (parryable || (!flag3 & flag4))
+				if (parryable || (!flag3 && flag4))
 				{
-					if (flag3 | flag5)
+					if (flag3 || flag5)
 					{
 						data.damage *= 1.5f;
 						parryable = false;
@@ -3170,7 +3172,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 		Matrix4x4 enterToExit = details.enterToExit;
 		Vector3 vector = enterToExit.MultiplyVector(base.transform.forward).normalized;
 		Vector3 normalized = enterToExit.MultiplyVector(base.transform.up).normalized;
-		Quaternion quaternion2 = Quaternion.LookRotation(vector, normalized);
+		Quaternion quaternion = Quaternion.LookRotation(vector, normalized);
 		portalObject.GetTransform(enterHandle.side);
 		NativePortalTransform exitTrans = exitPortal.GetTransform(exitHandle.side);
 		Vector3 tpNavFwd = vector;
@@ -3264,7 +3266,8 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 				}
 				if (details.calculateLinkEndPos)
 				{
-					bool flag3 = SampleEndPos(vector2, out var endPos2);
+					Vector3 endPos2;
+					bool flag3 = SampleEndPos(vector2, out endPos2);
 					if (flag3)
 					{
 						portalLinkData.linkEndPos = endPos2;
@@ -3274,9 +3277,9 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 						return null;
 					}
 				}
-				Quaternion quaternion3 = quaternion2;
-				quaternion2 = Quaternion.LookRotation(tpNavFwd, Vector3.up);
-				postPortalOffsetRot = Quaternion.Inverse(quaternion2) * quaternion3;
+				Quaternion quaternion2 = quaternion;
+				quaternion = Quaternion.LookRotation(tpNavFwd, Vector3.up);
+				postPortalOffsetRot = Quaternion.Inverse(quaternion) * quaternion2;
 			}
 			else if (details.isIntersectTraversal)
 			{
@@ -3311,9 +3314,9 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 					}
 				}
 				vector = Quaternion.FromToRotation(enterToExit.MultiplyVector(vector5), vector5) * vector;
-				Quaternion quaternion4 = quaternion2;
-				quaternion2 = Quaternion.LookRotation(vector, Vector3.up);
-				postPortalOffsetRot = Quaternion.Inverse(quaternion2) * quaternion4;
+				Quaternion quaternion3 = quaternion;
+				quaternion = Quaternion.LookRotation(vector, Vector3.up);
+				postPortalOffsetRot = Quaternion.Inverse(quaternion) * quaternion3;
 			}
 		}
 		if ((bool)rb)
@@ -3322,7 +3325,7 @@ public class Enemy : MonoBehaviour, IAlter, IAlterOptions<float>, ITarget, IPort
 			rb.velocity = velocity;
 			rb.position = vector2;
 		}
-		base.transform.SetPositionAndRotation(vector2, quaternion2);
+		base.transform.SetPositionAndRotation(vector2, quaternion);
 		ApplyOffsetRotation();
 		if (!IsDrone())
 		{

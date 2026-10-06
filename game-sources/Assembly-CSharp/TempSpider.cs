@@ -11,7 +11,7 @@ public class TempSpider : EnemyScript
 
 	public override EnemyMovementData GetSpeed(int difficulty)
 	{
-		EnemyMovementData result = default;
+		EnemyMovementData result = default(EnemyMovementData);
 		if (difficulty >= 4)
 		{
 			result.speed = 5f;

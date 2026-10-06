@@ -14,7 +14,7 @@ public class ShopButtonListController : MonoBehaviour
 		Button[] array = buttons;
 		foreach (Button button in array)
 		{
-			button.GetComponent<ShopButton>().PointerClickSuccess += () =>
+			button.GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetActiveButton(button);
 			};

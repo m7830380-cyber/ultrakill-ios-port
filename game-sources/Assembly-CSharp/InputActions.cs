@@ -7,9 +7,9 @@ using UnityEngine.InputSystem.Utilities;
 
 public class InputActions : IInputActionCollection2, IInputActionCollection, IEnumerable<InputAction>, IEnumerable, IDisposable
 {
-	public struct UIActions(InputActions wrapper)
+	public struct UIActions
 	{
-		private InputActions m_Wrapper = wrapper;
+		private InputActions m_Wrapper;
 
 		public InputAction Navigate => m_Wrapper.m_UI_Navigate;
 
@@ -36,6 +36,11 @@ public class InputActions : IInputActionCollection2, IInputActionCollection, IEn
 		public InputAction Pause => m_Wrapper.m_UI_Pause;
 
 		public bool enabled => Get().enabled;
+
+		public UIActions(InputActions wrapper)
+		{
+			m_Wrapper = wrapper;
+		}
 
 		public InputActionMap Get()
 		{
@@ -160,9 +165,9 @@ public class InputActions : IInputActionCollection2, IInputActionCollection, IEn
 		}
 	}
 
-	public struct MovementActions(InputActions wrapper)
+	public struct MovementActions
 	{
-		private InputActions m_Wrapper = wrapper;
+		private InputActions m_Wrapper;
 
 		public InputAction Move => m_Wrapper.m_Movement_Move;
 
@@ -175,6 +180,11 @@ public class InputActions : IInputActionCollection2, IInputActionCollection, IEn
 		public InputAction Jump => m_Wrapper.m_Movement_Jump;
 
 		public bool enabled => Get().enabled;
+
+		public MovementActions(InputActions wrapper)
+		{
+			m_Wrapper = wrapper;
+		}
 
 		public InputActionMap Get()
 		{
@@ -257,9 +267,9 @@ public class InputActions : IInputActionCollection2, IInputActionCollection, IEn
 		}
 	}
 
-	public struct FistActions(InputActions wrapper)
+	public struct FistActions
 	{
-		private InputActions m_Wrapper = wrapper;
+		private InputActions m_Wrapper;
 
 		public InputAction Punch => m_Wrapper.m_Fist_Punch;
 
@@ -272,6 +282,11 @@ public class InputActions : IInputActionCollection2, IInputActionCollection, IEn
 		public InputAction Hook => m_Wrapper.m_Fist_Hook;
 
 		public bool enabled => Get().enabled;
+
+		public FistActions(InputActions wrapper)
+		{
+			m_Wrapper = wrapper;
+		}
 
 		public InputActionMap Get()
 		{
@@ -354,9 +369,9 @@ public class InputActions : IInputActionCollection2, IInputActionCollection, IEn
 		}
 	}
 
-	public struct WeaponActions(InputActions wrapper)
+	public struct WeaponActions
 	{
-		private InputActions m_Wrapper = wrapper;
+		private InputActions m_Wrapper;
 
 		public InputAction PrimaryFire => m_Wrapper.m_Weapon_PrimaryFire;
 
@@ -393,6 +408,11 @@ public class InputActions : IInputActionCollection2, IInputActionCollection, IEn
 		public InputAction VariationSlot3 => m_Wrapper.m_Weapon_VariationSlot3;
 
 		public bool enabled => Get().enabled;
+
+		public WeaponActions(InputActions wrapper)
+		{
+			m_Wrapper = wrapper;
+		}
 
 		public InputActionMap Get()
 		{
@@ -547,13 +567,18 @@ public class InputActions : IInputActionCollection2, IInputActionCollection, IEn
 		}
 	}
 
-	public struct HUDActions(InputActions wrapper)
+	public struct HUDActions
 	{
-		private InputActions m_Wrapper = wrapper;
+		private InputActions m_Wrapper;
 
 		public InputAction Stats => m_Wrapper.m_HUD_Stats;
 
 		public bool enabled => Get().enabled;
+
+		public HUDActions(InputActions wrapper)
+		{
+			m_Wrapper = wrapper;
+		}
 
 		public InputActionMap Get()
 		{

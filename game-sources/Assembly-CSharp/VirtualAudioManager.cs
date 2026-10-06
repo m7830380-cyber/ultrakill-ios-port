@@ -251,7 +251,7 @@ public sealed class VirtualAudioManager : MonoSingleton<VirtualAudioManager>
 
 	private void UpdatePlayOnAwakeSources()
 	{
-		m_PlayOnAwake.RemoveWhere((AudioSource source) =>
+		m_PlayOnAwake.RemoveWhere(delegate(AudioSource source)
 		{
 			if (source == null)
 			{
@@ -391,18 +391,18 @@ public sealed class VirtualAudioManager : MonoSingleton<VirtualAudioManager>
 			{
 				num++;
 			}
-			float3 float5 = math.transform(nativePortal.travelMatrix, closest);
-			if (math.isfinite(float5.x + float5.y + float5.z))
+			float3 @float = math.transform(nativePortal.travelMatrix, closest);
+			if (math.isfinite(@float.x + @float.y + @float.z))
 			{
-				float3 obj = float5 - listenerPosition;
-				float num5 = math.length(obj);
+				float3 float2 = @float - listenerPosition;
+				float num5 = math.length(float2);
 				float num6 = num4 + num5;
 				if (num6 < filter.closestDistance)
 				{
 					filter.closestDistance = num6;
-					filter.closestPosition = float5;
+					filter.closestPosition = @float;
 				}
-				float3 x = obj / (num5 + 1E-10f);
+				float3 x = float2 / (num5 + 1E-10f);
 				float end = ((filter.rolloffMode == AudioRolloffMode.Linear) ? math.saturate(math.unlerp(filter.maxDistance, filter.minDistance, num6)) : ((filter.rolloffMode != AudioRolloffMode.Logarithmic) ? filter.customRolloffCurve.Evaluate(num6 / filter.maxDistance) : (filter.minDistance / math.max(num6, 1E-06f))));
 				end = math.lerp(1f, end, filter.spatialBlend);
 				float num7 = math.dot(x, listenerRight);

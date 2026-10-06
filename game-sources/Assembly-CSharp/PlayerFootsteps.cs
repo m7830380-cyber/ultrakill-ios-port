@@ -36,7 +36,7 @@ public class PlayerFootsteps : MonoSingleton<PlayerFootsteps>
 
 	public void Footstep(float volume = 0.25f, bool force = false, float delay = 0f)
 	{
-		if (!(onGround | force))
+		if (!(onGround || force))
 		{
 			return;
 		}

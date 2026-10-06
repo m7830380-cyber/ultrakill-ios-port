@@ -234,24 +234,25 @@ public class Bloodsplatter : MonoBehaviour
 		bool flag3 = !flag && gameObject.CompareTag("Moving");
 		bool flag4 = !flag && gameObject.CompareTag("Glass");
 		bool flag5 = !flag && gameObject.CompareTag("GlassFloor");
-		if (!(flag | flag2 | flag3 | flag4 | flag5))
+		if (!(flag || flag2 || flag3 || flag4 || flag5))
 		{
 			return;
 		}
 		bool flag6 = false;
 		bool clipToSurface = true;
-		if (flag | flag2)
+		if (flag || flag2)
 		{
 			gameObject.TryGetComponent<MeshRenderer>(out var _);
 		}
-		bool flag7 = flag3 | flag4 | flag5;
+		bool flag7 = flag3 || flag4 || flag5;
 		if (!flag7)
 		{
 			flag7 |= (bool)cdatabase && cdatabase.scrollers.Contains(item);
 		}
 		if (flag7)
 		{
-			BloodstainParent bloodstainParent = (gameObject.TryGetComponent<ScrollingTexture>(out var component3) ? component3.parent : gameObject.GetOrAddComponent<BloodstainParent>());
+			ScrollingTexture component3;
+			BloodstainParent bloodstainParent = (gameObject.TryGetComponent<ScrollingTexture>(out component3) ? component3.parent : gameObject.GetOrAddComponent<BloodstainParent>());
 			if (MonoSingleton<BloodsplatterManager>.Instance.usedComputeShadersAtStart)
 			{
 				bloodstainParent.CreateChild(flag6 ? (hit.point + hit.normal * 0.2f) : hit.point, hit.normal, clipToSurface, fromStep: false);

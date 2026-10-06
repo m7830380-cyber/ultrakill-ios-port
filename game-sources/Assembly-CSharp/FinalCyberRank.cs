@@ -269,7 +269,7 @@ public class FinalCyberRank : MonoBehaviour
 					while (seconds >= 60f)
 					{
 						seconds -= 60f;
-						minutes++;
+						minutes += 1f;
 					}
 					countTime = false;
 					timeText.GetComponent<AudioSource>().Stop();
@@ -278,7 +278,7 @@ public class FinalCyberRank : MonoBehaviour
 				if (seconds >= 60f)
 				{
 					seconds -= 60f;
-					minutes++;
+					minutes += 1f;
 				}
 				timeText.text = minutes + ":" + seconds.ToString("00.000");
 			}
@@ -595,7 +595,7 @@ public class FinalCyberRank : MonoBehaviour
 					while (seconds >= 60f)
 					{
 						seconds -= 60f;
-						minutes++;
+						minutes += 1f;
 					}
 					timeText.GetComponent<AudioSource>().SetPlayOnAwake(playOnAwake: false);
 					StartCoroutine(InvokeRealtimeCoroutine(Appear, timeBetween * 2f));

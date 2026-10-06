@@ -158,7 +158,7 @@ public class CustomMusicSoundtrackBrowser : DirectoryTreeBrowser<AssetReferenceS
 			componentInChildren.icon.sprite = ((song.icon != null) ? song.icon : defaultIcon);
 			componentInChildren.text.text = song.songName + " <color=grey>" + song.extraLevelBit + "</color>";
 			componentInChildren.costText.text = "Unlocked";
-			componentInChildren.button.onClick.AddListener(() =>
+			componentInChildren.button.onClick.AddListener(delegate
 			{
 				SelectSong(reference.AssetGUID, song);
 			});
@@ -184,7 +184,7 @@ public class CustomMusicSoundtrackBrowser : DirectoryTreeBrowser<AssetReferenceS
 	{
 		GameObject btn = UnityEngine.Object.Instantiate(itemButtonTemplate, itemParent, worldPositionStays: false);
 		StartCoroutine(LoadSongButton(reference, btn));
-		return () =>
+		return delegate
 		{
 			UnityEngine.Object.Destroy(btn);
 		};

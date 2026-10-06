@@ -131,7 +131,7 @@ public class SpawnMenu : MonoSingleton<SpawnMenu>
 			SpawnableObject spawnableObj = list[i];
 			if (flag)
 			{
-				button.onClick.AddListener(() =>
+				button.onClick.AddListener(delegate
 				{
 					SelectObject(spawnableObj);
 				});

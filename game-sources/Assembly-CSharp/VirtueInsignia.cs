@@ -150,7 +150,7 @@ public class VirtueInsignia : MonoBehaviour
 		if (activationTime >= 1f)
 		{
 			activating = false;
-			explosionLength++;
+			explosionLength += 1f;
 			Explode();
 		}
 	}

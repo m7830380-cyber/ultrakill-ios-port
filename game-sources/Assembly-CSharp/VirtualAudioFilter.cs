@@ -457,13 +457,13 @@ public sealed class VirtualAudioFilter : MonoBehaviour
 		}
 		float num = 1f;
 		float3 obj = (hasRigidBody ? rbVelocity : BurstGetPositionDelta(in currentPosition2, in lastPosition, in deltaTime));
-		float3 float5 = closestPosition - lastListenerPosition;
+		float3 @float = closestPosition - lastListenerPosition;
 		float3 x = obj - listenerVelocity;
 		if (sourceDopplerLevel > 0f && spatialBlend > 0f)
 		{
 			float num2 = dopplerFactor * sourceDopplerLevel;
-			float num3 = math.length(float5);
-			float num4 = ((num3 > 0f) ? (math.dot(x, float5) / num3) : 0f);
+			float num3 = math.length(@float);
+			float num4 = ((num3 > 0f) ? (math.dot(x, @float) / num3) : 0f);
 			num = math.max(1E-06f, (340f - num4 * num2) * 0.0029411765f) * spatialBlend + (1f - spatialBlend);
 		}
 		if (math.isinf(num) || math.isnan(num) || math.abs(num) <= 0.1f)

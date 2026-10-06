@@ -67,7 +67,7 @@ public class Idol : MonoBehaviour, IAlter, IAlterOptions<int>
 			name = "Override Target ID",
 			key = "overrideTarget",
 			hidden = true,
-			callback = (int value) =>
+			callback = delegate(int value)
 			{
 				if (value == 0)
 				{
@@ -232,7 +232,8 @@ public class Idol : MonoBehaviour, IAlter, IAlterOptions<int>
 				int enemyRank = MonoSingleton<EnemyTracker>.Instance.GetEnemyRank(currentEnemies[i]);
 				if (enemyRank == num3 || (enemyRank <= 2 && num3 == 2))
 				{
-					float num4 = (vision.TrySee(nearestQuery, out var data) ? data.DistanceTo(base.transform.position) : Vector3.Distance(MonoSingleton<PlayerTracker>.Instance.GetPlayer().position, currentEnemies[i].transform.position));
+					TargetDataRef data;
+					float num4 = (vision.TrySee(nearestQuery, out data) ? data.DistanceTo(base.transform.position) : Vector3.Distance(MonoSingleton<PlayerTracker>.Instance.GetPlayer().position, currentEnemies[i].transform.position));
 					if (num4 < num)
 					{
 						tempTarget = currentEnemies[i];

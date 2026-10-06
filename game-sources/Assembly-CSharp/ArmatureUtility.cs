@@ -95,7 +95,7 @@ public static class ArmatureUtility
 			Vector3 extents = bounds[num5].extents;
 			if (center.x == float.PositiveInfinity)
 			{
-				bounds[num5] = default;
+				bounds[num5] = default(Bounds);
 			}
 			else
 			{

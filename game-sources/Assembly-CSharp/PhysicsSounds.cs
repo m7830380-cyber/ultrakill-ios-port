@@ -24,13 +24,13 @@ public class PhysicsSounds : MonoSingleton<PhysicsSounds>
 
 	public enum PhysMaterial
 	{
-		Plastic = 0,
-		Wood = 1,
-		Stone = 2,
-		Metal = 3,
-		Fleshy = 4,
-		Glass = 5,
-		Grass = 6
+		Plastic,
+		Wood,
+		Stone,
+		Metal,
+		Fleshy,
+		Glass,
+		Grass
 	}
 
 	[SerializeField]

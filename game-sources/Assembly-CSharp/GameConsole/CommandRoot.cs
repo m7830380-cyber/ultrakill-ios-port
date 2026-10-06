@@ -249,7 +249,7 @@ public abstract class CommandRoot : ICommand
 
 	public Branch BuildPrefsEditor(List<PrefReference> pref)
 	{
-		return Leaf("prefs", () =>
+		return Leaf("prefs", delegate
 		{
 			Console.Log.Info("Available prefs:");
 			foreach (PrefReference item in pref)
@@ -287,20 +287,20 @@ public abstract class CommandRoot : ICommand
 
 	public Branch BoolMenu(string commandKey, Func<bool> valueGetter, Action<bool> valueSetter, bool inverted = false, bool requireCheats = false)
 	{
-		return Branch(commandKey, requireCheats, Leaf("toggle", () =>
+		return Branch(commandKey, requireCheats, Leaf("toggle", delegate
 		{
 			bool flag = !valueGetter();
 			valueSetter(flag);
 			Console.Log.Info("<color=#db872c>" + commandKey + "</color> is now <color=#4ac246>" + GetStateName(flag, inverted) + "</color>");
-		}), Leaf("on", () =>
+		}), Leaf("on", delegate
 		{
 			valueSetter(!inverted);
 			Console.Log.Info("<color=#db872c>" + commandKey + "</color> is now <color=#4ac246>" + GetStateName(!inverted, inverted) + "</color>");
-		}), Leaf("off", () =>
+		}), Leaf("off", delegate
 		{
 			valueSetter(inverted);
 			Console.Log.Info("<color=#db872c>" + commandKey + "</color> is now <color=#4ac246>" + GetStateName(inverted, inverted) + "</color>");
-		}), Leaf("read", () =>
+		}), Leaf("read", delegate
 		{
 			Console.Log.Info("The current value is <color=#4ac246>" + GetStateName(valueGetter(), inverted) + "</color>");
 		}));

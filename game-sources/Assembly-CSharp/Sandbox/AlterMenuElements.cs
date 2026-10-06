@@ -11,9 +11,9 @@ public class AlterMenuElements : MonoBehaviour
 {
 	public enum Axis
 	{
-		X = 0,
-		Y = 1,
-		Z = 2
+		X,
+		Y,
+		Z
 	}
 
 	[SerializeField]
@@ -79,7 +79,7 @@ public class AlterMenuElements : MonoBehaviour
 		componentInChildren.interactable = callback != null;
 		if (callback != null)
 		{
-			componentInChildren.onValueChanged.AddListener((bool state) =>
+			componentInChildren.onValueChanged.AddListener(delegate(bool state)
 			{
 				callback(state);
 			});
@@ -108,7 +108,7 @@ public class AlterMenuElements : MonoBehaviour
 		componentInChildren.interactable = callback != null;
 		if (callback != null)
 		{
-			componentInChildren.onValueChanged.AddListener((float value) =>
+			componentInChildren.onValueChanged.AddListener(delegate(float value)
 			{
 				callback(value);
 			});
@@ -134,7 +134,7 @@ public class AlterMenuElements : MonoBehaviour
 		row.zField.interactable = callback != null;
 		if (callback != null)
 		{
-			row.xField.onValueChanged.AddListener((string value) =>
+			row.xField.onValueChanged.AddListener(delegate(string value)
 			{
 				if (float.TryParse(value, out var result))
 				{
@@ -142,7 +142,7 @@ public class AlterMenuElements : MonoBehaviour
 					callback(vector3ValueStore[row.GetInstanceID()]);
 				}
 			});
-			row.yField.onValueChanged.AddListener((string value) =>
+			row.yField.onValueChanged.AddListener(delegate(string value)
 			{
 				if (float.TryParse(value, out var result))
 				{
@@ -150,7 +150,7 @@ public class AlterMenuElements : MonoBehaviour
 					callback(vector3ValueStore[row.GetInstanceID()]);
 				}
 			});
-			row.zField.onValueChanged.AddListener((string value) =>
+			row.zField.onValueChanged.AddListener(delegate(string value)
 			{
 				if (float.TryParse(value, out var result))
 				{
@@ -203,7 +203,7 @@ public class AlterMenuElements : MonoBehaviour
 		componentInChildren.interactable = callback != null;
 		if (callback != null)
 		{
-			componentInChildren.onValueChanged.AddListener((int value) =>
+			componentInChildren.onValueChanged.AddListener(delegate(int value)
 			{
 				callback(value);
 			});

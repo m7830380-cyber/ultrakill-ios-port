@@ -130,7 +130,7 @@ public class AchievementManager
 
 	public UserAchievement GetUserAchievement(long userAchievementId)
 	{
-		UserAchievement userAchievement = default;
+		UserAchievement userAchievement = default(UserAchievement);
 		Result result = Methods.GetUserAchievement(MethodsPtr, userAchievementId, ref userAchievement);
 		if (result != Result.Ok)
 		{
@@ -141,7 +141,7 @@ public class AchievementManager
 
 	public UserAchievement GetUserAchievementAt(int index)
 	{
-		UserAchievement userAchievement = default;
+		UserAchievement userAchievement = default(UserAchievement);
 		Result result = Methods.GetUserAchievementAt(MethodsPtr, index, ref userAchievement);
 		if (result != Result.Ok)
 		{

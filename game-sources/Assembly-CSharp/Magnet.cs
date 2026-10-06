@@ -11,9 +11,9 @@ public class Magnet : MonoBehaviour
 {
 	private enum TrackingMode
 	{
-		Direct = 0,
-		Portal = 1,
-		Both = 2
+		Direct,
+		Portal,
+		Both
 	}
 
 	private struct PortalTrackingEntry
@@ -254,14 +254,14 @@ public class Magnet : MonoBehaviour
 	{
 		if (other.gameObject.layer == 14 && other.gameObject.CompareTag("Metal"))
 		{
-			ProcessMetalDetection(other, isDirect: true, default);
+			ProcessMetalDetection(other, isDirect: true, default(PortalHandleSequence));
 			return;
 		}
 		int layer = other.gameObject.layer;
 		Magnet component;
 		if (layer == 12 || layer == 11)
 		{
-			ProcessEnemyDetection(other, isDirect: true, default);
+			ProcessEnemyDetection(other, isDirect: true, default(PortalHandleSequence));
 		}
 		else if (other.TryGetComponent<Magnet>(out component) && component != this && !connectedMagnets.Contains(component))
 		{
@@ -443,7 +443,7 @@ public class Magnet : MonoBehaviour
 			else if (value.mode == TrackingMode.Both && !portalSeenThisFrame.Contains(item.Key))
 			{
 				value.mode = TrackingMode.Direct;
-				value.sequence = default;
+				value.sequence = default(PortalHandleSequence);
 				portalDowngradeBuffer.Add(new KeyValuePair<int, PortalTrackingEntry>(item.Key, value));
 			}
 		}

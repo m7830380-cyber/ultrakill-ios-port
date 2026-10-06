@@ -481,7 +481,7 @@ public class Nailgun : MonoBehaviour
 			{
 				burnOut = true;
 				fireCooldown = 0f;
-				heatSinks--;
+				heatSinks -= 1f;
 				heatSteam?.Play();
 				heatSteamAud?.Play(tracked: true);
 				currentFireRate = fireRate - 2.5f;
@@ -722,11 +722,11 @@ public class Nailgun : MonoBehaviour
 		{
 			if (altVersion)
 			{
-				wc.naiSaws--;
+				wc.naiSaws -= 1f;
 			}
 			else
 			{
-				wc.naiAmmo--;
+				wc.naiAmmo -= 1f;
 			}
 		}
 		anim.SetTrigger("Shoot");
@@ -738,15 +738,15 @@ public class Nailgun : MonoBehaviour
 		shootPoints[barrelNum].transform.GetPositionAndRotation(out var position2, out var rotation);
 		Vector3 vector = position2 - position;
 		Vector3 vector2 = position2;
-		Quaternion quaternion2 = rotation;
+		Quaternion quaternion = rotation;
 		PortalPhysicsV2.Raycast(position, vector.normalized, vector.magnitude, default(LayerMask), out var hitInfo, out var portalTraversals, out var endPoint);
 		if (portalTraversals.Length != 0)
 		{
 			Matrix4x4 travelMatrix = PortalUtils.GetTravelMatrix(portalTraversals);
 			vector2 = travelMatrix.MultiplyPoint3x4(vector2);
-			quaternion2 = travelMatrix.rotation * quaternion2;
+			quaternion = travelMatrix.rotation * quaternion;
 		}
-		GameObject gameObject = Object.Instantiate(burnOut ? muzzleFlash2 : muzzleFlash, vector2, quaternion2);
+		GameObject gameObject = Object.Instantiate(burnOut ? muzzleFlash2 : muzzleFlash, vector2, quaternion);
 		if (!altVersion)
 		{
 			AudioSource component = gameObject.GetComponent<AudioSource>();
@@ -802,7 +802,7 @@ public class Nailgun : MonoBehaviour
 			currentSpread = 0f;
 		}
 		Vector3 vector3 = position + forward;
-		Quaternion quaternion3 = base.transform.rotation;
+		Quaternion quaternion2 = base.transform.rotation;
 		Vector3 vector4 = vector3 - position;
 		if (PortalPhysicsV2.Raycast(position, vector4.normalized, vector4.magnitude, LayerMaskDefaults.Get(LMD.Environment), out hitInfo, out var portalTraversals2, out endPoint))
 		{
@@ -813,7 +813,7 @@ public class Nailgun : MonoBehaviour
 			if (portalTraversals2.AllHasFlag(PortalTravellerFlags.PlayerProjectile, out var blocked))
 			{
 				Matrix4x4 travelMatrix2 = PortalUtils.GetTravelMatrix(portalTraversals2);
-				quaternion3 = travelMatrix2.rotation * quaternion3;
+				quaternion2 = travelMatrix2.rotation * quaternion2;
 				vector3 = travelMatrix2.MultiplyPoint3x4(vector3);
 			}
 			else if (blocked)
@@ -821,10 +821,10 @@ public class Nailgun : MonoBehaviour
 				PortalTraversalV2 portalTraversalV = portalTraversals2[0];
 				NativePortalTransform nativePortalTransform = portalTraversalV.portalObject.GetTransform(portalTraversalV.portalHandle.side);
 				vector3 = nativePortalTransform.GetPositionInFront(portalTraversalV.entrancePoint, 0.01f);
-				quaternion3 = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
+				quaternion2 = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
 			}
 		}
-		GameObject gameObject2 = Object.Instantiate(burnOut ? heatedNail : nail, vector3, quaternion3);
+		GameObject gameObject2 = Object.Instantiate(burnOut ? heatedNail : nail, vector3, quaternion2);
 		if ((bool)targeter.CurrentTarget && targeter.IsAutoAimed)
 		{
 			gameObject2.transform.position = cc.transform.position + (targeter.CurrentTargetAimPosition - cc.transform.position).normalized;
@@ -897,7 +897,7 @@ public class Nailgun : MonoBehaviour
 		currentSpread = spread;
 		Vector3 vector2 = position + forward;
 		Vector3 vector3 = forward;
-		Quaternion quaternion2 = base.transform.rotation;
+		Quaternion quaternion = base.transform.rotation;
 		if (PortalPhysicsV2.Raycast(position, forward, 1f, LayerMaskDefaults.Get(LMD.Environment), out hitInfo, out var portalTraversals2, out endPoint))
 		{
 			vector2 = position;
@@ -907,7 +907,7 @@ public class Nailgun : MonoBehaviour
 			if (portalTraversals2.AllHasFlag(PortalTravellerFlags.PlayerProjectile, out var blocked))
 			{
 				Matrix4x4 travelMatrix2 = PortalUtils.GetTravelMatrix(portalTraversals2);
-				quaternion2 = travelMatrix2.rotation * quaternion2;
+				quaternion = travelMatrix2.rotation * quaternion;
 				vector2 = travelMatrix2.MultiplyPoint3x4(vector2);
 			}
 			else if (blocked)
@@ -915,10 +915,10 @@ public class Nailgun : MonoBehaviour
 				PortalTraversalV2 portalTraversalV = portalTraversals2[0];
 				NativePortalTransform nativePortalTransform = portalTraversalV.portalObject.GetTransform(portalTraversalV.portalHandle.side);
 				vector2 = nativePortalTransform.GetPositionInFront(portalTraversalV.entrancePoint, 0.01f);
-				quaternion2 = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
+				quaternion = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
 			}
 		}
-		GameObject gameObject = Object.Instantiate(heatedNail, vector2, quaternion2);
+		GameObject gameObject = Object.Instantiate(heatedNail, vector2, quaternion);
 		gameObject.transform.forward = vector3 * -1f;
 		if ((bool)targeter.CurrentTarget && targeter.IsAutoAimed)
 		{
@@ -964,7 +964,7 @@ public class Nailgun : MonoBehaviour
 		Object.Instantiate(muzzleFlash2, position2, rotation);
 		currentSpread = 0f;
 		Vector3 vector2 = position + forward;
-		Quaternion quaternion2 = base.transform.rotation;
+		Quaternion quaternion = base.transform.rotation;
 		Vector3 vector3 = forward;
 		if (PortalPhysicsV2.Raycast(position, forward, 1f, LayerMaskDefaults.Get(LMD.Environment), out hitInfo, out var portalTraversals2, out endPoint))
 		{
@@ -975,7 +975,7 @@ public class Nailgun : MonoBehaviour
 			if (portalTraversals2.AllHasFlag(PortalTravellerFlags.PlayerProjectile, out var blocked))
 			{
 				Matrix4x4 travelMatrix2 = PortalUtils.GetTravelMatrix(portalTraversals2);
-				quaternion2 = travelMatrix2.rotation * quaternion2;
+				quaternion = travelMatrix2.rotation * quaternion;
 				vector2 = travelMatrix2.MultiplyPoint3x4(vector2);
 			}
 			else if (blocked)
@@ -983,10 +983,10 @@ public class Nailgun : MonoBehaviour
 				PortalTraversalV2 portalTraversalV = portalTraversals2[0];
 				NativePortalTransform nativePortalTransform = portalTraversalV.portalObject.GetTransform(portalTraversalV.portalHandle.side);
 				vector2 = nativePortalTransform.GetPositionInFront(portalTraversalV.entrancePoint, 0.01f);
-				quaternion2 = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
+				quaternion = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
 			}
 		}
-		GameObject gameObject = Object.Instantiate(heatedNail, vector2, quaternion2);
+		GameObject gameObject = Object.Instantiate(heatedNail, vector2, quaternion);
 		if ((bool)targeter.CurrentTarget && targeter.IsAutoAimed)
 		{
 			gameObject.transform.position = cc.transform.position + (targeter.CurrentTargetAimPosition - cc.transform.position).normalized;
@@ -1003,7 +1003,7 @@ public class Nailgun : MonoBehaviour
 			component2.ForceCheckSawbladeRicochet();
 			component2.sourceWeapon = gc.currentWeapon;
 		}
-		heatSinks--;
+		heatSinks -= 1f;
 		heatUp = 0f;
 		cc.CameraShake(0.5f);
 	}
@@ -1015,7 +1015,7 @@ public class Nailgun : MonoBehaviour
 		UpdateAnimationWeight();
 		MonoSingleton<PlayerAnimations>.Instance?.Shoot();
 		Vector3 vector = position + forward;
-		Quaternion quaternion2 = base.transform.rotation;
+		Quaternion quaternion = base.transform.rotation;
 		Vector3 vector2 = forward;
 		if (PortalPhysicsV2.Raycast(position, forward, 1f, LayerMaskDefaults.Get(LMD.Environment), out var _, out var portalTraversals, out var _))
 		{
@@ -1026,7 +1026,7 @@ public class Nailgun : MonoBehaviour
 			if (portalTraversals.AllHasFlag(PortalTravellerFlags.PlayerProjectile, out var blocked))
 			{
 				Matrix4x4 travelMatrix = PortalUtils.GetTravelMatrix(portalTraversals);
-				quaternion2 = travelMatrix.rotation * quaternion2;
+				quaternion = travelMatrix.rotation * quaternion;
 				vector = travelMatrix.MultiplyPoint3x4(vector);
 			}
 			else if (blocked)
@@ -1034,10 +1034,10 @@ public class Nailgun : MonoBehaviour
 				PortalTraversalV2 portalTraversalV = portalTraversals[0];
 				NativePortalTransform nativePortalTransform = portalTraversalV.portalObject.GetTransform(portalTraversalV.portalHandle.side);
 				vector = nativePortalTransform.GetPositionInFront(portalTraversalV.entrancePoint, 0.01f);
-				quaternion2 = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
+				quaternion = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
 			}
 		}
-		GameObject gameObject = Object.Instantiate(magnetNail, vector, quaternion2);
+		GameObject gameObject = Object.Instantiate(magnetNail, vector, quaternion);
 		if ((bool)targeter.CurrentTarget && targeter.IsAutoAimed)
 		{
 			gameObject.transform.LookAt(targeter.CurrentTargetAimPosition);
@@ -1053,7 +1053,7 @@ public class Nailgun : MonoBehaviour
 		{
 			wc.magnets.Add(componentInChildren);
 		}
-		wc.naiMagnetCharge--;
+		wc.naiMagnetCharge -= 1f;
 		MonoSingleton<RumbleManager>.Instance.SetVibration(RumbleProperties.Magnet);
 	}
 

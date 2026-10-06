@@ -363,7 +363,8 @@ public class Minotaur : EnemyScript, IHitTargetCallback
 				return;
 			}
 			float num = Vector3.Distance(base.transform.position, eid.target.position);
-			bool flag = !Physics.Raycast(base.transform.position + Vector3.up, eid.target.position - (base.transform.position + Vector3.up), out var hitInfo, Vector3.Distance(eid.target.position, base.transform.position + Vector3.up), LayerMaskDefaults.Get(LMD.Environment));
+			RaycastHit hitInfo;
+			bool flag = !Physics.Raycast(base.transform.position + Vector3.up, eid.target.position - (base.transform.position + Vector3.up), out hitInfo, Vector3.Distance(eid.target.position, base.transform.position + Vector3.up), LayerMaskDefaults.Get(LMD.Environment));
 			if (flag && cooldown <= 0f)
 			{
 				if (currentAttacks >= 3 || ramCooldown <= 0f)

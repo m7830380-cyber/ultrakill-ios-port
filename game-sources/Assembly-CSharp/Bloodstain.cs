@@ -12,7 +12,7 @@ public class Bloodstain : MonoBehaviour
 	{
 		if (base.transform.hasChanged)
 		{
-			MonoSingleton<BloodsplatterManager>.Instance.props[trackedIndex] = default;
+			MonoSingleton<BloodsplatterManager>.Instance.props[trackedIndex] = default(BloodsplatterManager.InstanceProperties);
 			base.transform.hasChanged = false;
 		}
 	}

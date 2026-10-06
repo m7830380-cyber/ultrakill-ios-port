@@ -508,7 +508,7 @@ public class Explosion : MonoBehaviour
 		}
 		Rigidbody component9 = other.GetComponent<Rigidbody>();
 		bool flag2 = other.gameObject.layer == 14;
-		if ((!((bool)component9 & flag2) || !other.gameObject.CompareTag("Metal") || !other.TryGetComponent<Nail>(out var _)) && (bool)component9 && (!flag2 || component9.GetGravityMode()) && !other.gameObject.CompareTag("IgnorePushes"))
+		if ((!((bool)component9 && flag2) || !other.gameObject.CompareTag("Metal") || !other.TryGetComponent<Nail>(out var _)) && (bool)component9 && (!flag2 || component9.GetGravityMode()) && !other.gameObject.CompareTag("IgnorePushes"))
 		{
 			hitColliders.Add(instanceID);
 			Grenade component11;

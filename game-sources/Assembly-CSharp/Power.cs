@@ -5,9 +5,9 @@ public class Power : EnemyScript
 {
 	private enum SpearAttackState
 	{
-		None = 0,
-		Vertical = 1,
-		Horizontal = 2
+		None,
+		Vertical,
+		Horizontal
 	}
 
 	private Animator anim;
@@ -504,7 +504,7 @@ public class Power : EnemyScript
 		int num = -1;
 		for (int i = 0; i < array.Length; i++)
 		{
-			if (MonoSingleton<EnemyCooldowns>.Instance.previousPowerMove != i && !((i <= 1) & flag))
+			if (MonoSingleton<EnemyCooldowns>.Instance.previousPowerMove != i && !(i <= 1 && flag))
 			{
 				array[i] = Random.Range(0f, 1f) + moveChanceBonuses[i] * ((i < 2) ? 1f : (flag2 ? 0.5f : 1f));
 			}
@@ -1121,10 +1121,14 @@ public class Power : EnemyScript
 		}
 		Vector3 vector = lastTargetData.target.HeadPosition + Vector3.up;
 		vector = ((!PortalPhysicsV2.Raycast(lastTargetData.target.HeadPosition + Vector3.up, normalized, out var hitInfo, num, environmentMask, QueryTriggerInteraction.Ignore)) ? (lastTargetData.target.HeadPosition + Vector3.up + normalized * num) : (hitInfo.point - normalized * 3f));
-		bool flag = PortalPhysicsV2.Raycast(vector, Vector3.up, out var hitInfo2, out var endPoint, 8f, environmentMask, QueryTriggerInteraction.Ignore);
-		bool flag2 = PortalPhysicsV2.Raycast(vector, Vector3.down, out var hitInfo3, out var endPoint2, 8f, environmentMask, QueryTriggerInteraction.Ignore);
+		PhysicsCastResult hitInfo2;
+		Vector3 endPoint;
+		bool flag = PortalPhysicsV2.Raycast(vector, Vector3.up, out hitInfo2, out endPoint, 8f, environmentMask, QueryTriggerInteraction.Ignore);
+		PhysicsCastResult hitInfo3;
+		Vector3 endPoint2;
+		bool flag2 = PortalPhysicsV2.Raycast(vector, Vector3.down, out hitInfo3, out endPoint2, 8f, environmentMask, QueryTriggerInteraction.Ignore);
 		Vector3 position = base.transform.position;
-		if (!(flag & flag2))
+		if (!(flag && flag2))
 		{
 			position = (flag ? (endPoint + Vector3.down * Random.Range(5, 10)) : (flag2 ? ((!horizontal) ? (endPoint2 + Vector3.up * Random.Range(5, 10)) : new Vector3(endPoint2.x, endPoint2.y + 3.5f, endPoint2.z)) : ((!horizontal) ? vector : new Vector3(vector.x, lastTargetData.target.HeadPosition.y, vector.z))));
 		}

@@ -83,7 +83,7 @@ public static class PortalPhysicsV2
 		Raycast(origin, direction, maxDistance, default(LayerMask), out var _, out var portalTraversals2, out var endPoint2, queryTriggerInteraction);
 		Vector3 segStart = origin;
 		float num = 0f;
-		PortalTraversalV2 portalTraversalV = default;
+		PortalTraversalV2 portalTraversalV = default(PortalTraversalV2);
 		NativePortalTransform? nativePortalTransform = null;
 		NativePortalTransform? nativePortalTransform2 = null;
 		for (int i = 0; i < portalTraversals2.Length + 1; i++)
@@ -179,7 +179,7 @@ public static class PortalPhysicsV2
 		List<PortalTraversalV2> list = new List<PortalTraversalV2>();
 		Raycast(origin, direction, maxDistance, default(LayerMask), out var _, out var portalTraversals2, out var endPoint2, queryTriggerInteraction);
 		Vector3 vector = origin;
-		PortalTraversalV2 portalTraversalV = default;
+		PortalTraversalV2 portalTraversalV = default(PortalTraversalV2);
 		NativePortalTransform? nativePortalTransform = null;
 		NativePortalTransform? nativePortalTransform2 = null;
 		float num = 0f;
@@ -284,7 +284,8 @@ public static class PortalPhysicsV2
 			direction = direction,
 			maxDistance = maxDistance
 		};
-		bool result = PortalCast(scene, RaycastCastable, state, out portalTraversals, out var result2, out endPoint);
+		PhysicsCastResult result2;
+		bool result = PortalCast(scene, RaycastCastable, state, out portalTraversals, out result2, out endPoint);
 		hitInfo = result2;
 		return result;
 	}
@@ -307,7 +308,8 @@ public static class PortalPhysicsV2
 			portalTraversals = EmptyTraversals;
 			return result;
 		}
-		bool result2 = PortalCast(instance.Scene, RaycastCastable, state, out portalTraversals, out var result3, out endPoint);
+		PhysicsCastResult result3;
+		bool result2 = PortalCast(instance.Scene, RaycastCastable, state, out portalTraversals, out result3, out endPoint);
 		hitInfo = result3;
 		return result2;
 	}
@@ -317,7 +319,8 @@ public static class PortalPhysicsV2
 		PortalManagerV2 instance = MonoSingleton<PortalManagerV2>.Instance;
 		if (!instance)
 		{
-			bool result2 = RaycastCastable.Cast(state, out var result3);
+			PhysicsCastResult result3;
+			bool result2 = RaycastCastable.Cast(state, out result3);
 			portalTraversals = EmptyTraversals;
 			result = result3;
 			endPoint = state.origin + state.direction.normalized * state.maxDistance;
@@ -363,12 +366,16 @@ public static class PortalPhysicsV2
 			state2.origin = vector;
 			state2.direction = vector2;
 			state2.maxDistance = num;
-			bool flag = castable.Cast(state2, out var result2);
+			PhysicsCastResult result2;
+			bool flag = castable.Cast(state2, out result2);
 			Vector3 zero = Vector3.zero;
 			endPoint = vector + vector2 * num;
 			result2.direction = vector2;
-			bool flag2 = scene.FindPortalBetween(vector, endPoint, out var hitPortal, out var intersection, out var distance);
-			if (flag & flag2)
+			PortalHandle hitPortal;
+			Vector3 intersection;
+			float distance;
+			bool flag2 = scene.FindPortalBetween(vector, endPoint, out hitPortal, out intersection, out distance);
+			if (flag && flag2)
 			{
 				if (distance >= result2.distance)
 				{
@@ -395,14 +402,14 @@ public static class PortalPhysicsV2
 			Matrix4x4 travelMatrixManaged = nativePortal.travelMatrixManaged;
 			Vector3 entrance = zero;
 			Vector3 entranceDir = vector2;
-			float3 float5 = math.transform(travelMatrixManaged, zero);
-			zero = float5;
+			float3 @float = math.transform(travelMatrixManaged, zero);
+			zero = @float;
 			vector = zero;
 			vector2 = math.rotate(travelMatrixManaged, vector2);
 			num -= distance;
 			num2 += distance;
 			num3++;
-			PortalTraversalV2 item = new PortalTraversalV2(entrance, entranceDir, float5, vector2, hitPortal, scene.GetPortalObject(hitPortal));
+			PortalTraversalV2 item = new PortalTraversalV2(entrance, entranceDir, @float, vector2, hitPortal, scene.GetPortalObject(hitPortal));
 			traversalsList.Add(item);
 		}
 		result = PhysicsCastResult.FromDirectionDistance(vector, vector2, num);

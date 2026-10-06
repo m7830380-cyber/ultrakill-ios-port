@@ -36,7 +36,7 @@ public class OutOfBoundsTargetSetter : MonoBehaviour
 		DeathZone[] array = deathZones;
 		foreach (DeathZone deathZone in array)
 		{
-			if ((bool)deathZone && (!deathZone.dontChangeRespawnTarget | flag))
+			if ((bool)deathZone && (!deathZone.dontChangeRespawnTarget || flag))
 			{
 				deathZone.respawnTarget = base.transform.position;
 			}

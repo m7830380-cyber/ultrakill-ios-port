@@ -55,7 +55,7 @@ public class CameraFrustumTargeter : MonoSingleton<CameraFrustumTargeter>
 		{
 			if (CurrentTarget == null)
 			{
-				return default;
+				return default(Vector3);
 			}
 			return currentTargetApparentTransform.MultiplyPoint3x4(CurrentTarget.bounds.center);
 		}
@@ -65,7 +65,7 @@ public class CameraFrustumTargeter : MonoSingleton<CameraFrustumTargeter>
 	{
 		if (CurrentTarget == null)
 		{
-			return default;
+			return default(Vector3);
 		}
 		if (currentTargetApparentTransform.isIdentity)
 		{
@@ -278,7 +278,10 @@ public class CameraFrustumTargeter : MonoSingleton<CameraFrustumTargeter>
 					continue;
 				}
 				Vector3 direction = vector4 / magnitude3;
-				bool flag2 = PortalPhysicsV2.Raycast(position, direction, magnitude3 + 1f, mask.value | occlusionMask.value, out var hitInfo, out var portalTraversals, out var endPoint, QueryTriggerInteraction.Ignore);
+				PhysicsCastResult hitInfo;
+				PortalTraversalV2[] portalTraversals;
+				Vector3 endPoint;
+				bool flag2 = PortalPhysicsV2.Raycast(position, direction, magnitude3 + 1f, mask.value | occlusionMask.value, out hitInfo, out portalTraversals, out endPoint, QueryTriggerInteraction.Ignore);
 				if (portalTraversals != null && portalTraversals.Length != 0 && !(Vector3.Distance(flag2 ? hitInfo.point : endPoint, center) > collider.bounds.extents.magnitude + 2f))
 				{
 					float num7 = Vector3.Distance(a, new Vector2(0.5f, 0.5f));

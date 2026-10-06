@@ -230,7 +230,7 @@ public class RevolverBeam : MonoBehaviour
 		LayerMask layerMask = (flag ? pierceLayerMask : ignoreEnemyTrigger);
 		bool flag2 = true;
 		bool flag3 = false;
-		PhysicsCastResult hitInfo = default;
+		PhysicsCastResult hitInfo = default(PhysicsCastResult);
 		PortalTraversalV2[] portalTraversals = Array.Empty<PortalTraversalV2>();
 		bool flag4 = false;
 		Vector3 a = position;
@@ -318,7 +318,8 @@ public class RevolverBeam : MonoBehaviour
 					cc.CameraShake(0.25f * screenshakeMultiplier);
 				}
 			}
-			bool num4 = PortalPhysicsV2.SphereCast(position, forward, num2, radius, enemyLayerMask, out var hitInfo2, out portalTraversals2, out endPoint);
+			PhysicsCastResult hitInfo2;
+			bool num4 = PortalPhysicsV2.SphereCast(position, forward, num2, radius, enemyLayerMask, out hitInfo2, out portalTraversals2, out endPoint);
 			if (num4)
 			{
 				shotHitPoint = hitInfo2.point;
@@ -448,7 +449,8 @@ public class RevolverBeam : MonoBehaviour
 				EnemyIdentifier.Zap(base.transform.position, 2f, alreadyHitObjects, sourceWeapon, null, component, waterOnly: true);
 			}
 		}
-		PhysicsCastResult[] array3 = PortalPhysicsV2.RaycastAll(origin, direction, distance, 16, out var _, QueryTriggerInteraction.Collide);
+		PortalTraversalV2[] portalTraversals;
+		PhysicsCastResult[] array3 = PortalPhysicsV2.RaycastAll(origin, direction, distance, 16, out portalTraversals, QueryTriggerInteraction.Collide);
 		if (array3.Length == 0)
 		{
 			return;
@@ -1165,7 +1167,8 @@ public class RevolverBeam : MonoBehaviour
 		bool flag = false;
 		for (int i = 0; i < array.Length; i++)
 		{
-			bool flag2 = MonoSingleton<CoinTracker>.Instance.revolverCoinsList.Count > 0 && array[i].transform.TryGetComponent<Coin>(out var component) && (!component.shot || component.shotByEnemy);
+			Coin component;
+			bool flag2 = MonoSingleton<CoinTracker>.Instance.revolverCoinsList.Count > 0 && array[i].transform.TryGetComponent<Coin>(out component) && (!component.shot || component.shotByEnemy);
 			if ((!flag || flag2) && (!(array[i].distance > num) || (!flag && flag2)) && (!(array[i].distance < 0.1f) || flag2) && !PortalPhysicsV2.Raycast(beam.transform.position, array[i].point - beam.transform.position, array[i].distance, LayerMaskDefaults.Get(LMD.Environment), out var _, out var _, out var _) && (flag2 || (array[i].transform.TryGetComponent<EnemyIdentifierIdentifier>(out var component2) && (bool)component2.eid && !component2.eid.dead)))
 			{
 				if (flag2)

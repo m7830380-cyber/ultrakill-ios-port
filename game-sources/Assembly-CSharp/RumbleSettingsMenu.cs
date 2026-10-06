@@ -37,13 +37,13 @@ public class RumbleSettingsMenu : MonoBehaviour
 			else
 			{
 				option.durationSlider.SetValueWithoutNotify(num);
-				option.durationSlider.onValueChanged.AddListener((float value) =>
+				option.durationSlider.onValueChanged.AddListener(delegate(float value)
 				{
 					option.SetDuration(value);
 				});
 			}
 			option.intensitySlider.SetValueWithoutNotify(MonoSingleton<RumbleManager>.Instance.ResolveIntensity(key));
-			option.intensitySlider.onValueChanged.AddListener((float value) =>
+			option.intensitySlider.onValueChanged.AddListener(delegate(float value)
 			{
 				option.SetIntensity(value);
 			});

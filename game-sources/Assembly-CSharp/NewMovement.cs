@@ -17,9 +17,9 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 {
 	public enum PreserveLengthMode
 	{
-		DontPreserve = 0,
-		PreserveHorizontal = 1,
-		PreserveAll = 2
+		DontPreserve,
+		PreserveHorizontal,
+		PreserveAll
 	}
 
 	public float walkSpeed;
@@ -822,7 +822,10 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 		if (wcGroup.OnWall())
 		{
 			LayerMask layerMask = LayerMaskDefaults.Get(LMD.Environment);
-			bool flag = PortalPhysicsV2.Raycast(base.transform.position, inputDir, 1f, layerMask, out var hitInfo, out var portalTraversals, out var endPoint);
+			PhysicsCastResult hitInfo;
+			PortalTraversalV2[] portalTraversals;
+			Vector3 endPoint;
+			bool flag = PortalPhysicsV2.Raycast(base.transform.position, inputDir, 1f, layerMask, out hitInfo, out portalTraversals, out endPoint);
 			if (!flag && portalTraversals.Length != 0)
 			{
 				for (int i = 0; i < portalTraversals.Length; i++)
@@ -837,7 +840,7 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 				}
 			}
 			float num = Vector3.Dot(-rb.GetGravityDirection(), rb.velocity);
-			if ((!sliding & flag) && !gc.heavyFall && num < -1f)
+			if (!sliding && flag && !gc.heavyFall && num < -1f)
 			{
 				float num2 = Mathf.Clamp(-1f, 1f, Vector3.Dot(base.transform.right, rb.velocity));
 				float num3 = Mathf.Clamp(-1f, 1f, Vector3.Dot(base.transform.forward, rb.velocity));
@@ -1023,8 +1026,9 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 		bool flag3 = GameStateManager.Instance.IsStateActive("alter-menu");
 		if (MonoSingleton<InputManager>.Instance.InputSource.Slide.WasPerformedThisFrame)
 		{
-			bool flag4 = Physics.Raycast(gc.transform.position + base.transform.up, base.transform.up * -1f, out var _, 2f, LayerMaskDefaults.Get(LMD.Environment), QueryTriggerInteraction.Ignore);
-			if (!flag3 && ((gc.onGround || gc.sinceLastGrounded < 0.06f || (float)lastJump < 0.06f) | flag4) && (!slowMode || crouching) && !sliding)
+			RaycastHit hitInfo;
+			bool flag4 = Physics.Raycast(gc.transform.position + base.transform.up, base.transform.up * -1f, out hitInfo, 2f, LayerMaskDefaults.Get(LMD.Environment), QueryTriggerInteraction.Ignore);
+			if (!flag3 && (gc.onGround || gc.sinceLastGrounded < 0.06f || (float)lastJump < 0.06f || flag4) && (!slowMode || crouching) && !sliding)
 			{
 				StartSlide();
 			}
@@ -1370,7 +1374,7 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 			float num15 = Mathf.Lerp(0.1f, 0.4f, 1f - num8);
 			bool flag = Vector3.Dot(vector10, vector8) > 0f;
 			bool flag2 = vector4.magnitude > 16.5f;
-			airDirection += vector9 + vector10 * ((flag & flag2) ? num15 : 1f);
+			airDirection += vector9 + vector10 * ((flag && flag2) ? num15 : 1f);
 			float f = 1f - airDirection.magnitude / (num10 + 0.0001f);
 			f = Mathf.Pow(f, 3f);
 			float maxLength = airAcceleration * (1f / rb.mass) * Time.fixedDeltaTime * num9 * f;
@@ -1408,13 +1412,22 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 	public Vector3 MakeHorizontal(Vector3 direction, PreserveLengthMode preserveLength = PreserveLengthMode.PreserveHorizontal, bool relativeToCamera = true)
 	{
 		Vector3 planeNormal = (relativeToCamera ? cc.cam.transform.up : Vector3.up);
-		Vector3 vector = Vector3.ProjectOnPlane(direction, planeNormal);
-		return preserveLength switch
+		Vector3 result = Vector3.ProjectOnPlane(direction, planeNormal);
+		switch (preserveLength)
 		{
-			PreserveLengthMode.DontPreserve => vector, 
-			PreserveLengthMode.PreserveHorizontal => vector, 
-			PreserveLengthMode.PreserveAll => vector.normalized * direction.magnitude, 
-		};
+		case PreserveLengthMode.DontPreserve:
+			return result;
+		case PreserveLengthMode.PreserveHorizontal:
+			return result;
+		case PreserveLengthMode.PreserveAll:
+			return result.normalized * direction.magnitude;
+		default:
+		{
+			global::_003CPrivateImplementationDetails_003E.ThrowSwitchExpressionException(preserveLength);
+			Vector3 result2 = default(Vector3);
+			return result2;
+		}
+		}
 	}
 
 	private void Dodge()
@@ -1890,7 +1903,7 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 
 	public void GetHurt(int damage, bool invincible, float scoreLossMultiplier = 1f, bool explosion = false, bool instablack = false, float hardDamageMultiplier = 0.35f, bool ignoreInvincibility = false)
 	{
-		if (dead || levelOver || !((!invincible || base.gameObject.layer != 15) | ignoreInvincibility) || damage <= 0)
+		if (dead || levelOver || !(!invincible || base.gameObject.layer != 15 || ignoreInvincibility) || damage <= 0)
 		{
 			return;
 		}
@@ -1942,11 +1955,11 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 			}
 			if (antiHpCooldown == 0f)
 			{
-				antiHpCooldown++;
+				antiHpCooldown += 1f;
 			}
 			if (difficulty >= 3)
 			{
-				antiHpCooldown++;
+				antiHpCooldown += 1f;
 			}
 			antiHpFlash.Flash(1f);
 			antiHpCooldown += damage / 20;
@@ -2291,7 +2304,7 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 	private void CreateSlideScrape(bool ignorePrevious = false, bool frictionlessVersion = false)
 	{
 		bool flag = (bool)groundProperties && groundProperties.overrideSurfaceType;
-		SceneHelper.HitSurfaceData hitSurfaceData = default;
+		SceneHelper.HitSurfaceData hitSurfaceData = default(SceneHelper.HitSurfaceData);
 		WallCheck wallCheck;
 		if (flag)
 		{
@@ -2340,7 +2353,7 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 		}
 		else
 		{
-			if (!(((frictionlessVersion ? currentFricSlideSurfaceType : currentSlideSurfaceType) != SurfaceType.Generic) | ignorePrevious))
+			if (!((frictionlessVersion ? currentFricSlideSurfaceType : currentSlideSurfaceType) != SurfaceType.Generic || ignorePrevious))
 			{
 				return;
 			}
@@ -2397,7 +2410,7 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 				wallScrape.transform.position = position;
 			}
 		}
-		else if ((currentScrapeSurfaceType != SurfaceType.Generic) | ignorePrevious)
+		else if (currentScrapeSurfaceType != SurfaceType.Generic || ignorePrevious)
 		{
 			DetachScrape(wallScrape);
 			MonoSingleton<DefaultReferenceManager>.Instance.footstepSet.TryGetWallScrapeParticle(SurfaceType.Generic, out var particle2);
@@ -2623,10 +2636,10 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 		{
 			num = 90f * Mathf.Sign(f);
 		}
-		Quaternion quaternion2 = Quaternion.AngleAxis(y, -gravityDir);
-		Quaternion obj = ((playerTransform.parent != null) ? playerTransform.parent.rotation : Quaternion.identity) * quaternion2;
+		Quaternion quaternion = Quaternion.AngleAxis(y, -gravityDir);
+		Quaternion quaternion2 = ((playerTransform.parent != null) ? playerTransform.parent.rotation : Quaternion.identity) * quaternion;
 		Quaternion quaternion3 = Quaternion.AngleAxis(0f - num, Vector3.right) * Quaternion.AngleAxis(z, Vector3.forward);
-		return obj * quaternion3;
+		return quaternion2 * quaternion3;
 	}
 
 	public bool? OnTravel(PortalTravelDetails details)
@@ -2691,9 +2704,9 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 			Quaternion localRotation = cc.transform.localRotation;
 			localRotation.x *= -1f;
 			localRotation.Normalize();
-			Quaternion quaternion2 = (cc.transform.parent ? cc.transform.parent.rotation : Quaternion.identity) * localRotation;
-			Vector3 normalized = enterToExit.MultiplyVector(quaternion2 * Vector3.forward).normalized;
-			Vector3 normalized2 = enterToExit.MultiplyVector(quaternion2 * Vector3.up).normalized;
+			Quaternion quaternion = (cc.transform.parent ? cc.transform.parent.rotation : Quaternion.identity) * localRotation;
+			Vector3 normalized = enterToExit.MultiplyVector(quaternion * Vector3.forward).normalized;
+			Vector3 normalized2 = enterToExit.MultiplyVector(quaternion * Vector3.up).normalized;
 			proposedRotation = Quaternion.LookRotation(normalized, normalized2);
 		}
 		Vector3 vector4 = enterToExit.MultiplyVector(rb.velocity).normalized * rb.velocity.magnitude;
@@ -2745,11 +2758,11 @@ public class NewMovement : MonoSingleton<NewMovement>, ITarget, IPortalTraveller
 				{
 					forward.Normalize();
 					forward2.Normalize();
-					Quaternion quaternion3 = Quaternion.LookRotation(forward2, hitInfo2.normal) * Quaternion.Inverse(Quaternion.LookRotation(forward, up));
-					Vector3 vector11 = quaternion3 * vector5;
+					Quaternion quaternion2 = Quaternion.LookRotation(forward2, hitInfo2.normal) * Quaternion.Inverse(Quaternion.LookRotation(forward, up));
+					Vector3 vector11 = quaternion2 * vector5;
 					Vector3 vector12 = Vector3.Project(vector4, vector10);
 					rb.velocity = vector11 + vector12;
-					dodgeDirection = quaternion3 * vector6;
+					dodgeDirection = quaternion2 * vector6;
 				}
 			}
 		}

@@ -33,43 +33,43 @@ public struct GenerateBloodMeshJob : IJobParallelFor
 		float3 norm = props[index].norm;
 		math.orthonormal_basis(norm, out var basis, out var _);
 		float4x4 a = float4x4.TRS(pos, math.mul(quaternion.LookRotation(norm, basis), quaternion.RotateZ(index % 359)), new float3(1.28f, 1.28f, 1f));
-		float4 float5 = math.mul(a, new float4(-1f, 1f, 0f, 1f));
-		float4 float6 = math.mul(a, new float4(1f, 1f, 0f, 1f));
-		float4 float7 = math.mul(a, new float4(1f, -1f, 0f, 1f));
-		float4 float8 = math.mul(a, new float4(-1f, -1f, 0f, 1f));
+		float4 @float = math.mul(a, new float4(-1f, 1f, 0f, 1f));
+		float4 float2 = math.mul(a, new float4(1f, 1f, 0f, 1f));
+		float4 float3 = math.mul(a, new float4(1f, -1f, 0f, 1f));
+		float4 float4 = math.mul(a, new float4(-1f, -1f, 0f, 1f));
 		int num = index * 4;
 		int num2 = num + 1;
 		int num3 = num + 2;
 		int num4 = num + 3;
 		half4 normal_Offset = (half4)new float4(norm, index);
-		half half5 = new half(0f);
-		half half6 = new half(1f);
+		half half = new half(0f);
+		half half2 = new half(1f);
 		vertexData[num] = new VertexData
 		{
-			position = float5.xyz,
+			position = @float.xyz,
 			normal_Offset = normal_Offset,
-			uv = new half2(half5, half5),
+			uv = new half2(half, half),
 			center = pos
 		};
 		vertexData[num2] = new VertexData
 		{
-			position = float6.xyz,
+			position = float2.xyz,
 			normal_Offset = normal_Offset,
-			uv = new half2(half6, half5),
+			uv = new half2(half2, half),
 			center = pos
 		};
 		vertexData[num3] = new VertexData
 		{
-			position = float7.xyz,
+			position = float3.xyz,
 			normal_Offset = normal_Offset,
-			uv = new half2(half6, half6),
+			uv = new half2(half2, half2),
 			center = pos
 		};
 		vertexData[num4] = new VertexData
 		{
-			position = float8.xyz,
+			position = float4.xyz,
 			normal_Offset = normal_Offset,
-			uv = new half2(half5, half6),
+			uv = new half2(half, half2),
 			center = pos
 		};
 		int num5 = index * 6;

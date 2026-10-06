@@ -372,7 +372,7 @@ public class OptionsManager : MonoSingleton<OptionsManager>
 
 	public void RestartMission()
 	{
-		SceneHelper.RestartSceneAsync().ContinueWith(this, () =>
+		SceneHelper.RestartSceneAsync().ContinueWith(this, delegate
 		{
 			if ((bool)MonoSingleton<MapVarManager>.Instance)
 			{

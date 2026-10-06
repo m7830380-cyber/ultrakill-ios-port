@@ -276,7 +276,7 @@ public class IntroText : MonoBehaviour
 				txt.text = fullString.Substring(0, i);
 			}
 			j = fullString.Length;
-			if ((waitTime != 0f) & playSound)
+			if (waitTime != 0f && playSound)
 			{
 				aud.Play(tracked: true);
 			}

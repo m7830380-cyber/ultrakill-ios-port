@@ -141,7 +141,7 @@ public abstract class MonoSingleton<T> : MonoSingleton where T : MonoSingleton<T
 		s_FindCount = 0;
 		try
 		{
-			InstanceChanged?.Invoke(newInstance);
+			MonoSingleton<T>.InstanceChanged?.Invoke(newInstance);
 		}
 		catch (Exception exception)
 		{

@@ -141,7 +141,7 @@ public class DiscordController : MonoBehaviour
 		if ((bool)Instance && Instance.discord != null && !Instance.disabled)
 		{
 			Instance.disabled = true;
-			Instance.activityManager.ClearActivity((Result result) =>
+			Instance.activityManager.ClearActivity(delegate
 			{
 			});
 		}
@@ -235,7 +235,7 @@ public class DiscordController : MonoBehaviour
 	{
 		if (discord != null && activityManager != null && !disabled)
 		{
-			activityManager.UpdateActivity(cachedActivity, (Result result) =>
+			activityManager.UpdateActivity(cachedActivity, delegate
 			{
 			});
 		}

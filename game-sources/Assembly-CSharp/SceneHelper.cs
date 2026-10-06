@@ -14,19 +14,29 @@ using UnityEngine.SceneManagement;
 [ConfigureSingleton(SingletonFlags.NoAutoInstance | SingletonFlags.PersistAutoInstance | SingletonFlags.DestroyDuplicates)]
 public class SceneHelper : MonoSingleton<SceneHelper>
 {
-	public struct HitSurfaceData(SurfaceType surfaceType = SurfaceType.Generic, Color surfaceColor = default(Color))
+	public struct HitSurfaceData
 	{
-		public Material material = null;
+		public Material material;
 
-		public RaycastHit hit = default;
+		public RaycastHit hit;
 
-		public Mesh mesh = null;
+		public Mesh mesh;
 
-		public bool useSecondaryBlend = false;
+		public bool useSecondaryBlend;
 
-		public SurfaceType surfaceType = SurfaceType.Generic;
+		public SurfaceType surfaceType;
 
-		public Color particleColor = default;
+		public Color particleColor;
+
+		public HitSurfaceData(SurfaceType surfaceType = SurfaceType.Generic, Color surfaceColor = default(Color))
+		{
+			material = null;
+			hit = default(RaycastHit);
+			mesh = null;
+			useSecondaryBlend = false;
+			this.surfaceType = SurfaceType.Generic;
+			particleColor = default(Color);
+		}
 	}
 
 	public readonly struct PhysicsSceneObjectData
@@ -58,7 +68,7 @@ public class SceneHelper : MonoSingleton<SceneHelper>
 
 		public static bool TryCreateFromObject(Transform transform, out PhysicsSceneObjectData data, bool ignorePhysicsChecks = false)
 		{
-			data = default;
+			data = default(PhysicsSceneObjectData);
 			MeshRenderer mr = null;
 			if (!ignorePhysicsChecks && !IsValidForPhysicsScene(transform, out mr, out var _))
 			{
@@ -330,7 +340,7 @@ public class SceneHelper : MonoSingleton<SceneHelper>
 			for (int i = 0; i < gibAmount; i++)
 			{
 				AsyncInstantiateOperation<GameObject> asyncOp = UnityEngine.Object.InstantiateAsync(enviroGibs[UnityEngine.Random.Range(0, enviroGibs.Length)], hit.point + hit.normal, UnityEngine.Random.rotation);
-				asyncOp.completed += (AsyncOperation op) =>
+				asyncOp.completed += delegate
 				{
 					GameObject gameObject = asyncOp.Result[0];
 					gameObject.transform.localScale *= sizeMultiplier;
@@ -365,7 +375,7 @@ public class SceneHelper : MonoSingleton<SceneHelper>
 			return;
 		}
 		AsyncInstantiateOperation<GameObject> asyncOp2 = UnityEngine.Object.InstantiateAsync(particle, hit.point, Quaternion.LookRotation(hit.normal));
-		asyncOp2.completed += (AsyncOperation op) =>
+		asyncOp2.completed += delegate
 		{
 			GameObject gameObject = asyncOp2.Result[0];
 			EnviroGibModifier[] componentsInChildren = gameObject.GetComponentsInChildren<EnviroGibModifier>();

@@ -635,7 +635,7 @@ public class Chainsaw : MonoBehaviour
 			{
 				Vector3 worldPoint = vector2 + normalized * num3;
 				worldPoint = ClampToPortalBounds(portalObject, side, worldPoint, out var wasClamped);
-				if ((wasClamped & allowMigration) && TryMigrateToAdjacentPortal(i, vector2, normalized, num3))
+				if (wasClamped && allowMigration && TryMigrateToAdjacentPortal(i, vector2, normalized, num3))
 				{
 					RecalculatePortalIntersections(allowMigration: false);
 					break;

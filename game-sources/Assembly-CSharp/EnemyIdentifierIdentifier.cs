@@ -79,7 +79,7 @@ public class EnemyIdentifierIdentifier : MonoBehaviour
 
 	public void Break()
 	{
-		Break(true, false);
+		Break(reparentToChild: true, destroy: false);
 	}
 
 	public void Break(bool reparentToChild = true, bool destroy = false)

@@ -25,7 +25,7 @@ public class MapIntWatcher : MapVarWatcher<int?>
 				Debug.LogError("Unable to register MapIntWatcher. Missing map variable manager.");
 				return;
 			}
-			MonoSingleton<MapVarManager>.Instance.RegisterIntWatcher(variableName, (int val) =>
+			MonoSingleton<MapVarManager>.Instance.RegisterIntWatcher(variableName, delegate(int val)
 			{
 				ProcessEvent(val);
 			});

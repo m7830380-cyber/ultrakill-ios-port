@@ -11,29 +11,40 @@ public class ChessManager : MonoSingleton<ChessManager>
 {
 	public enum SpecialMove
 	{
-		None = 0,
-		ShortCastle = 1,
-		LongCastle = 2,
-		PawnTwoStep = 3,
-		PawnPromotion = 4,
-		EnPassantCapture = 5
+		None,
+		ShortCastle,
+		LongCastle,
+		PawnTwoStep,
+		PawnPromotion,
+		EnPassantCapture
 	}
 
-	public struct MoveData(ChessPieceData pieceToMove, int2 startPosition, ChessPieceData capturePiece, int2 endPosition, int2 lastEPPos, SpecialMove specialMove = SpecialMove.None, ChessPieceData.PieceType promotionType = ChessPieceData.PieceType.Pawn)
+	public struct MoveData
 	{
-		public int2 StartPosition = startPosition;
+		public int2 StartPosition;
 
-		public ChessPieceData PieceToMove = pieceToMove;
+		public ChessPieceData PieceToMove;
 
-		public int2 EndPosition = endPosition;
+		public int2 EndPosition;
 
-		public ChessPieceData CapturePiece = capturePiece;
+		public ChessPieceData CapturePiece;
 
-		public SpecialMove SpecialMove = specialMove;
+		public SpecialMove SpecialMove;
 
-		public int2 LastEnPassantPos = lastEPPos;
+		public int2 LastEnPassantPos;
 
-		public ChessPieceData.PieceType PromotionType = promotionType;
+		public ChessPieceData.PieceType PromotionType;
+
+		public MoveData(ChessPieceData pieceToMove, int2 startPosition, ChessPieceData capturePiece, int2 endPosition, int2 lastEPPos, SpecialMove specialMove = SpecialMove.None, ChessPieceData.PieceType promotionType = ChessPieceData.PieceType.Pawn)
+		{
+			PieceToMove = pieceToMove;
+			StartPosition = startPosition;
+			EndPosition = endPosition;
+			CapturePiece = capturePiece;
+			SpecialMove = specialMove;
+			LastEnPassantPos = lastEPPos;
+			PromotionType = promotionType;
+		}
 	}
 
 	public GameObject originalPieces;
@@ -308,8 +319,8 @@ public class ChessManager : MonoSingleton<ChessManager>
 		int num2 = 0;
 		bool flag = false;
 		bool flag2 = false;
-		int2? int5 = null;
-		int2? int6 = null;
+		int2? @int = null;
+		int2? int2 = null;
 		for (int i = 0; i < chessBoard.Length; i++)
 		{
 			ChessPieceData chessPieceData = chessBoard[i];
@@ -324,7 +335,7 @@ public class ChessManager : MonoSingleton<ChessManager>
 				if (chessPieceData.type == ChessPieceData.PieceType.Bishop)
 				{
 					flag = true;
-					int5 = value;
+					@int = value;
 				}
 			}
 			else
@@ -333,7 +344,7 @@ public class ChessManager : MonoSingleton<ChessManager>
 				if (chessPieceData.type == ChessPieceData.PieceType.Bishop)
 				{
 					flag2 = true;
-					int6 = value;
+					int2 = value;
 				}
 			}
 			if (num > 1 || num2 > 1 || chessPieceData.type == ChessPieceData.PieceType.Pawn || chessPieceData.type == ChessPieceData.PieceType.Rook || chessPieceData.type == ChessPieceData.PieceType.Queen)
@@ -341,9 +352,9 @@ public class ChessManager : MonoSingleton<ChessManager>
 				return true;
 			}
 		}
-		if (flag & flag2)
+		if (flag && flag2)
 		{
-			return (int5.Value.x + int5.Value.y) % 2 != (int6.Value.x + int6.Value.y) % 2;
+			return (@int.Value.x + @int.Value.y) % 2 != (int2.Value.x + int2.Value.y) % 2;
 		}
 		return false;
 	}
@@ -572,7 +583,7 @@ public class ChessManager : MonoSingleton<ChessManager>
 		ChessPieceData data = piece.Data;
 		allPieces.Add(data, piece);
 		Vector3 position = piece.transform.position;
-		int2 int5 = WorldPositionToIndex(position);
+		int2 @int = WorldPositionToIndex(position);
 		if (data.type == ChessPieceData.PieceType.King)
 		{
 			if (piece.isWhite)
@@ -584,8 +595,8 @@ public class ChessManager : MonoSingleton<ChessManager>
 				blackKing = data;
 			}
 		}
-		SetPieceAt(int5, data);
-		piece.UpdatePosition(int5);
+		SetPieceAt(@int, data);
+		piece.UpdatePosition(@int);
 	}
 
 	public ChessPieceData GetPieceAt(int2 index)
@@ -628,14 +639,14 @@ public class ChessManager : MonoSingleton<ChessManager>
 			int x = ((moveData.SpecialMove == SpecialMove.ShortCastle) ? 7 : 0);
 			int x2 = ((moveData.SpecialMove == SpecialMove.ShortCastle) ? 5 : 3);
 			int2 index = new int2(x, (!pieceToMove.isWhite) ? 7 : 0);
-			int2 int5 = new int2(x2, (!pieceToMove.isWhite) ? 7 : 0);
+			int2 @int = new int2(x2, (!pieceToMove.isWhite) ? 7 : 0);
 			ChessPieceData pieceAt = GetPieceAt(index);
 			pieceAt.timesMoved++;
 			SetPieceAt(index, null);
-			SetPieceAt(int5, pieceAt);
+			SetPieceAt(@int, pieceAt);
 			if (updateVisuals && allPieces.TryGetValue(pieceAt, out var value))
 			{
-				value.UpdatePosition(int5);
+				value.UpdatePosition(@int);
 			}
 		}
 		if (moveData.SpecialMove == SpecialMove.PawnPromotion)
@@ -781,8 +792,8 @@ public class ChessManager : MonoSingleton<ChessManager>
 		ChessPieceData pieceAt = GetPieceAt(index);
 		if (pieceAt == null)
 		{
-			int2 int5 = index;
-			Debug.LogError("Found no piece at " + int5.ToString());
+			int2 @int = index;
+			Debug.LogError("Found no piece at " + @int.ToString());
 		}
 		pseudoLegalMoves.Clear();
 		legalMoves.Clear();
@@ -820,53 +831,53 @@ public class ChessManager : MonoSingleton<ChessManager>
 	private void GetPawnMoves(ChessPieceData pawn, int2 startPos, List<MoveData> validMoves)
 	{
 		int num = (pawn.isWhite ? 1 : (-1));
-		int2 int5 = startPos + pawnMoves[0] * num;
-		if (GetPieceAt(int5) == null)
+		int2 @int = startPos + pawnMoves[0] * num;
+		if (GetPieceAt(@int) == null)
 		{
-			if (int5.y == (pawn.isWhite ? 7 : 0))
+			if (@int.y == (pawn.isWhite ? 7 : 0))
 			{
-				validMoves.Add(new MoveData(pawn, startPos, null, int5, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Queen));
-				validMoves.Add(new MoveData(pawn, startPos, null, int5, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Rook));
-				validMoves.Add(new MoveData(pawn, startPos, null, int5, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Bishop));
-				validMoves.Add(new MoveData(pawn, startPos, null, int5, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Knight));
+				validMoves.Add(new MoveData(pawn, startPos, null, @int, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Queen));
+				validMoves.Add(new MoveData(pawn, startPos, null, @int, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Rook));
+				validMoves.Add(new MoveData(pawn, startPos, null, @int, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Bishop));
+				validMoves.Add(new MoveData(pawn, startPos, null, @int, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Knight));
 			}
 			else
 			{
-				validMoves.Add(new MoveData(pawn, startPos, null, int5, enPassantPos));
+				validMoves.Add(new MoveData(pawn, startPos, null, @int, enPassantPos));
 			}
 			if (pawn.timesMoved == 0)
 			{
-				int2 int6 = startPos + pawnMoves[1] * num;
-				if (GetPieceAt(int6) == null)
+				int2 int2 = startPos + pawnMoves[1] * num;
+				if (GetPieceAt(int2) == null)
 				{
-					validMoves.Add(new MoveData(pawn, startPos, null, int6, enPassantPos, SpecialMove.PawnTwoStep));
+					validMoves.Add(new MoveData(pawn, startPos, null, int2, enPassantPos, SpecialMove.PawnTwoStep));
 				}
 			}
 		}
 		int2[] array = pawnCaptures;
-		foreach (int2 int7 in array)
+		foreach (int2 int3 in array)
 		{
-			int2 int8 = startPos + int7 * num;
-			if (!IsValidPosition(int8))
+			int2 int4 = startPos + int3 * num;
+			if (!IsValidPosition(int4))
 			{
 				continue;
 			}
-			ChessPieceData pieceAt = GetPieceAt(int8);
+			ChessPieceData pieceAt = GetPieceAt(int4);
 			if (pieceAt != null && pieceAt.isWhite != pawn.isWhite)
 			{
-				if (int5.y == (pawn.isWhite ? 7 : 0))
+				if (@int.y == (pawn.isWhite ? 7 : 0))
 				{
-					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int8, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Queen));
-					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int8, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Rook));
-					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int8, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Bishop));
-					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int8, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Knight));
+					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int4, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Queen));
+					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int4, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Rook));
+					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int4, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Bishop));
+					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int4, enPassantPos, SpecialMove.PawnPromotion, ChessPieceData.PieceType.Knight));
 				}
 				else
 				{
-					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int8, enPassantPos));
+					validMoves.Add(new MoveData(pawn, startPos, pieceAt, int4, enPassantPos));
 				}
 			}
-			if (enPassantPos.Equals(int8))
+			if (enPassantPos.Equals(int4))
 			{
 				int2 index = new int2(enPassantPos.x, enPassantPos.y - num);
 				ChessPieceData pieceAt2 = GetPieceAt(index);
@@ -898,26 +909,26 @@ public class ChessManager : MonoSingleton<ChessManager>
 			break;
 		}
 		int2[] array2 = array;
-		foreach (int2 int5 in array2)
+		foreach (int2 @int in array2)
 		{
-			int2 int6 = startPos;
+			int2 int2 = startPos;
 			while (true)
 			{
-				int6 += int5;
-				if (!IsValidPosition(int6))
+				int2 += @int;
+				if (!IsValidPosition(int2))
 				{
 					break;
 				}
-				ChessPieceData pieceAt = GetPieceAt(int6);
+				ChessPieceData pieceAt = GetPieceAt(int2);
 				if (pieceAt != null)
 				{
 					if (pieceAt.isWhite != slidingPiece.isWhite)
 					{
-						validMoves.Add(new MoveData(slidingPiece, startPos, pieceAt, int6, enPassantPos));
+						validMoves.Add(new MoveData(slidingPiece, startPos, pieceAt, int2, enPassantPos));
 					}
 					break;
 				}
-				validMoves.Add(new MoveData(slidingPiece, startPos, null, int6, enPassantPos));
+				validMoves.Add(new MoveData(slidingPiece, startPos, null, int2, enPassantPos));
 			}
 		}
 	}
@@ -925,15 +936,15 @@ public class ChessManager : MonoSingleton<ChessManager>
 	private void GetKnightKingMoves(ChessPieceData piece, int2 startPos, List<MoveData> validMoves)
 	{
 		int2[] array = ((piece.type == ChessPieceData.PieceType.Knight) ? knightOffsets : kingDirections);
-		foreach (int2 int5 in array)
+		foreach (int2 @int in array)
 		{
-			int2 int6 = startPos + int5;
-			if (IsValidPosition(int6))
+			int2 int2 = startPos + @int;
+			if (IsValidPosition(int2))
 			{
-				ChessPieceData pieceAt = GetPieceAt(int6);
+				ChessPieceData pieceAt = GetPieceAt(int2);
 				if (pieceAt == null || pieceAt.isWhite != piece.isWhite)
 				{
-					validMoves.Add(new MoveData(piece, startPos, pieceAt, int6, enPassantPos));
+					validMoves.Add(new MoveData(piece, startPos, pieceAt, int2, enPassantPos));
 				}
 			}
 		}
@@ -977,9 +988,9 @@ public class ChessManager : MonoSingleton<ChessManager>
 	public bool IsSquareAttacked(int2 position, bool isWhite)
 	{
 		int2[] array = kingDirections;
-		foreach (int2 int5 in array)
+		foreach (int2 @int in array)
 		{
-			if (IsPieceAtPositionOfType(position + int5, isWhite, ChessPieceData.PieceType.King))
+			if (IsPieceAtPositionOfType(position + @int, isWhite, ChessPieceData.PieceType.King))
 			{
 				return true;
 			}
@@ -993,18 +1004,18 @@ public class ChessManager : MonoSingleton<ChessManager>
 			return true;
 		}
 		array = knightOffsets;
-		foreach (int2 int6 in array)
+		foreach (int2 int2 in array)
 		{
-			if (IsPieceAtPositionOfType(position + int6, isWhite, ChessPieceData.PieceType.Knight))
+			if (IsPieceAtPositionOfType(position + int2, isWhite, ChessPieceData.PieceType.Knight))
 			{
 				return true;
 			}
 		}
 		int y = (isWhite ? 1 : (-1));
 		array = pawnCaptures;
-		foreach (int2 int7 in array)
+		foreach (int2 int3 in array)
 		{
-			if (IsPieceAtPositionOfType(position + int7 * new int2(1, y), isWhite, ChessPieceData.PieceType.Pawn))
+			if (IsPieceAtPositionOfType(position + int3 * new int2(1, y), isWhite, ChessPieceData.PieceType.Pawn))
 			{
 				return true;
 			}
@@ -1015,9 +1026,9 @@ public class ChessManager : MonoSingleton<ChessManager>
 	private bool IsSlidingPieceAttacking(int2 position, bool isWhite, bool isRookMovement)
 	{
 		int2[] array = (isRookMovement ? rookDirections : bishopDirections);
-		foreach (int2 int5 in array)
+		foreach (int2 @int in array)
 		{
-			for (int2 index = position + int5; IsValidPosition(index); index += int5)
+			for (int2 index = position + @int; IsValidPosition(index); index += @int)
 			{
 				ChessPieceData pieceAt = GetPieceAt(index);
 				if (pieceAt != null)

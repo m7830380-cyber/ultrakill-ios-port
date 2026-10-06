@@ -59,7 +59,7 @@ public class TeleportCheat : MonoBehaviour
 			});
 		}
 		List<CheckPoint> list2 = new List<CheckPoint>(Object.FindObjectsByType<CheckPoint>(FindObjectsSortMode.None));
-		list2.Sort((CheckPoint a, CheckPoint b) =>
+		list2.Sort(delegate(CheckPoint a, CheckPoint b)
 		{
 			if (a == b)
 			{
@@ -93,7 +93,7 @@ public class TeleportCheat : MonoBehaviour
 			GameObject obj = Object.Instantiate(buttonTemplate, buttonTemplate.transform.parent);
 			obj.GetComponentInChildren<TMP_Text>().text = ((!string.IsNullOrEmpty(point.overrideName)) ? point.overrideName : (point.checkpoint ? (point.checkpoint.toActivate ? ImproveCheckpointName(point.checkpoint.toActivate.name) : "<color=red>Missing toActivate</color>") : point.target.name));
 			obj.GetComponentInChildren<TMP_Text>().color = (point.checkpoint ? checkpointColor : roomColor);
-			obj.GetComponentInChildren<Button>().onClick.AddListener(() =>
+			obj.GetComponentInChildren<Button>().onClick.AddListener(delegate
 			{
 				Teleport(point.target, point.checkpoint);
 				if ((bool)point.checkpoint)

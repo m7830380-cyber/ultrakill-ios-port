@@ -350,7 +350,7 @@ public class LobbyManager
 
 	public LobbyTransaction GetLobbyCreateTransaction()
 	{
-		LobbyTransaction result = default;
+		LobbyTransaction result = default(LobbyTransaction);
 		Result result2 = Methods.GetLobbyCreateTransaction(MethodsPtr, ref result.MethodsPtr);
 		if (result2 != Result.Ok)
 		{
@@ -361,7 +361,7 @@ public class LobbyManager
 
 	public LobbyTransaction GetLobbyUpdateTransaction(long lobbyId)
 	{
-		LobbyTransaction result = default;
+		LobbyTransaction result = default(LobbyTransaction);
 		Result result2 = Methods.GetLobbyUpdateTransaction(MethodsPtr, lobbyId, ref result.MethodsPtr);
 		if (result2 != Result.Ok)
 		{
@@ -372,7 +372,7 @@ public class LobbyManager
 
 	public LobbyMemberTransaction GetMemberUpdateTransaction(long lobbyId, long userId)
 	{
-		LobbyMemberTransaction result = default;
+		LobbyMemberTransaction result = default(LobbyMemberTransaction);
 		Result result2 = Methods.GetMemberUpdateTransaction(MethodsPtr, lobbyId, userId, ref result.MethodsPtr);
 		if (result2 != Result.Ok)
 		{
@@ -475,7 +475,7 @@ public class LobbyManager
 
 	public Lobby GetLobby(long lobbyId)
 	{
-		Lobby lobby = default;
+		Lobby lobby = default(Lobby);
 		Result result = Methods.GetLobby(MethodsPtr, lobbyId, ref lobby);
 		if (result != Result.Ok)
 		{
@@ -552,7 +552,7 @@ public class LobbyManager
 
 	public User GetMemberUser(long lobbyId, long userId)
 	{
-		User user = default;
+		User user = default(User);
 		Result result = Methods.GetMemberUser(MethodsPtr, lobbyId, userId, ref user);
 		if (result != Result.Ok)
 		{
@@ -627,7 +627,7 @@ public class LobbyManager
 
 	public LobbySearchQuery GetSearchQuery()
 	{
-		LobbySearchQuery result = default;
+		LobbySearchQuery result = default(LobbySearchQuery);
 		Result result2 = Methods.GetSearchQuery(MethodsPtr, ref result.MethodsPtr);
 		if (result2 != Result.Ok)
 		{

@@ -6,7 +6,8 @@ public class RaycastHelper
 
 	public static bool RaycastAndDebugDraw(Vector3 origin, Vector3 direction, float maxDistance, int layerMask)
 	{
-		bool flag = Physics.Raycast(origin, direction, out var hitInfo, maxDistance, layerMask);
+		RaycastHit hitInfo;
+		bool flag = Physics.Raycast(origin, direction, out hitInfo, maxDistance, layerMask);
 		if (Application.isEditor)
 		{
 			if (flag)

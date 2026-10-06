@@ -1,5 +1,5 @@
 public enum State
 {
-	Hallway = 0,
-	Room = 1
+	Hallway,
+	Room
 }

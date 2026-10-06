@@ -51,7 +51,7 @@ public class SandboxAltar : MonoBehaviour, IAlter, IAlterOptions<bool>, IAlterOp
 			key = "altarType",
 			value = (int)altarType,
 			type = typeof(AltarType),
-			callback = (int value) =>
+			callback = delegate(int value)
 			{
 				if (value != (int)altarType)
 				{

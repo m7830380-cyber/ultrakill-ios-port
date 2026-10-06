@@ -41,7 +41,7 @@ public class FishConstraints : MonoBehaviour
 
 	private void OnDrawGizmos()
 	{
-		Bounds bounds = default;
+		Bounds bounds = default(Bounds);
 		if (restrictToColliderBounds != null)
 		{
 			Collider[] array = restrictToColliderBounds;

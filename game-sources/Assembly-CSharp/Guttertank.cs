@@ -380,7 +380,7 @@ public class Guttertank : EnemyScript, IHitTargetCallback
 				{
 					punchCooldown = ((difficulty == 1) ? 1 : 2);
 				}
-				if ((punchCooldown <= 0f) & flag2)
+				if (punchCooldown <= 0f && flag2)
 				{
 					Punch();
 				}
@@ -505,7 +505,7 @@ public class Guttertank : EnemyScript, IHitTargetCallback
 				nma.path = path;
 			}
 		}
-		if (walking | flag)
+		if (walking || flag)
 		{
 			if (Vector3.Distance(base.transform.position, walkTarget) < 1f || nma.path.status != NavMeshPathStatus.PathComplete)
 			{

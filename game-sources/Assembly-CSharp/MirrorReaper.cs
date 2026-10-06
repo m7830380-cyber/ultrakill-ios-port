@@ -516,7 +516,7 @@ public class MirrorReaper : EnemyScript
 		{
 			if (cowardPlayerTimer > 4f && IsTargetVisible())
 			{
-				attacksSinceModeChange++;
+				attacksSinceModeChange += 1f;
 				ProjectileBarrage();
 			}
 			if (flag)
@@ -529,7 +529,7 @@ public class MirrorReaper : EnemyScript
 			}
 			else if ((((float)sinceMeleeRange > 2f && num > 15f) || (float)sinceMeleeRange > 3f) && IsTargetVisible())
 			{
-				attacksSinceModeChange++;
+				attacksSinceModeChange += 1f;
 				ProjectileBarrage();
 			}
 		}
@@ -586,7 +586,7 @@ public class MirrorReaper : EnemyScript
 		{
 			SwingVertical();
 			previousMeleeAttack = MirrorReaperMelee.SwingVertical;
-			attacksSinceModeChange++;
+			attacksSinceModeChange += 1f;
 			return;
 		}
 		int num = Random.Range(1, 4);
@@ -607,7 +607,7 @@ public class MirrorReaper : EnemyScript
 			break;
 		}
 		previousMeleeAttack = (MirrorReaperMelee)num;
-		attacksSinceModeChange++;
+		attacksSinceModeChange += 1f;
 	}
 
 	private void PickRangedAttack()
@@ -639,7 +639,7 @@ public class MirrorReaper : EnemyScript
 				ProjectileBarrage();
 			}
 		}
-		attacksSinceModeChange++;
+		attacksSinceModeChange += 1f;
 	}
 
 	private void PrepAttack(bool ranged = false)

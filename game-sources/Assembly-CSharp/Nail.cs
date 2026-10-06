@@ -202,7 +202,7 @@ public class Nail : MonoBehaviour
 			if (currentHitEnemy != null && !currentHitEnemy.dead && currentMultiHitAmount > 0)
 			{
 				currentMultiHitAmount--;
-				hitAmount--;
+				hitAmount -= 1f;
 				DamageEnemy(hitTarget, currentHitEnemy);
 			}
 			if (currentHitEnemy == null || currentHitEnemy.dead || currentMultiHitAmount <= 0)
@@ -412,7 +412,7 @@ public class Nail : MonoBehaviour
 
 	public MagnetInfo GetTargetMagnet()
 	{
-		MagnetInfo result = default;
+		MagnetInfo result = default(MagnetInfo);
 		float num = float.PositiveInfinity;
 		PortalScene portalScene = null;
 		if (MonoSingleton<PortalManagerV2>.TryGetInstance(out PortalManagerV2 instance))
@@ -570,7 +570,7 @@ public class Nail : MonoBehaviour
 		{
 			sameEnemyHitCooldown = 0.15f;
 			currentHitEnemy = eidid.eid;
-			hitAmount--;
+			hitAmount -= 1f;
 		}
 		if (aud == null)
 		{

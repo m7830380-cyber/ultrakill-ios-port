@@ -217,7 +217,7 @@ public class StorageManager
 
 	public FileStat Stat(string name)
 	{
-		FileStat stat = default;
+		FileStat stat = default(FileStat);
 		Result result = Methods.Stat(MethodsPtr, name, ref stat);
 		if (result != Result.Ok)
 		{
@@ -228,7 +228,7 @@ public class StorageManager
 
 	public FileStat StatAt(int index)
 	{
-		FileStat stat = default;
+		FileStat stat = default(FileStat);
 		Result result = Methods.StatAt(MethodsPtr, index, ref stat);
 		if (result != Result.Ok)
 		{

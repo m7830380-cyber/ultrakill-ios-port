@@ -4,7 +4,7 @@ using UnityEngine.Events;
 [ConfigureSingleton(SingletonFlags.NoAutoInstance)]
 public class UnlockablesData : MonoSingleton<UnlockablesData>
 {
-	public UnityAction unlockableFound = () =>
+	public UnityAction unlockableFound = delegate
 	{
 	};
 

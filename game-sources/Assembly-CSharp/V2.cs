@@ -204,7 +204,7 @@ public class V2 : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 		new AlterOption<bool>
 		{
 			value = isEnraged,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				if (value)
 				{
@@ -502,7 +502,7 @@ public class V2 : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 					base.transform.rotation = Quaternion.RotateTowards(base.transform.rotation, targetRot, Time.deltaTime * 350f * eid.totalSpeedModifier);
 					bool flag = playerInSight && gc.onGround && !jumping;
 					bool flag2 = Vector3.Distance(base.transform.position, targetPos) > 20f || (difficulty <= 2 && MonoSingleton<NewMovement>.Instance.hp > 50 && Vector3.Distance(base.transform.position, targetPos) > 10f);
-					if ((base.transform.rotation == targetRot) & flag & flag2)
+					if (base.transform.rotation == targetRot && flag && flag2)
 					{
 						Slide();
 					}
@@ -1236,7 +1236,7 @@ public class V2 : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 		else
 		{
 			bool flag = Vector3.Distance(base.transform.position, targetPos) < 10f && difficulty <= 2;
-			Vector3 vector2 = ((!(slowMode | flag)) ? new Vector3(base.transform.forward.x * movementSpeed * Time.deltaTime * ((distancePatience >= 4f && !enraged) ? 3f : 2.5f), rb.velocity.y, base.transform.forward.z * movementSpeed * Time.deltaTime * ((distancePatience >= 4f && !enraged) ? 3f : 2.5f)) : new Vector3(base.transform.forward.x * movementSpeed * Time.deltaTime * 1.25f, rb.velocity.y, base.transform.forward.z * movementSpeed * Time.deltaTime * ((distancePatience >= 4f) ? 2f : 1.25f)));
+			Vector3 vector2 = ((!(slowMode || flag)) ? new Vector3(base.transform.forward.x * movementSpeed * Time.deltaTime * ((distancePatience >= 4f && !enraged) ? 3f : 2.5f), rb.velocity.y, base.transform.forward.z * movementSpeed * Time.deltaTime * ((distancePatience >= 4f && !enraged) ? 3f : 2.5f)) : new Vector3(base.transform.forward.x * movementSpeed * Time.deltaTime * 1.25f, rb.velocity.y, base.transform.forward.z * movementSpeed * Time.deltaTime * ((distancePatience >= 4f) ? 2f : 1.25f)));
 			Vector3 zero = Vector3.zero;
 			if ((vector2.x > 0f && rb.velocity.x < vector2.x) || (vector2.x < 0f && rb.velocity.x > vector2.x))
 			{
@@ -1370,7 +1370,7 @@ public class V2 : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 		{
 			num = 500f;
 		}
-		else if ((difficulty == 1) | flag)
+		else if (difficulty == 1 || flag)
 		{
 			num = 1000f;
 		}
@@ -1395,7 +1395,7 @@ public class V2 : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 			patternCooldown = Random.Range(0.5f, 1f);
 			if (num2 == 1)
 			{
-				closeRangePatience++;
+				closeRangePatience += 1f;
 			}
 			return;
 		}

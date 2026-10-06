@@ -22,7 +22,7 @@ public class MapBoolWatcher : MapVarWatcher<bool?>
 				Debug.LogError("Unable to register MapBoolWatcher. Missing map variable manager.");
 				return;
 			}
-			MonoSingleton<MapVarManager>.Instance.RegisterBoolWatcher(variableName, (bool val) =>
+			MonoSingleton<MapVarManager>.Instance.RegisterBoolWatcher(variableName, delegate(bool val)
 			{
 				ProcessEvent(val);
 			});

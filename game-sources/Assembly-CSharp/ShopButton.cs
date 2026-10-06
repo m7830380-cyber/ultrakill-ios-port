@@ -38,7 +38,7 @@ public class ShopButton : MonoBehaviour
 	{
 		if (deactivated)
 		{
-			PointerClickDeactivated?.Invoke();
+			this.PointerClickDeactivated?.Invoke();
 		}
 		else if (!failure)
 		{
@@ -61,12 +61,12 @@ public class ShopButton : MonoBehaviour
 			{
 				UnityEngine.Object.Instantiate(clickSound, base.transform.position, Quaternion.identity);
 			}
-			PointerClickSuccess?.Invoke();
+			this.PointerClickSuccess?.Invoke();
 		}
 		else if (failure && failSound != null)
 		{
 			UnityEngine.Object.Instantiate(failSound, base.transform.position, Quaternion.identity);
-			PointerClickFailure?.Invoke();
+			this.PointerClickFailure?.Invoke();
 		}
 	}
 }

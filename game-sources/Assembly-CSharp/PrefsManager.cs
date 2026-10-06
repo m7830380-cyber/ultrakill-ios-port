@@ -10,9 +10,9 @@ public class PrefsManager : MonoSingleton<PrefsManager>
 {
 	private enum PrefsCommitMode
 	{
-		Immediate = 0,
-		OnQuit = 1,
-		DirtySlowTick = 2
+		Immediate,
+		OnQuit,
+		DirtySlowTick
 	}
 
 	private static readonly plog.Logger Log = new plog.Logger("PrefsManager");
@@ -45,7 +45,7 @@ public class PrefsManager : MonoSingleton<PrefsManager>
 	{
 		{
 			"difficulty",
-			(object value) =>
+			delegate(object value)
 			{
 				if (!(value is int num))
 				{
@@ -62,7 +62,7 @@ public class PrefsManager : MonoSingleton<PrefsManager>
 		},
 		{
 			"cyberGrind.startingWave",
-			(object value) =>
+			delegate(object value)
 			{
 				Log.Info("Validating CyberGrindStartingWave");
 				if (!(value is int num))

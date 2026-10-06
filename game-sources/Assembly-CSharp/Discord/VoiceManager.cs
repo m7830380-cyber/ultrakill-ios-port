@@ -113,7 +113,7 @@ public class VoiceManager
 
 	public InputMode GetInputMode()
 	{
-		InputMode inputMode = default;
+		InputMode inputMode = default(InputMode);
 		Result result = Methods.GetInputMode(MethodsPtr, ref inputMode);
 		if (result != Result.Ok)
 		{

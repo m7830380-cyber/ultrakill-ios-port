@@ -173,7 +173,7 @@ public class Glass : MonoBehaviour, ITarget
 		data.position = cachedPos;
 		data.realPosition = cachedPos;
 		data.rotation = cachedRot;
-		data.velocity = default;
+		data.velocity = default(Vector3);
 	}
 
 	public void UpdateCachedTransformData()

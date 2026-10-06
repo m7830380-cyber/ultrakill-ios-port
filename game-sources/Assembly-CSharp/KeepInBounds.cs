@@ -6,10 +6,10 @@ public class KeepInBounds : MonoBehaviour
 	[Serializable]
 	private enum UpdateMode
 	{
-		None = 0,
-		Update = 1,
-		FixedUpdate = 2,
-		LateUpdate = 3
+		None,
+		Update,
+		FixedUpdate,
+		LateUpdate
 	}
 
 	[SerializeField]

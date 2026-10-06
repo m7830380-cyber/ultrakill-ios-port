@@ -1016,7 +1016,7 @@ public class EndlessGrid : MonoSingleton<EndlessGrid>
 						{
 							flag2 = SpawnUncommons(num5, num6);
 						}
-						if (flag | flag2)
+						if (flag || flag2)
 						{
 							if (uncommonAntiBuffer < 0f)
 							{
@@ -1030,14 +1030,14 @@ public class EndlessGrid : MonoSingleton<EndlessGrid>
 							{
 								uncommonAntiBuffer += ((prefabs.uncommonEnemies[num5].enemyType == EnemyType.Stalker || prefabs.uncommonEnemies[num5].enemyType == EnemyType.Idol || prefabs.uncommonEnemies[num4].enemyType == EnemyType.Deathcatcher) ? 1f : 0.5f);
 							}
-							num2 -= ((!(flag & flag2)) ? 1 : 2);
+							num2 -= ((!(flag && flag2)) ? 1 : 2);
 						}
 					}
 				}
 			}
 			else
 			{
-				uncommonAntiBuffer--;
+				uncommonAntiBuffer -= 1f;
 			}
 			if (currentWave > 15)
 			{
@@ -1176,7 +1176,7 @@ public class EndlessGrid : MonoSingleton<EndlessGrid>
 		float num2 = target.spawnCost;
 		if (target.spawnCost < 10)
 		{
-			num2++;
+			num2 += 1f;
 		}
 		if (target.spawnCost > 10)
 		{

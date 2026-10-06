@@ -56,7 +56,7 @@ public class ShadowCamera
 
 	public static Bounds CalculateGroupBounds(Renderer[] rends)
 	{
-		Bounds result = default;
+		Bounds result = default(Bounds);
 		foreach (Renderer renderer in rends)
 		{
 			result.Encapsulate(renderer.bounds);

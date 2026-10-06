@@ -5,38 +5,38 @@ public static class EasingFunction
 {
 	public enum Ease
 	{
-		EaseInQuad = 0,
-		EaseOutQuad = 1,
-		EaseInOutQuad = 2,
-		EaseInCubic = 3,
-		EaseOutCubic = 4,
-		EaseInOutCubic = 5,
-		EaseInQuart = 6,
-		EaseOutQuart = 7,
-		EaseInOutQuart = 8,
-		EaseInQuint = 9,
-		EaseOutQuint = 10,
-		EaseInOutQuint = 11,
-		EaseInSine = 12,
-		EaseOutSine = 13,
-		EaseInOutSine = 14,
-		EaseInExpo = 15,
-		EaseOutExpo = 16,
-		EaseInOutExpo = 17,
-		EaseInCirc = 18,
-		EaseOutCirc = 19,
-		EaseInOutCirc = 20,
-		Linear = 21,
-		Spring = 22,
-		EaseInBounce = 23,
-		EaseOutBounce = 24,
-		EaseInOutBounce = 25,
-		EaseInBack = 26,
-		EaseOutBack = 27,
-		EaseInOutBack = 28,
-		EaseInElastic = 29,
-		EaseOutElastic = 30,
-		EaseInOutElastic = 31
+		EaseInQuad,
+		EaseOutQuad,
+		EaseInOutQuad,
+		EaseInCubic,
+		EaseOutCubic,
+		EaseInOutCubic,
+		EaseInQuart,
+		EaseOutQuart,
+		EaseInOutQuart,
+		EaseInQuint,
+		EaseOutQuint,
+		EaseInOutQuint,
+		EaseInSine,
+		EaseOutSine,
+		EaseInOutSine,
+		EaseInExpo,
+		EaseOutExpo,
+		EaseInOutExpo,
+		EaseInCirc,
+		EaseOutCirc,
+		EaseInOutCirc,
+		Linear,
+		Spring,
+		EaseInBounce,
+		EaseOutBounce,
+		EaseInOutBounce,
+		EaseInBack,
+		EaseOutBack,
+		EaseInOutBack,
+		EaseInElastic,
+		EaseOutElastic,
+		EaseInOutElastic
 	}
 
 	public delegate float Function(float s, float e, float v);
@@ -75,7 +75,7 @@ public static class EasingFunction
 		{
 			return end * 0.5f * value * value + start;
 		}
-		value--;
+		value -= 1f;
 		return (0f - end) * 0.5f * (value * (value - 2f) - 1f) + start;
 	}
 
@@ -87,7 +87,7 @@ public static class EasingFunction
 
 	public static float EaseOutCubic(float start, float end, float value)
 	{
-		value--;
+		value -= 1f;
 		end -= start;
 		return end * (value * value * value + 1f) + start;
 	}
@@ -112,7 +112,7 @@ public static class EasingFunction
 
 	public static float EaseOutQuart(float start, float end, float value)
 	{
-		value--;
+		value -= 1f;
 		end -= start;
 		return (0f - end) * (value * value * value * value - 1f) + start;
 	}
@@ -137,7 +137,7 @@ public static class EasingFunction
 
 	public static float EaseOutQuint(float start, float end, float value)
 	{
-		value--;
+		value -= 1f;
 		end -= start;
 		return end * (value * value * value * value * value + 1f) + start;
 	}
@@ -192,7 +192,7 @@ public static class EasingFunction
 		{
 			return end * 0.5f * Mathf.Pow(2f, 10f * (value - 1f)) + start;
 		}
-		value--;
+		value -= 1f;
 		return end * 0.5f * (0f - Mathf.Pow(2f, -10f * value) + 2f) + start;
 	}
 
@@ -204,7 +204,7 @@ public static class EasingFunction
 
 	public static float EaseOutCirc(float start, float end, float value)
 	{
-		value--;
+		value -= 1f;
 		end -= start;
 		return end * Mathf.Sqrt(1f - value * value) + start;
 	}
@@ -232,18 +232,18 @@ public static class EasingFunction
 	{
 		value /= 1f;
 		end -= start;
-		if (value < 372f / 1023f)
+		if (value < 0.36363637f)
 		{
 			return end * (7.5625f * value * value) + start;
 		}
-		if (value < 744f / 1023f)
+		if (value < 0.72727275f)
 		{
-			value -= 558f / 1023f;
+			value -= 0.54545456f;
 			return end * (7.5625f * value * value + 0.75f) + start;
 		}
-		if ((double)value < 930.0 / 1023.0)
+		if ((double)value < 0.9090909090909091)
 		{
-			value -= 837f / 1023f;
+			value -= 0.8181818f;
 			return end * (7.5625f * value * value + 0.9375f) + start;
 		}
 		value -= 21f / 22f;
@@ -273,7 +273,7 @@ public static class EasingFunction
 	{
 		float num = 1.70158f;
 		end -= start;
-		value--;
+		value -= 1f;
 		return end * (value * value * ((num + 1f) * value + num) + 1f) + start;
 	}
 
@@ -316,7 +316,7 @@ public static class EasingFunction
 		{
 			num4 = num2 / (MathF.PI * 2f) * Mathf.Asin(end / num3);
 		}
-		return 0f - num3 * Mathf.Pow(2f, 10f * --value) * Mathf.Sin((value * num - num4) * (MathF.PI * 2f) / num2) + start;
+		return 0f - num3 * Mathf.Pow(2f, 10f * (value -= 1f)) * Mathf.Sin((value * num - num4) * (MathF.PI * 2f) / num2) + start;
 	}
 
 	public static float EaseOutElastic(float start, float end, float value)
@@ -372,9 +372,9 @@ public static class EasingFunction
 		}
 		if (value < 1f)
 		{
-			return -0.5f * (num3 * Mathf.Pow(2f, 10f * --value) * Mathf.Sin((value * num - num4) * (MathF.PI * 2f) / num2)) + start;
+			return -0.5f * (num3 * Mathf.Pow(2f, 10f * (value -= 1f)) * Mathf.Sin((value * num - num4) * (MathF.PI * 2f) / num2)) + start;
 		}
-		return num3 * Mathf.Pow(2f, -10f * --value) * Mathf.Sin((value * num - num4) * (MathF.PI * 2f) / num2) * 0.5f + end + start;
+		return num3 * Mathf.Pow(2f, -10f * (value -= 1f)) * Mathf.Sin((value * num - num4) * (MathF.PI * 2f) / num2) * 0.5f + end + start;
 	}
 
 	public static float LinearD(float start, float end, float value)
@@ -401,7 +401,7 @@ public static class EasingFunction
 		{
 			return end * value;
 		}
-		value--;
+		value -= 1f;
 		return end * (1f - value);
 	}
 
@@ -412,7 +412,7 @@ public static class EasingFunction
 
 	public static float EaseOutCubicD(float start, float end, float value)
 	{
-		value--;
+		value -= 1f;
 		end -= start;
 		return 3f * end * value * value;
 	}
@@ -436,7 +436,7 @@ public static class EasingFunction
 
 	public static float EaseOutQuartD(float start, float end, float value)
 	{
-		value--;
+		value -= 1f;
 		end -= start;
 		return -4f * end * value * value * value;
 	}
@@ -460,7 +460,7 @@ public static class EasingFunction
 
 	public static float EaseOutQuintD(float start, float end, float value)
 	{
-		value--;
+		value -= 1f;
 		end -= start;
 		return 5f * end * value * value * value * value;
 	}
@@ -513,7 +513,7 @@ public static class EasingFunction
 		{
 			return 3.465736f * end * Mathf.Pow(2f, 10f * (value - 1f));
 		}
-		value--;
+		value -= 1f;
 		return 3.465736f * end / Mathf.Pow(2f, 10f * value);
 	}
 
@@ -524,7 +524,7 @@ public static class EasingFunction
 
 	public static float EaseOutCircD(float start, float end, float value)
 	{
-		value--;
+		value -= 1f;
 		end -= start;
 		return (0f - end) * value / Mathf.Sqrt(1f - value * value);
 	}
@@ -552,18 +552,18 @@ public static class EasingFunction
 	{
 		value /= 1f;
 		end -= start;
-		if (value < 372f / 1023f)
+		if (value < 0.36363637f)
 		{
 			return 2f * end * 7.5625f * value;
 		}
-		if (value < 744f / 1023f)
+		if (value < 0.72727275f)
 		{
-			value -= 558f / 1023f;
+			value -= 0.54545456f;
 			return 2f * end * 7.5625f * value;
 		}
-		if ((double)value < 930.0 / 1023.0)
+		if ((double)value < 0.9090909090909091)
 		{
-			value -= 837f / 1023f;
+			value -= 0.8181818f;
 			return 2f * end * 7.5625f * value;
 		}
 		value -= 21f / 22f;
@@ -591,7 +591,7 @@ public static class EasingFunction
 	{
 		float num = 1.70158f;
 		end -= start;
-		value--;
+		value -= 1f;
 		return end * ((num + 1f) * value * value + 2f * value * ((num + 1f) * value + num));
 	}
 
@@ -652,10 +652,10 @@ public static class EasingFunction
 		}
 		if (value < 1f)
 		{
-			value--;
+			value -= 1f;
 			return -3.465736f * num3 * Mathf.Pow(2f, 10f * value) * Mathf.Sin(MathF.PI * 2f * (num * value - 2f) / num2) - num3 * MathF.PI * num * Mathf.Pow(2f, 10f * value) * Mathf.Cos(MathF.PI * 2f * (num * value - num4) / num2) / num2;
 		}
-		value--;
+		value -= 1f;
 		return num3 * MathF.PI * num * Mathf.Cos(MathF.PI * 2f * (num * value - num4) / num2) / (num2 * Mathf.Pow(2f, 10f * value)) - 3.465736f * num3 * Mathf.Sin(MathF.PI * 2f * (num * value - num4) / num2) / Mathf.Pow(2f, 10f * value);
 	}
 

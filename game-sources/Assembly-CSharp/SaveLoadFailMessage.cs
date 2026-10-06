@@ -8,8 +8,8 @@ public class SaveLoadFailMessage : MonoSingleton<SaveLoadFailMessage>
 {
 	public enum SaveLoadError
 	{
-		Generic = 0,
-		TempValidation = 1
+		Generic,
+		TempValidation
 	}
 
 	[SerializeField]

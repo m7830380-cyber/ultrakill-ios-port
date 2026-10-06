@@ -84,7 +84,7 @@ public class HookPoint : MonoBehaviour, IAlter, IAlterOptions<float>
 					key = "force",
 					name = "Force",
 					value = slingShotForce,
-					callback = (float value) =>
+					callback = delegate(float value)
 					{
 						slingShotForce = value;
 					},

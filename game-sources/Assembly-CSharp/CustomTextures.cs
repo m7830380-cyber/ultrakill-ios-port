@@ -9,11 +9,11 @@ public class CustomTextures : DirectoryTreeBrowser<FileInfo>
 {
 	private enum EditMode
 	{
-		None = 0,
-		Grid = 1,
-		Skybox = 2,
-		Emission = 3,
-		Fog = 4
+		None,
+		Grid,
+		Skybox,
+		Emission,
+		Fog
 	}
 
 	[SerializeField]
@@ -275,31 +275,31 @@ public class CustomTextures : DirectoryTreeBrowser<FileInfo>
 		}
 		if ((bool)gridBtn)
 		{
-			gridBtn.GetComponent<ShopButton>().PointerClickSuccess += () =>
+			gridBtn.GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetEditMode(1);
 			};
-			emissionBtn.GetComponent<ShopButton>().PointerClickSuccess += () =>
+			emissionBtn.GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetEditMode(3);
 			};
-			skyboxBtn.GetComponent<ShopButton>().PointerClickSuccess += () =>
+			skyboxBtn.GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetEditMode(2);
 			};
-			fogBtn.GetComponent<ShopButton>().PointerClickSuccess += () =>
+			fogBtn.GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetEditMode(4);
 			};
-			baseBtn.GetComponent<ShopButton>().PointerClickSuccess += () =>
+			baseBtn.GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetGridEditMode(0);
 			};
-			topRowBtn.GetComponent<ShopButton>().PointerClickSuccess += () =>
+			topRowBtn.GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetGridEditMode(2);
 			};
-			topBtn.GetComponent<ShopButton>().PointerClickSuccess += () =>
+			topBtn.GetComponent<ShopButton>().PointerClickSuccess += delegate
 			{
 				SetGridEditMode(1);
 			};
@@ -313,13 +313,13 @@ public class CustomTextures : DirectoryTreeBrowser<FileInfo>
 		Sprite sprite = Sprite.Create(texture2D, new Rect(0f, 0f, texture2D.width, texture2D.height), new Vector2(0.5f, 0.5f), 100f);
 		sprite.texture.filterMode = FilterMode.Point;
 		btn.GetComponent<Button>().onClick.RemoveAllListeners();
-		btn.GetComponent<Button>().onClick.AddListener(() =>
+		btn.GetComponent<Button>().onClick.AddListener(delegate
 		{
 			SetTexture(file.FullName);
 		});
 		btn.GetComponent<Image>().sprite = sprite;
 		btn.SetActive(value: true);
-		return () =>
+		return delegate
 		{
 			UnityEngine.Object.Destroy(btn);
 		};

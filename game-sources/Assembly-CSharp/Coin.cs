@@ -160,7 +160,7 @@ public class Coin : MonoBehaviour, ITarget
 			array[i].enabled = false;
 		}
 		env_lm = LayerMaskDefaults.Get(LMD.Environment);
-		empty_lm = default;
+		empty_lm = default(LayerMask);
 		vision = new Vision(base.transform.position, new VisionTypeFilter(TargetType.PLAYER, TargetType.COIN, TargetType.ENEMY, TargetType.EXPLOSIVE, TargetType.GLASS));
 		MonoSingleton<PortalManagerV2>.Instance.TargetTracker.RegisterVision(vision, base.destroyCancellationToken);
 		playerQuery = new VisionQuery("CoinPlayer", (TargetDataRef t) => t.target.Type == TargetType.PLAYER && !t.IsObstructed(base.transform.position, env_lm));
@@ -485,8 +485,9 @@ public class Coin : MonoBehaviour, ITarget
 			}
 			if (gameObject == null)
 			{
-				bool flag3 = vision.TrySee(enemyQuery, out var data3);
-				Vector3 vector = default;
+				TargetDataRef data3;
+				bool flag3 = vision.TrySee(enemyQuery, out data3);
+				Vector3 vector = default(Vector3);
 				PortalTraversalV2[] traversals3 = Array.Empty<PortalTraversalV2>();
 				bool flag4 = flag3 && data3.target.EID.enemyType == EnemyType.Geryon;
 				if (flag4)
@@ -790,7 +791,7 @@ public class Coin : MonoBehaviour, ITarget
 			gameObject3.SetActive(value: true);
 		}
 		hitTimes--;
-		if (hitTimes > 0 && ((altBeam == null) | flag7))
+		if (hitTimes > 0 && (altBeam == null || flag7))
 		{
 			Invoke("ReflectRevolver", 0.05f);
 			return;
@@ -874,8 +875,9 @@ public class Coin : MonoBehaviour, ITarget
 		scol.enabled = false;
 		UntrackCoin();
 		vision.UpdateSourcePos(base.transform.position);
-		bool flag3 = vision.TrySee(punchEnemyQuery, out var data);
-		Vector3 vector = default;
+		TargetDataRef data;
+		bool flag3 = vision.TrySee(punchEnemyQuery, out data);
+		Vector3 vector = default(Vector3);
 		PortalTraversalV2[] traversals = Array.Empty<PortalTraversalV2>();
 		bool flag4 = flag3 && data.target.EID.enemyType == EnemyType.Geryon;
 		if (flag4)
@@ -1012,7 +1014,7 @@ public class Coin : MonoBehaviour, ITarget
 				component3.shot = false;
 				if (component3.power < 5f || (!flag && !flag2))
 				{
-					component3.power++;
+					component3.power += 1f;
 				}
 				gameObject.name = "NewCoin+" + (component3.power - 2f);
 			}
@@ -1206,7 +1208,10 @@ public class Coin : MonoBehaviour, ITarget
 			Vector3 vector2 = ((customTarget != null) ? customTarget.GetVelocity() : ((!targetData.HasValue) ? MonoSingleton<PlayerTracker>.Instance.GetPlayerVelocity().normalized : targetData.Value.velocity));
 			vector -= vector2 * ((float)(3 - difficulty) / 1.5f);
 		}
-		Vector3 position = ((!PortalPhysicsV2.Raycast(base.transform.position, vector - base.transform.position, float.PositiveInfinity, env_lm, out var hitInfo, out var portalTraversals, out var endPoint)) ? endPoint : hitInfo.point);
+		PhysicsCastResult hitInfo;
+		PortalTraversalV2[] portalTraversals;
+		Vector3 endPoint;
+		Vector3 position = ((!PortalPhysicsV2.Raycast(base.transform.position, vector - base.transform.position, float.PositiveInfinity, env_lm, out hitInfo, out portalTraversals, out endPoint)) ? endPoint : hitInfo.point);
 		PhysicsCastResult hitInfo2;
 		if (customTarget == null || customTarget.isPlayer)
 		{

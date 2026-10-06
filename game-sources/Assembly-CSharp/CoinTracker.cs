@@ -68,7 +68,7 @@ public class CoinTracker : MonoSingleton<CoinTracker>
 			return;
 		}
 		revolverCoinsList.Add(coin);
-		coin.destroyCancellationToken.Register(() =>
+		coin.destroyCancellationToken.Register(delegate
 		{
 			RemoveCoin(coin);
 		});
@@ -141,7 +141,7 @@ public class CoinTracker : MonoSingleton<CoinTracker>
 				RegisterTargetToTracker(portalManagerV.TargetTracker, target, token);
 			}
 		}
-		token.Register(() =>
+		token.Register(delegate
 		{
 			targets.Remove(target);
 		});

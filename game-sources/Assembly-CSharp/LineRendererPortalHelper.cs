@@ -287,7 +287,7 @@ public class LineRendererPortalHelper : MonoBehaviour
 		FetchOriginalPoints();
 		bool num = traversals.Count > 0;
 		bool flag = useIntermediatePositionsAsOffsets && originalIntermediatePoints.Count > 0;
-		if (num | flag)
+		if (num || flag)
 		{
 			if (originalLineRenderer.enabled)
 			{

@@ -45,7 +45,7 @@ public class WaveSetter : MonoBehaviour
 		wm = GetComponentInParent<WaveMenu>();
 		if (TryGetComponent<ShopButton>(out shopButton))
 		{
-			shopButton.PointerClickSuccess += () =>
+			shopButton.PointerClickSuccess += delegate
 			{
 				Select();
 			};

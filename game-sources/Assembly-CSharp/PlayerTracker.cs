@@ -207,7 +207,7 @@ public class PlayerTracker : MonoSingleton<PlayerTracker>, ITarget
 
 	public void ChangeToPlatformer()
 	{
-		ChangeToPlatformer(false);
+		ChangeToPlatformer(ignorePreviousRotation: false);
 	}
 
 	public void ChangeToPlatformer(bool ignorePreviousRotation = false)

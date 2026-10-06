@@ -147,7 +147,7 @@ public class StatueBoss : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 		new AlterOption<bool>
 		{
 			value = enraged,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				if (value)
 				{
@@ -492,7 +492,7 @@ public class StatueBoss : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 					Tackle();
 				}
 			}
-			else if (rangedRecharge >= 1f && ((Vector3.Distance(base.transform.position, targetPlanePos) >= 9f) | flag))
+			else if (rangedRecharge >= 1f && (Vector3.Distance(base.transform.position, targetPlanePos) >= 9f || flag))
 			{
 				rangedRecharge = 0f;
 				inAction = true;

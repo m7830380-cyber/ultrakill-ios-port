@@ -251,7 +251,7 @@ public class AlwaysLookAtCamera : MonoBehaviour
 			num *= difficultySpeedMultiplier;
 		}
 		bool flag = (overrideTargetData.HasValue ? overrideTargetData.Value.target.isPlayer : target.isPlayer);
-		Transform transform = ((!((preferCameraOverHead || faceScreenInsteadOfCamera) & flag)) ? target.headTransform : MonoSingleton<CameraController>.Instance.cam.transform);
+		Transform transform = ((!((preferCameraOverHead || faceScreenInsteadOfCamera) && flag)) ? target.headTransform : MonoSingleton<CameraController>.Instance.cam.transform);
 		if (speed == 0f && useXAxis && useYAxis && useZAxis)
 		{
 			if (flag && ignoreScreenShake)

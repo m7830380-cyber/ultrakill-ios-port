@@ -423,7 +423,7 @@ public class Turret : EnemyScript
 		Vector3 targetPosition = (hasDimensionalTarget ? lastDimensionalTarget : eid.target.position);
 		bool flag = nma.isOnNavMesh && nma.CalculatePath(targetPosition, tempPath) && tempPath.status == NavMeshPathStatus.PathComplete;
 		Vector3 pos;
-		if ((!wandering && !hasVision) & flag)
+		if (!wandering && !hasVision && flag)
 		{
 			nma.path = tempPath;
 		}
@@ -804,7 +804,9 @@ public class Turret : EnemyScript
 				PortalHandle portalHandle = portalTraversalV.portalHandle;
 				Portal portalObject = portalTraversalV.portalObject;
 				direction = scene.GetTravelMatrix(portalTraversals).MultiplyVector(direction);
-				bool num = PortalPhysicsV2.Raycast(barrelPos, direction, distance - barrelOffSetDist, default(LayerMask), out var hitInfo2, out var portalTraversals2, out endPoint);
+				PhysicsCastResult hitInfo2;
+				PortalTraversalV2[] portalTraversals2;
+				bool num = PortalPhysicsV2.Raycast(barrelPos, direction, distance - barrelOffSetDist, default(LayerMask), out hitInfo2, out portalTraversals2, out endPoint);
 				array = portalTraversals2;
 				vector = (num ? hitInfo2.point : endPoint);
 				isBarrelPortalBlocked = !portalObject.GetTravelFlags(portalHandle.side).HasFlag(PortalTravellerFlags.EnemyProjectile);

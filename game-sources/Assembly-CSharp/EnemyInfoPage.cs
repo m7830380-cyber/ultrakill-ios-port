@@ -87,7 +87,7 @@ public class EnemyInfoPage : ListComponent<EnemyInfoPage>
 			if (num2)
 			{
 				gameObject.GetComponentInChildren<ShopButton>().deactivated = false;
-				gameObject.GetComponentInChildren<Button>().onClick.AddListener(() =>
+				gameObject.GetComponentInChildren<Button>().onClick.AddListener(delegate
 				{
 					currentSpawnable = spawnableObject;
 					DisplayInfo(spawnableObject);

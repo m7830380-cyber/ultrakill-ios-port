@@ -279,7 +279,7 @@ public class BloodCheckerManager : MonoSingleton<BloodCheckerManager>
 		{
 			bool flag2 = pond.bloodFillAmount <= 0.001f;
 			pondToDoEntry.transform.GetChild(0).gameObject.SetActive(flag2);
-			flag &= flag2;
+			flag = flag && flag2;
 		}
 		int num = trackedRooms.IndexOf(roomToCheck);
 		flag &= roomLitterCounts[num] == 0;

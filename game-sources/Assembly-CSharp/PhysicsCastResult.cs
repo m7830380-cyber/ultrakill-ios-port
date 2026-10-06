@@ -23,7 +23,7 @@ public struct PhysicsCastResult : IComparable<PhysicsCastResult>, IEquatable<Phy
 	{
 		distance = hit.distance;
 		point = hit.point;
-		direction = default;
+		direction = default(Vector3);
 		normal = hit.normal;
 		transform = hit.transform;
 		collider = hit.collider;
@@ -36,7 +36,7 @@ public struct PhysicsCastResult : IComparable<PhysicsCastResult>, IEquatable<Phy
 		{
 			distance = float.MaxValue,
 			point = Vector3.zero,
-			direction = default,
+			direction = default(Vector3),
 			normal = Vector3.zero,
 			transform = null,
 			collider = null,
@@ -50,7 +50,7 @@ public struct PhysicsCastResult : IComparable<PhysicsCastResult>, IEquatable<Phy
 		{
 			distance = hit.distance,
 			point = hit.point,
-			direction = default,
+			direction = default(Vector3),
 			normal = hit.normal,
 			transform = hit.transform,
 			collider = hit.collider,
@@ -64,7 +64,7 @@ public struct PhysicsCastResult : IComparable<PhysicsCastResult>, IEquatable<Phy
 		{
 			distance = Vector3.Distance(start, end),
 			point = end,
-			direction = default,
+			direction = default(Vector3),
 			normal = Vector3.zero,
 			transform = null,
 			collider = null,
@@ -78,7 +78,7 @@ public struct PhysicsCastResult : IComparable<PhysicsCastResult>, IEquatable<Phy
 		{
 			distance = 0f,
 			point = col.transform.position,
-			direction = default,
+			direction = default(Vector3),
 			normal = Vector3.zero,
 			transform = col.transform,
 			collider = col,

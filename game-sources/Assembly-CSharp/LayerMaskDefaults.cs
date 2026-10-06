@@ -9,7 +9,7 @@ public static class LayerMaskDefaults
 
 	public static LayerMask Get(LMD lmd)
 	{
-		LayerMask layerMask = default;
+		LayerMask layerMask = default(LayerMask);
 		switch (lmd)
 		{
 		case LMD.Enemies:

@@ -99,7 +99,7 @@ public static class SandboxUtils
 				spawnableInstance = component3.GetComponentInParent<SpawnableInstance>();
 			}
 		}
-		if (spawnableInstance != null && spawnableInstance.enabled && spawnableInstance.collider != null && (!spawnableInstance.disallowManipulation | ignoreManipulationBlock))
+		if (spawnableInstance != null && spawnableInstance.enabled && spawnableInstance.collider != null && (!spawnableInstance.disallowManipulation || ignoreManipulationBlock))
 		{
 			return spawnableInstance;
 		}

@@ -57,7 +57,7 @@ public static class SpawnableObjectExtensions
 		{
 			orAddComponent.Pause();
 		}
-		if (!flag & newSizing)
+		if (!flag && newSizing)
 		{
 			orAddComponent.SetSize(saved.Scale.ToVector3());
 		}

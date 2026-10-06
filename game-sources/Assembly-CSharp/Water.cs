@@ -17,12 +17,12 @@ public class Water : MonoBehaviour
 
 	public enum WaterGOType
 	{
-		none = 0,
-		small = 1,
-		big = 2,
-		continuous = 3,
-		bubble = 4,
-		wetparticle = 5
+		none,
+		small,
+		big,
+		continuous,
+		bubble,
+		wetparticle
 	}
 
 	private Dictionary<Collider, WaterObject> tracked = new Dictionary<Collider, WaterObject>();

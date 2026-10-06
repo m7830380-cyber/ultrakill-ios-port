@@ -335,7 +335,7 @@ public class ShotgunHammer : MonoBehaviour
 			tierDownTimer = 0f;
 		}
 		meter.GetPropertyBlock(block, 1);
-		if ((tier != num) | forceUpdateTexture)
+		if (tier != num || forceUpdateTexture)
 		{
 			block.SetTexture("_EmissiveTex", meterEmissives[num]);
 			tier = num;

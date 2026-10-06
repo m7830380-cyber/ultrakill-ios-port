@@ -25,7 +25,7 @@ public class MapFloatWatcher : MapVarWatcher<float?>
 				Debug.LogError("Unable to register MapFloatWatcher. Missing map variable manager.");
 				return;
 			}
-			MonoSingleton<MapVarManager>.Instance.RegisterFloatWatcher(variableName, (float val) =>
+			MonoSingleton<MapVarManager>.Instance.RegisterFloatWatcher(variableName, delegate(float val)
 			{
 				ProcessEvent(val);
 			});

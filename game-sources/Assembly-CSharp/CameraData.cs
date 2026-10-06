@@ -167,7 +167,7 @@ public struct CameraData
 		data.Forward = math.rotate(rot, new float3(0f, 0f, 1f));
 		data.Up = math.rotate(rot, new float3(0f, 1f, 0f));
 		data.cullingMask = cullingMask;
-		data.CullingMatrix = default;
+		data.CullingMatrix = default(float4x4);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -175,11 +175,11 @@ public struct CameraData
 	internal static void CalculateObliqueMatrix_0024BurstManaged(in float4x4 projection, in float4 clipPlane, out float4x4 obliqueMatrix)
 	{
 		float4 y = new float4((math.sign(clipPlane.x) + projection.c2.x) / projection.c0.x, (math.sign(clipPlane.y) + projection.c2.y) / projection.c1.y, -1f, (1f + projection.c2.z) / projection.c3.z);
-		float4 float5 = clipPlane * (2f / math.dot(clipPlane, y));
+		float4 @float = clipPlane * (2f / math.dot(clipPlane, y));
 		obliqueMatrix = projection;
-		obliqueMatrix.c0.z = float5.x;
-		obliqueMatrix.c1.z = float5.y;
-		obliqueMatrix.c2.z = float5.z + 1f;
-		obliqueMatrix.c3.z = float5.w;
+		obliqueMatrix.c0.z = @float.x;
+		obliqueMatrix.c1.z = @float.y;
+		obliqueMatrix.c2.z = @float.z + 1f;
+		obliqueMatrix.c3.z = @float.w;
 	}
 }

@@ -334,7 +334,7 @@ public class HookArm : MonoSingleton<HookArm>
 				{
 					Vector3 worldPoint = vector5 + normalized * num3;
 					worldPoint = ClampToPortalBounds(portalObject, side, worldPoint, out var wasClamped);
-					if ((wasClamped & allowMigration) && TryMigrateToAdjacentPortal(num, vector5, normalized, num3))
+					if (wasClamped && allowMigration && TryMigrateToAdjacentPortal(num, vector5, normalized, num3))
 					{
 						RecalculateThrowingIntersections(allowMigration: false);
 						return;
@@ -386,11 +386,11 @@ public class HookArm : MonoSingleton<HookArm>
 					Vector3 vector6 = vector5 + normalized * num3;
 					bool wasClamped = false;
 					Vector3 vector7 = ClampToPortalBounds(portalObject, side, vector6, out wasClamped);
-					if ((wasClamped & allowMigration) && TryMigrateToAdjacentPortal(num, vector5, normalized, num3))
+					if (wasClamped && allowMigration && TryMigrateToAdjacentPortal(num, vector5, normalized, num3))
 					{
 						return RecalculatePortalIntersections(allowMigration: false);
 					}
-					if ((wasClamped & flag) && (num != 0 || !(Vector3.Distance(position, value.entrancePoint) < 5f)))
+					if (wasClamped && flag && (num != 0 || !(Vector3.Distance(position, value.entrancePoint) < 5f)))
 					{
 						float num4 = Vector3.Distance(vector6, vector7);
 						float boundingRadius = portalObject.GetShape().GetBoundingRadius();

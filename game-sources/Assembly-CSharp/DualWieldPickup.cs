@@ -20,7 +20,7 @@ public class DualWieldPickup : MonoBehaviour, IAlter, IAlterOptions<float>, IAlt
 			name = "Juice",
 			key = "juice",
 			value = juiceAmount,
-			callback = (float value) =>
+			callback = delegate(float value)
 			{
 				juiceAmount = value;
 			},
@@ -40,7 +40,7 @@ public class DualWieldPickup : MonoBehaviour, IAlter, IAlterOptions<float>, IAlt
 			name = "Infinite Uses",
 			key = "infinite-uses",
 			value = infiniteUses,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				infiniteUses = value;
 			}

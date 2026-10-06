@@ -145,7 +145,7 @@ public class BloodstainParent : MonoBehaviour
 				int num = children[i];
 				bsm.parentOfStain[num] = -1;
 				bsm.indexInParentList[num] = -1;
-				bsm.props[num] = default;
+				bsm.props[num] = default(BloodsplatterManager.InstanceProperties);
 			}
 			if (bsm.usedComputeShadersAtStart)
 			{

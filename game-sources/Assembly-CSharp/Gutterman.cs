@@ -173,7 +173,7 @@ public class Gutterman : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 		new AlterOption<bool>
 		{
 			value = isEnraged,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				if (value)
 				{
@@ -190,7 +190,7 @@ public class Gutterman : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 		new AlterOption<bool>
 		{
 			value = eternalRage,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				eternalRage = value;
 			},
@@ -742,7 +742,8 @@ public class Gutterman : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 			firing = true;
 			Vector3 vector = base.transform.position + Vector3.up + base.transform.forward * 3f;
 			Vector3 vector2 = lastTargetData.headPosition - vector;
-			PhysicsCastResult[] array = PortalPhysicsV2.RaycastAll(vector, vector2.normalized, vector2.magnitude, LayerMaskDefaults.Get(LMD.Enemies), out var _, QueryTriggerInteraction.Ignore);
+			PortalTraversalV2[] portalTraversals;
+			PhysicsCastResult[] array = PortalPhysicsV2.RaycastAll(vector, vector2.normalized, vector2.magnitude, LayerMaskDefaults.Get(LMD.Enemies), out portalTraversals, QueryTriggerInteraction.Ignore);
 			for (int i = 0; i < array.Length; i++)
 			{
 				if (!FiringEnemyCheck(array[i]))

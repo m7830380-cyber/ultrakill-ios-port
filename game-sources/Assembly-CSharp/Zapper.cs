@@ -212,7 +212,8 @@ public class Zapper : MonoBehaviour
 			charge = Mathf.MoveTowards(charge, 5f, Time.deltaTime);
 			aud.SetPitch(1f + charge / 5f);
 			float t = charge % (0.25f / (charge / 4f)) * charge;
-			Vector3 positionAlongCable = GetPositionAlongCable(t, out var segmentStart);
+			Vector3 segmentStart;
+			Vector3 positionAlongCable = GetPositionAlongCable(t, out segmentStart);
 			lightningPulseOrb.position = positionAlongCable;
 			pulseLine.SetPosition(0, positionAlongCable);
 			pulseLine.SetPosition(1, segmentStart);
@@ -451,7 +452,7 @@ public class Zapper : MonoBehaviour
 			{
 				Vector3 worldPoint = vector2 + normalized * num3;
 				worldPoint = ClampToPortalBounds(portalObject, side, worldPoint, out var wasClamped);
-				if ((wasClamped & allowMigration) && TryMigrateToAdjacentPortal(i, vector2, normalized, num3))
+				if (wasClamped && allowMigration && TryMigrateToAdjacentPortal(i, vector2, normalized, num3))
 				{
 					RecalculatePortalIntersections(allowMigration: false);
 					return;

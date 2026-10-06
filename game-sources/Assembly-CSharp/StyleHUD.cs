@@ -353,7 +353,8 @@ public class StyleHUD : MonoSingleton<StyleHUD>
 			}
 			if ((bool)gc.currentWeapon)
 			{
-				bool flag = weaponFreshness.TryGetValue(gc.currentWeapon, out var value);
+				float value;
+				bool flag = weaponFreshness.TryGetValue(gc.currentWeapon, out value);
 				if (!flag)
 				{
 					Debug.LogWarning("Current weapon not in StyleHUD weaponFreshness dict!!!");

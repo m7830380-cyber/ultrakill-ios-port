@@ -43,11 +43,11 @@ public class PuzzlePanel : MonoBehaviour
 		{
 			pointer = base.gameObject.AddComponent<ControllerPointer>();
 		}
-		pointer.OnEnter.AddListener(() =>
+		pointer.OnEnter.AddListener(delegate
 		{
 			pc.Hovered(this);
 		});
-		pointer.OnPressed.AddListener(() =>
+		pointer.OnPressed.AddListener(delegate
 		{
 			pc.Clicked(this);
 		});

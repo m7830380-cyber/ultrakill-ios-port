@@ -176,12 +176,12 @@ public class ObjectActivator : MonoBehaviour
 
 	public void Activate()
 	{
-		Activate(false);
+		Activate(ignoreDisabled: false);
 	}
 
 	public void Activate(bool ignoreDisabled = false)
 	{
-		if ((base.gameObject.activeSelf | ignoreDisabled) && (!activated || !oneTime) && (!onlyIfPlayerIsAlive || !playerDead) && (!notIfEnemiesDisabled || !DisableEnemySpawns.DisableArenaTriggers) && (!obac || obac.readyToActivate))
+		if ((base.gameObject.activeSelf || ignoreDisabled) && (!activated || !oneTime) && (!onlyIfPlayerIsAlive || !playerDead) && (!notIfEnemiesDisabled || !DisableEnemySpawns.DisableArenaTriggers) && (!obac || obac.readyToActivate))
 		{
 			activating = false;
 			activated = true;

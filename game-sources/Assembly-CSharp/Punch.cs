@@ -575,7 +575,7 @@ public class Punch : MonoBehaviour
 					Projectile projectile = ppz.CheckParryZone();
 					if (projectile != null)
 					{
-						bool flag2 = !alreadyBoostedProjectile & firstFrame;
+						bool flag2 = !alreadyBoostedProjectile && firstFrame;
 						if (!list.Contains(projectile.transform) && !projectile.unparryable && !projectile.undeflectable && (flag2 || !projectile.playerBullet))
 						{
 							ParryProjectile(projectile);
@@ -862,7 +862,7 @@ public class Punch : MonoBehaviour
 		{
 			target = component.target;
 		}
-		if (target.TryGetComponent<Projectile>(out var component2) && !component2.unparryable && !component2.undeflectable && ((!alreadyBoostedProjectile & canProjectileBoost) || !component2.playerBullet))
+		if (target.TryGetComponent<Projectile>(out var component2) && !component2.unparryable && !component2.undeflectable && ((!alreadyBoostedProjectile && canProjectileBoost) || !component2.playerBullet))
 		{
 			ParryProjectile(component2);
 			hitSomething = true;

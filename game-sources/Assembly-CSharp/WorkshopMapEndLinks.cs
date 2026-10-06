@@ -67,10 +67,10 @@ public class WorkshopMapEndLinks : MonoSingleton<WorkshopMapEndLinks>
 	{
 		return platform switch
 		{
-			LinkPlatform.YouTube => new Color(1f, 112f / 255f, 112f / 255f), 
-			LinkPlatform.Twitch => new Color(144f / 255f, 89f / 255f, 246f / 255f), 
-			LinkPlatform.Twitter => new Color(160f / 255f, 218f / 255f, 1f), 
-			LinkPlatform.Steam => new Color(154f / 255f, 165f / 255f, 209f / 255f), 
+			LinkPlatform.YouTube => new Color(1f, 0.4392157f, 0.4392157f), 
+			LinkPlatform.Twitch => new Color(48f / 85f, 0.34901962f, 82f / 85f), 
+			LinkPlatform.Twitter => new Color(32f / 51f, 0.85490197f, 1f), 
+			LinkPlatform.Steam => new Color(0.6039216f, 0.64705884f, 0.81960785f), 
 			LinkPlatform.SoundCloud => new Color(1f, 0.7f, 0.47f), 
 			LinkPlatform.KoFi => new Color(0.65f, 0.95f, 1f), 
 			LinkPlatform.Patreon => new Color(1f, 0.6f, 0.44f), 

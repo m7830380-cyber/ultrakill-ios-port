@@ -6,8 +6,8 @@ public class WaveCustomSetter : MonoBehaviour
 {
 	public enum ButtonState
 	{
-		Selected = 0,
-		Unselected = 1
+		Selected,
+		Unselected
 	}
 
 	private int _wave;
@@ -84,16 +84,16 @@ public class WaveCustomSetter : MonoBehaviour
 		wm = GetComponentInParent<WaveMenu>();
 		if (TryGetComponent<ShopButton>(out shopButton))
 		{
-			shopButton.PointerClickSuccess += () =>
+			shopButton.PointerClickSuccess += delegate
 			{
 				Select();
 			};
 		}
-		increaseShopButton.PointerClickSuccess += () =>
+		increaseShopButton.PointerClickSuccess += delegate
 		{
 			IncreaseWave();
 		};
-		decreaseShopButton.PointerClickSuccess += () =>
+		decreaseShopButton.PointerClickSuccess += delegate
 		{
 			DecreaseWave();
 		};

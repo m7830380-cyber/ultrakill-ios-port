@@ -6,10 +6,10 @@ public class EnemySimplifier : MonoBehaviour
 {
 	public enum MaterialState
 	{
-		normal = 0,
-		simplified = 1,
-		enraged = 2,
-		enragedSimplified = 3
+		normal,
+		simplified,
+		enraged,
+		enragedSimplified
 	}
 
 	public bool neverOutlineAndRemoveSimplifier;
@@ -299,7 +299,7 @@ public class EnemySimplifier : MonoBehaviour
 				obj.SetFloat("_ForceOutlineBehind", 0f);
 			}
 		}
-		if (flag4 | flag)
+		if (flag4 || flag)
 		{
 			meshrenderer.GetPropertyBlock(propBlock);
 			propBlock.SetFloat(HasSandBuff, flag2 ? 1 : 0);

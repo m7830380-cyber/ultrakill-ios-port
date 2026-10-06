@@ -22,7 +22,7 @@ public class BrushBlock : SandboxProp, IAlter, IAlterOptions<Vector3>
 			name = "Size",
 			key = null,
 			value = DataSize,
-			callback = (Vector3 value) =>
+			callback = delegate(Vector3 value)
 			{
 				DataSize = value;
 				float b = 10000f;

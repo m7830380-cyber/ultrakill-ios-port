@@ -438,7 +438,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 		{
 			name = "Boss Health Bar",
 			key = "health-bar",
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				BossBar(value);
 			},
@@ -448,7 +448,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 		{
 			name = "Sandified",
 			key = "sandified",
-			callback = ((!puppet) ? ((Action<bool>)((bool value) =>
+			callback = ((!puppet) ? ((Action<bool>)delegate(bool value)
 			{
 				if (value)
 				{
@@ -458,14 +458,14 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 				{
 					Desandify();
 				}
-			})) : null),
+			}) : null),
 			value = sandified
 		},
 		new AlterOption<bool>
 		{
 			name = "Puppeted",
 			key = "puppeted",
-			callback = ((!puppet || (IsSandboxEnemy && !permaPuppet)) ? ((Action<bool>)((bool value) =>
+			callback = ((!puppet || (IsSandboxEnemy && !permaPuppet)) ? ((Action<bool>)delegate(bool value)
 			{
 				if (value && !puppet)
 				{
@@ -475,7 +475,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 				{
 					TryUnPuppet();
 				}
-			})) : null),
+			}) : null),
 			tooltip = (permaPuppet ? "This enemy cannot be un-puppeteered " : ((puppet && !IsSandboxEnemy) ? "Un-puppeteering is not supported for non-sandbox enemies" : null)),
 			value = puppet
 		},
@@ -483,7 +483,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 		{
 			name = "Ignore Player",
 			key = "ignorePlayer",
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				ignorePlayer = value;
 			},
@@ -493,7 +493,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 		{
 			name = "Attack Enemies",
 			key = "attackEnemies",
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				attackEnemies = value;
 			},
@@ -1265,7 +1265,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 				float multiplier3 = multiplier;
 				GameObject sourceWeapon2 = sourceWeapon;
 				bool fromExplosion2 = fromExplosion;
-				enemy2.GetHurt(obj2, force, multiplier3, critMultiplier, default, sourceWeapon2, fromExplosion2);
+				enemy2.GetHurt(obj2, force, multiplier3, critMultiplier, default(Vector3), sourceWeapon2, fromExplosion2);
 				if (tryForExplode && zombie.health <= 0f && !exploded)
 				{
 					Explode(fromExplosion);
@@ -1292,7 +1292,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 				float multiplier2 = multiplier;
 				GameObject sourceWeapon2 = sourceWeapon;
 				bool fromExplosion2 = fromExplosion;
-				enemy.GetHurt(obj, force, multiplier2, critMultiplier, default, sourceWeapon2, fromExplosion2);
+				enemy.GetHurt(obj, force, multiplier2, critMultiplier, default(Vector3), sourceWeapon2, fromExplosion2);
 				if (tryForExplode && machine.health <= 0f && (machine.symbiote == null || machine.symbiote.health <= 0f) && !machine.dontDie && !exploded)
 				{
 					Explode(fromExplosion);
@@ -1340,7 +1340,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 			{
 				if (stuckMagnet != null)
 				{
-					stuckMagnet.health--;
+					stuckMagnet.health -= 1f;
 				}
 			}
 		}
@@ -2661,7 +2661,7 @@ public class EnemyIdentifier : MonoBehaviour, IAlter, IAlterOptions<bool>, IEnem
 				bossHealthBar.secondaryBar = true;
 				break;
 			case EnemyType.FleshPanopticon:
-				bossHealthBar.SetSecondaryBarColor(new Color(1f, 192f / 255f, 0f));
+				bossHealthBar.SetSecondaryBarColor(new Color(1f, 64f / 85f, 0f));
 				bossHealthBar.secondaryBar = true;
 				break;
 			}

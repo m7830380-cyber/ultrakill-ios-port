@@ -18,5 +18,5 @@ public enum VertexAttributeUsage : uint
 	TexCoord7 = 0x800u,
 	BlendWeight = 0x1000u,
 	BlendIndices = 0x2000u,
-	BoneWeights = BlendWeight | BlendIndices
+	BoneWeights = 0x3000u
 }

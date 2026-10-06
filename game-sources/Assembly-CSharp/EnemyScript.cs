@@ -135,10 +135,10 @@ public class EnemyScript : MonoBehaviour
 	{
 		Portal portalObject = PortalUtils.GetPortalObject(handle);
 		NativePortalTransform nativePortalTransform = portalObject.GetTransform(handle.side);
-		float3 float5 = nativePortalTransform.center + nativePortalTransform.back;
+		float3 @float = nativePortalTransform.center + nativePortalTransform.back;
 		PlaneShape planeShape = (PlaneShape)(object)portalObject.shape;
 		float maxDistance = Mathf.Max(planeShape.height, planeShape.width);
-		if (NavMesh.SamplePosition(float5, out var hit, maxDistance, nma.areaMask))
+		if (NavMesh.SamplePosition(@float, out var hit, maxDistance, nma.areaMask))
 		{
 			nma.SetDestination(hit.position);
 		}

@@ -193,13 +193,13 @@ public class MusicManager : MonoSingleton<MusicManager>
 		}
 		else
 		{
-			requestedThemes++;
+			requestedThemes += 1f;
 		}
 	}
 
 	public void PlayCleanMusic()
 	{
-		requestedThemes--;
+		requestedThemes -= 1f;
 		if (requestedThemes <= 0f && !arenaMode)
 		{
 			requestedThemes = 0f;
@@ -269,7 +269,7 @@ public class MusicManager : MonoSingleton<MusicManager>
 		else if (requestedThemes <= 0f)
 		{
 			falseStartToken = true;
-			requestedThemes++;
+			requestedThemes += 1f;
 		}
 	}
 

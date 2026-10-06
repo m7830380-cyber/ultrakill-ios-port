@@ -525,7 +525,7 @@ public class Streetcleaner : EnemyScript
 			dodging = true;
 			bool num = Physics.Raycast(base.transform.position + Vector3.up, base.transform.right, 5f, enviroMask, QueryTriggerInteraction.Ignore);
 			bool flag = Physics.Raycast(base.transform.position + Vector3.up, base.transform.right * -1f, 5f, enviroMask, QueryTriggerInteraction.Ignore);
-			if (num & flag)
+			if (num && flag)
 			{
 				base.transform.LookAt(base.transform.position + base.transform.right * ((!(Random.Range(0f, 1f) > 0.5f)) ? 1 : (-1)));
 			}
@@ -602,7 +602,7 @@ public class Streetcleaner : EnemyScript
 
 	public override EnemyMovementData GetSpeed(int difficulty)
 	{
-		EnemyMovementData result = default;
+		EnemyMovementData result = default(EnemyMovementData);
 		switch (difficulty)
 		{
 		case 4:

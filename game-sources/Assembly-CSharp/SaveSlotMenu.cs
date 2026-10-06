@@ -62,11 +62,11 @@ public class SaveSlotMenu : MonoBehaviour
 			newRow.slotIndex = i;
 			newRow.gameObject.SetActive(value: true);
 			UpdateSlotState(newRow, array[i]);
-			newRow.selectButton.onClick.AddListener(() =>
+			newRow.selectButton.onClick.AddListener(delegate
 			{
 				SelectSlot(newRow.slotIndex);
 			});
-			newRow.deleteButton.onClick.AddListener(() =>
+			newRow.deleteButton.onClick.AddListener(delegate
 			{
 				ClearSlot(newRow.slotIndex);
 			});

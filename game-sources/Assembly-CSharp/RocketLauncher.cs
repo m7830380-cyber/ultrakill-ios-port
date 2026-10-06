@@ -197,7 +197,7 @@ public class RocketLauncher : MonoBehaviour
 				}
 				if (lastKnownTimerAmount != MonoSingleton<WeaponCharges>.Instance.rocketCannonballCharge && (!wid || wid.delay == 0f))
 				{
-					for (float num2 = 4f; num2 > 0f; num2--)
+					for (float num2 = 4f; num2 > 0f; num2 -= 1f)
 					{
 						if (MonoSingleton<WeaponCharges>.Instance.rocketCannonballCharge >= num2 / 4f && lastKnownTimerAmount < num2 / 4f)
 						{
@@ -280,7 +280,7 @@ public class RocketLauncher : MonoBehaviour
 			}
 			if (lastKnownTimerAmount != MonoSingleton<WeaponCharges>.Instance.rocketFreezeTime && (!wid || wid.delay == 0f))
 			{
-				for (float num3 = 4f; num3 > 0f; num3--)
+				for (float num3 = 4f; num3 > 0f; num3 -= 1f)
 				{
 					if (MonoSingleton<WeaponCharges>.Instance.rocketFreezeTime / 5f >= num3 / 4f && lastKnownTimerAmount / 5f < num3 / 4f)
 					{
@@ -459,7 +459,7 @@ public class RocketLauncher : MonoBehaviour
 		anim.SetTrigger("Fire");
 		cooldown = rateOfFire;
 		Vector3 vector2 = position + forward;
-		Quaternion quaternion2 = base.transform.rotation;
+		Quaternion quaternion = base.transform.rotation;
 		Matrix4x4? matrix4x = null;
 		PortalPhysicsV2.Raycast(position, forward, 1f, LayerMaskDefaults.Get(LMD.Environment), out hitInfo, out var portalTraversals2, out endPoint);
 		if (portalTraversals2.Length != 0)
@@ -467,7 +467,7 @@ public class RocketLauncher : MonoBehaviour
 			if (portalTraversals2.AllHasFlag(PortalTravellerFlags.PlayerProjectile, out var blocked))
 			{
 				Matrix4x4 travelMatrix2 = PortalUtils.GetTravelMatrix(portalTraversals2);
-				quaternion2 = travelMatrix2.rotation * quaternion2;
+				quaternion = travelMatrix2.rotation * quaternion;
 				vector2 = travelMatrix2.MultiplyPoint3x4(vector2);
 				matrix4x = travelMatrix2;
 			}
@@ -476,10 +476,10 @@ public class RocketLauncher : MonoBehaviour
 				PortalTraversalV2 portalTraversalV = portalTraversals2[0];
 				NativePortalTransform nativePortalTransform = portalTraversalV.portalObject.GetTransform(portalTraversalV.portalHandle.side);
 				vector2 = nativePortalTransform.GetPositionInFront(portalTraversalV.entrancePoint, 0.01f);
-				quaternion2 = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
+				quaternion = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
 			}
 		}
-		Rigidbody rigidbody = Object.Instantiate(cannonBall, vector2, quaternion2);
+		Rigidbody rigidbody = Object.Instantiate(cannonBall, vector2, quaternion);
 		if ((bool)MonoSingleton<CameraFrustumTargeter>.Instance.CurrentTarget && MonoSingleton<CameraFrustumTargeter>.Instance.IsAutoAimed)
 		{
 			Vector3 vector3 = MonoSingleton<CameraFrustumTargeter>.Instance.CurrentTargetAimPosition;
@@ -512,7 +512,7 @@ public class RocketLauncher : MonoBehaviour
 			MonoSingleton<WeaponCharges>.Instance.rocketNapalmFuel -= 0.015f;
 		}
 		Vector3 vector = position + forward;
-		Quaternion quaternion2 = rotation;
+		Quaternion quaternion = rotation;
 		Matrix4x4? matrix4x = null;
 		PortalPhysicsV2.Raycast(position, forward, 1f, LayerMaskDefaults.Get(LMD.Environment), out var _, out var portalTraversals, out var _);
 		if (portalTraversals.Length != 0)
@@ -520,7 +520,7 @@ public class RocketLauncher : MonoBehaviour
 			if (portalTraversals.AllHasFlag(PortalTravellerFlags.PlayerProjectile, out var blocked))
 			{
 				Matrix4x4 travelMatrix = PortalUtils.GetTravelMatrix(portalTraversals);
-				quaternion2 = travelMatrix.rotation * quaternion2;
+				quaternion = travelMatrix.rotation * quaternion;
 				vector = travelMatrix.MultiplyPoint3x4(vector);
 				matrix4x = travelMatrix;
 			}
@@ -529,10 +529,10 @@ public class RocketLauncher : MonoBehaviour
 				PortalTraversalV2 portalTraversalV = portalTraversals[0];
 				NativePortalTransform nativePortalTransform = portalTraversalV.portalObject.GetTransform(portalTraversalV.portalHandle.side);
 				vector = nativePortalTransform.GetPositionInFront(portalTraversalV.entrancePoint, 0.01f);
-				quaternion2 = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
+				quaternion = Quaternion.LookRotation(Vector3.Reflect(forward, nativePortalTransform.back).normalized);
 			}
 		}
-		Rigidbody rigidbody = Object.Instantiate(napalmProjectile, vector, quaternion2);
+		Rigidbody rigidbody = Object.Instantiate(napalmProjectile, vector, quaternion);
 		if ((bool)MonoSingleton<CameraFrustumTargeter>.Instance.CurrentTarget && MonoSingleton<CameraFrustumTargeter>.Instance.IsAutoAimed)
 		{
 			Vector3 vector2 = MonoSingleton<CameraFrustumTargeter>.Instance.CurrentTargetAimPosition;

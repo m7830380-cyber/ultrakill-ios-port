@@ -8,7 +8,8 @@ public class Raycast : ICastable
 
 	public bool Cast(PortalCastStateV2 state, out PhysicsCastResult result)
 	{
-		bool flag = Physics.Raycast(state.origin, state.direction, out var hitInfo, state.maxDistance, state.layerMask, state.queryTriggerInteraction);
+		RaycastHit hitInfo;
+		bool flag = Physics.Raycast(state.origin, state.direction, out hitInfo, state.maxDistance, state.layerMask, state.queryTriggerInteraction);
 		result = new PhysicsCastResult
 		{
 			distance = (flag ? hitInfo.distance : state.maxDistance),

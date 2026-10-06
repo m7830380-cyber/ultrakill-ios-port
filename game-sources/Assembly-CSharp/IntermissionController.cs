@@ -124,7 +124,7 @@ public class IntermissionController : MonoBehaviour
 				break;
 			}
 			j = fullString.Length;
-			if ((waitTime != 0f) & playSound)
+			if (waitTime != 0f && playSound)
 			{
 				aud.SetPitch(Random.Range(origPitch - 0.05f, origPitch + 0.05f));
 				aud.Play(tracked: true);

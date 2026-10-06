@@ -170,7 +170,7 @@ public class StatsManager : MonoSingleton<StatsManager>
 				break;
 			}
 		}
-		if (secretObjects == null || ((secretObjects.Length != 0) & flag))
+		if (secretObjects == null || (secretObjects.Length != 0 && flag))
 		{
 			secretObjects = (from b in UnityEngine.Object.FindObjectsOfType<Bonus>()
 				select b.gameObject).ToArray();
@@ -277,7 +277,7 @@ public class StatsManager : MonoSingleton<StatsManager>
 		{
 			currentCheckPoint.OnRespawn();
 			restarts++;
-			checkpointRestart?.Invoke();
+			StatsManager.checkpointRestart?.Invoke();
 		}
 	}
 

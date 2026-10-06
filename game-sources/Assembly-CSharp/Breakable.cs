@@ -96,7 +96,7 @@ public class Breakable : MonoBehaviour, IAlter, IAlterOptions<bool>
 			name = "Weak",
 			key = "weak",
 			value = weak,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				weak = value;
 			}
@@ -106,7 +106,7 @@ public class Breakable : MonoBehaviour, IAlter, IAlterOptions<bool>
 			name = "Unbreakable",
 			key = "unbreakable",
 			value = unbreakable,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				unbreakable = value;
 			}

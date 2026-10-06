@@ -171,7 +171,7 @@ public class Mindflayer : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 		new AlterOption<bool>
 		{
 			value = isEnraged,
-			callback = (bool value) =>
+			callback = delegate(bool value)
 			{
 				if (value)
 				{
@@ -691,10 +691,12 @@ public class Mindflayer : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 		}
 		Vector3 value = vector.Value;
 		float distance = 5f;
-		bool flag = PortalEnemyUtils.IsRayObstructedByHitOrPortal(value, Vector3.up, distance, environmentMask, out var endPos2, out endDirection, out portalTraversals, QueryTriggerInteraction.Ignore);
-		bool flag2 = PortalEnemyUtils.IsRayObstructedByHitOrPortal(value, Vector3.down, distance, environmentMask, out var endPos3, out endDirection, out portalTraversals, QueryTriggerInteraction.Ignore);
+		Vector3 endPos2;
+		bool flag = PortalEnemyUtils.IsRayObstructedByHitOrPortal(value, Vector3.up, distance, environmentMask, out endPos2, out endDirection, out portalTraversals, QueryTriggerInteraction.Ignore);
+		Vector3 endPos3;
+		bool flag2 = PortalEnemyUtils.IsRayObstructedByHitOrPortal(value, Vector3.down, distance, environmentMask, out endPos3, out endDirection, out portalTraversals, QueryTriggerInteraction.Ignore);
 		Vector3 vector2;
-		if (!(flag & flag2))
+		if (!(flag && flag2))
 		{
 			vector2 = (flag ? (endPos2 + Vector3.down * UnityEngine.Random.Range(5, 10)) : ((!flag2) ? value : (endPos3 + Vector3.up * UnityEngine.Random.Range(5, 10))));
 		}
@@ -878,7 +880,10 @@ public class Mindflayer : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 			overrideTarget = lastTargetData.position;
 		}
 		UnityEngine.Object.Instantiate(warningFlashUnparriable, eid.weakPoint.transform).transform.localScale *= 8f;
-		bool flag = PortalPhysicsV2.Raycast(base.transform.position, overrideTarget - base.transform.position, 999f, environmentMask, out var hitInfo2, out var portalTraversals, out var _);
+		PhysicsCastResult hitInfo2;
+		PortalTraversalV2[] portalTraversals;
+		Vector3 endPoint;
+		bool flag = PortalPhysicsV2.Raycast(base.transform.position, overrideTarget - base.transform.position, 999f, environmentMask, out hitInfo2, out portalTraversals, out endPoint);
 		plr.SetLines(base.transform.position, flag ? hitInfo2.point : overrideTarget, portalTraversals);
 		plr.SetEnabled(value: true);
 		overrideRotation = true;
@@ -939,7 +944,10 @@ public class Mindflayer : EnemyScript, IEnrage, IAlter, IAlterOptions<bool>
 			Vector3 vector = tentacles[i].position;
 			Quaternion quaternion = Quaternion.LookRotation(lastTargetData.position - tentacles[i].position);
 			TargetHandle targetHandle = this.targetHandle;
-			bool flag = PortalPhysicsV2.Raycast(position, vector - position, Vector3.Distance(vector, position), environmentMask, out var _, out var portalTraversals, out var endPoint, QueryTriggerInteraction.Ignore);
+			PhysicsCastResult hitInfo;
+			PortalTraversalV2[] portalTraversals;
+			Vector3 endPoint;
+			bool flag = PortalPhysicsV2.Raycast(position, vector - position, Vector3.Distance(vector, position), environmentMask, out hitInfo, out portalTraversals, out endPoint, QueryTriggerInteraction.Ignore);
 			if (portalTraversals.Length != 0)
 			{
 				PortalTraversalV2 portalTraversalV = portalTraversals[0];

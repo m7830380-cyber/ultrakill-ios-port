@@ -954,7 +954,7 @@ public class SisyphusPrime : EnemyScript, IHitTargetCallback
 
 	public void TeleportAnywhere()
 	{
-		TeleportAnywhere(false);
+		TeleportAnywhere(predictive: false);
 	}
 
 	public void TeleportAnywhere(bool predictive = false)
@@ -968,7 +968,7 @@ public class SisyphusPrime : EnemyScript, IHitTargetCallback
 
 	public void TeleportAbove()
 	{
-		TeleportAbove(true);
+		TeleportAbove(predictive: true);
 	}
 
 	public void TeleportAbove(bool predictive = true)

@@ -113,7 +113,7 @@ public class LayerSelect : MonoBehaviour
 		{
 			GetComponent<Image>().color = defaultColor;
 		}
-		scoresChecked++;
+		scoresChecked += 1f;
 		totalScore += score;
 		if (perfect)
 		{

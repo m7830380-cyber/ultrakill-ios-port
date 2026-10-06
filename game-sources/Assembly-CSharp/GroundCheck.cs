@@ -90,7 +90,7 @@ public class GroundCheck : MonoBehaviour
 		extraJumpChance = 0f;
 		bounceChance = 0f;
 		hasImpacted = false;
-		sinceLastGrounded = default;
+		sinceLastGrounded = default(TimeSince);
 		forcedOff = 0;
 	}
 

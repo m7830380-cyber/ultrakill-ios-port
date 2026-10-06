@@ -189,7 +189,7 @@ public class Stalker : EnemyScript, IEnemyRelationshipLogic
 					continue;
 				}
 				bool flag3 = MonoSingleton<StalkerController>.Instance.CheckIfTargetTaken(currentEnemies[i].transform) && (eid.target == null || currentEnemies[i].transform != eid.target.targetTransform);
-				if (!(flag3 & flag))
+				if (!(flag3 && flag))
 				{
 					if (flag3 || num3 >= 100f)
 					{

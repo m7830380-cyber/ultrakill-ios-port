@@ -192,7 +192,7 @@ public class FistControl : MonoSingleton<FistControl>
 
 	public void UpdateFistIcon()
 	{
-		FistIconUpdated?.Invoke(currentVarNum);
+		this.FistIconUpdated?.Invoke(currentVarNum);
 	}
 
 	public void NoFist()

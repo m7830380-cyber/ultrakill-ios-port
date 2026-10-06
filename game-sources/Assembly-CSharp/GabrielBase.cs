@@ -594,10 +594,12 @@ public class GabrielBase : EnemyScript
 			num = Random.Range(15, 20);
 		}
 		vector = ((!Physics.Raycast(target.headPosition + Vector3.up, normalized, out var hitInfo, num, environmentMask, QueryTriggerInteraction.Ignore)) ? (target.headPosition + Vector3.up + normalized * num) : (hitInfo.point - normalized * 3f));
-		bool flag = Physics.Raycast(vector, Vector3.up, out var hitInfo2, 8f, environmentMask, QueryTriggerInteraction.Ignore);
-		bool flag2 = Physics.Raycast(vector, Vector3.down, out var hitInfo3, 8f, environmentMask, QueryTriggerInteraction.Ignore);
+		RaycastHit hitInfo2;
+		bool flag = Physics.Raycast(vector, Vector3.up, out hitInfo2, 8f, environmentMask, QueryTriggerInteraction.Ignore);
+		RaycastHit hitInfo3;
+		bool flag2 = Physics.Raycast(vector, Vector3.down, out hitInfo3, 8f, environmentMask, QueryTriggerInteraction.Ignore);
 		Vector3 position = base.transform.position;
-		if (!(flag & flag2))
+		if (!(flag && flag2))
 		{
 			position = (flag ? (hitInfo2.point + Vector3.down * Random.Range(5, 10)) : (flag2 ? ((!horizontal) ? (hitInfo3.point + Vector3.up * Random.Range(5, 10)) : new Vector3(hitInfo3.point.x, hitInfo3.point.y + 3.5f, hitInfo3.point.z)) : ((!horizontal) ? vector : new Vector3(vector.x, target.headPosition.y, vector.z))));
 		}

@@ -7,12 +7,12 @@ internal static class RendererUtility
 {
 	public static Bounds GetBounds<T>(List<T> renderers, bool allowSMRs = true, HashSet<Renderer> renderersToIgnore = null) where T : Renderer
 	{
-		return GetBounds(CollectionsMarshal.AsSpan(renderers), allowSMRs, renderersToIgnore);
+		return GetBounds<T>(CollectionsMarshal.AsSpan(renderers), allowSMRs, renderersToIgnore);
 	}
 
 	public static Bounds GetBounds<T>(ReadOnlySpan<T> renderers, bool allowSMRs = true, HashSet<Renderer> renderersToIgnore = null) where T : Renderer
 	{
-		Bounds result = default;
+		Bounds result = default(Bounds);
 		bool flag = renderersToIgnore != null;
 		int length = renderers.Length;
 		int i;

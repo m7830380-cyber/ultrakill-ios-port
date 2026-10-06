@@ -8,13 +8,20 @@ using UnityEngine;
 [DefaultExecutionOrder(1000)]
 public class PhysicalShockwave : MonoBehaviour
 {
-	private struct OriginDepthPair(Transform origin, int depth, PortalHandleSequence portalSequence = default(PortalHandleSequence))
+	private struct OriginDepthPair
 	{
-		public readonly Transform origin = origin;
+		public readonly Transform origin;
 
-		public readonly int depth = depth;
+		public readonly int depth;
 
-		public readonly PortalHandleSequence portalSequence = portalSequence;
+		public readonly PortalHandleSequence portalSequence;
+
+		public OriginDepthPair(Transform origin, int depth, PortalHandleSequence portalSequence = default(PortalHandleSequence))
+		{
+			this.origin = origin;
+			this.depth = depth;
+			this.portalSequence = portalSequence;
+		}
 	}
 
 	private const int MaxReplicaCount = 12;
@@ -182,7 +189,7 @@ public class PhysicalShockwave : MonoBehaviour
 					Vector3 normalized3 = (center - origin.position).normalized;
 					Vector3 normalized4 = (nativePortalTransform2.centerManaged - center).normalized;
 					bool flag = Vector3.Dot(normalized3, normalized4) > 0f;
-					if (num4 & flag)
+					if (num4 && flag)
 					{
 						if (collider2 is MeshCollider meshCollider3)
 						{
@@ -331,8 +338,9 @@ public class PhysicalShockwave : MonoBehaviour
 	{
 		bool num = !hasHurtPlayer && col.gameObject.layer != 15 && col.gameObject.CompareTag("Player");
 		bool flag = col.gameObject.layer == 10;
-		bool flag2 = !enemy && (bool)col.attachedRigidbody && col.attachedRigidbody.TryGetComponent<Landmine>(out var _);
-		return num | flag | flag2;
+		Landmine component;
+		bool flag2 = !enemy && (bool)col.attachedRigidbody && col.attachedRigidbody.TryGetComponent<Landmine>(out component);
+		return num || flag || flag2;
 	}
 
 	private bool PrecisePortalCheck(PortalHandle portalHandle, Vector3 startPosition, Vector3 closestPoint)

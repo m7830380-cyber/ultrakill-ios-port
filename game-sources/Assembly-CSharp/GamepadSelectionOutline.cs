@@ -34,7 +34,8 @@ public class GamepadSelectionOutline : MonoBehaviour
 		}
 		image.enabled = true;
 		RectTransform component3 = currentSelectedGameObject.GetComponent<RectTransform>();
-		Bounds selectedBounds = GetSelectedBounds(component3, out var _);
+		RectTransform rect;
+		Bounds selectedBounds = GetSelectedBounds(component3, out rect);
 		image.rectTransform.anchoredPosition = selectedBounds.center;
 		image.rectTransform.sizeDelta = selectedBounds.size + (Vector3)outlineSize;
 		ScrollRect componentInParent = component3.GetComponentInParent<ScrollRect>();
@@ -87,7 +88,8 @@ public class GamepadSelectionOutline : MonoBehaviour
 		relativeBounds.max -= (Vector3)scrollRect.content.rect.min;
 		float num = scrollRect.content.rect.height - scrollRect.content.rect.height * scrollRect.verticalNormalizedPosition;
 		float num2 = scrollRect.content.rect.height - relativeBounds.min.y;
-		float num3 = ((scrollRect.TryGetComponent<RectTransform>(out var component2) && num2 < component2.rect.height * 0.75f) ? 1f : ((!(relativeBounds.min.y < num)) ? (relativeBounds.max.y / scrollRect.content.rect.height) : (relativeBounds.min.y / scrollRect.content.rect.height)));
+		RectTransform component2;
+		float num3 = ((scrollRect.TryGetComponent<RectTransform>(out component2) && num2 < component2.rect.height * 0.75f) ? 1f : ((!(relativeBounds.min.y < num)) ? (relativeBounds.max.y / scrollRect.content.rect.height) : (relativeBounds.min.y / scrollRect.content.rect.height)));
 		if (instantScroll)
 		{
 			scrollRect.verticalNormalizedPosition = num3;

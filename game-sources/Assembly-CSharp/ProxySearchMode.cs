@@ -9,8 +9,8 @@ public enum ProxySearchMode
 	FloorOnly = 4,
 	IncludeBurning = 8,
 	IncludeNotBurning = 0x10,
-	Any = IncludeStatic | IncludeDynamic | IncludeBurning | IncludeNotBurning,
-	AnyFloor = Any | FloorOnly,
+	Any = 0x1B,
+	AnyFloor = 0x1F,
 	AnyNotBurning = 0x13,
 	AnyBurning = 0xB
 }

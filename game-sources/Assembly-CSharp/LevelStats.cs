@@ -110,7 +110,7 @@ public class LevelStats : MonoBehaviour
 			while (seconds >= 60f)
 			{
 				seconds -= 60f;
-				minutes++;
+				minutes += 1f;
 			}
 			time.text = minutes + ":" + seconds.ToString("00.000");
 		}

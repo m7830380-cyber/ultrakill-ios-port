@@ -164,13 +164,13 @@ public abstract class DirectoryTreeBrowser<T> : MonoBehaviour
 	{
 		GameObject btn = UnityEngine.Object.Instantiate(folderButtonTemplate, itemParent, worldPositionStays: false);
 		btn.GetComponent<Button>().onClick.RemoveAllListeners();
-		btn.GetComponent<Button>().onClick.AddListener(() =>
+		btn.GetComponent<Button>().onClick.AddListener(delegate
 		{
 			StepDown(folder);
 		});
 		btn.GetComponentInChildren<TMP_Text>().text = folder.name;
 		btn.SetActive(value: true);
-		return () =>
+		return delegate
 		{
 			UnityEngine.Object.Destroy(btn);
 		};

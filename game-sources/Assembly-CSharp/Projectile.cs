@@ -241,8 +241,8 @@ public class Projectile : MonoBehaviour
 
 	private bool GetTargetData(out Vector3 targetPosition, out Vector3 targetVelocity)
 	{
-		targetPosition = default;
-		targetVelocity = default;
+		targetPosition = default(Vector3);
+		targetVelocity = default(Vector3);
 		if (targetHandle != null)
 		{
 			TargetData targetData = MonoSingleton<PortalManagerV2>.Instance.TargetTracker.CalculateData(targetHandle);

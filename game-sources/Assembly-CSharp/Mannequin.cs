@@ -463,7 +463,8 @@ public class Mannequin : EnemyScript
 		Vector3 vector2 = clingNormal * clungMovementTolerance;
 		while (num < maxDistance)
 		{
-			bool flag = Physics.Raycast(new Ray(vector + vector2, backToWallDirection), out var hitInfo, clungMovementTolerance * 2f, LayerMaskDefaults.Get(LMD.Environment), QueryTriggerInteraction.Ignore);
+			RaycastHit hitInfo;
+			bool flag = Physics.Raycast(new Ray(vector + vector2, backToWallDirection), out hitInfo, clungMovementTolerance * 2f, LayerMaskDefaults.Get(LMD.Environment), QueryTriggerInteraction.Ignore);
 			if (!(Vector3.Angle(hitInfo.normal, clingNormal) < 5f))
 			{
 				flag = false;
@@ -838,7 +839,7 @@ public class Mannequin : EnemyScript
 
 	public void StopAction()
 	{
-		StopAction(true);
+		StopAction(changeBehavior: true);
 	}
 
 	public void StopAction(bool changeBehavior = true)

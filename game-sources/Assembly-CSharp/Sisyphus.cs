@@ -13,10 +13,10 @@ public class Sisyphus : EnemyScript
 {
 	private enum AttackType
 	{
-		OverheadSlam = 0,
-		HorizontalSwing = 1,
-		Stab = 2,
-		AirStab = 3
+		OverheadSlam,
+		HorizontalSwing,
+		Stab,
+		AirStab
 	}
 
 	private static readonly int s_SwingAnimSpeed = Animator.StringToHash("SwingSpeed");
@@ -798,7 +798,8 @@ public class Sisyphus : EnemyScript
 			}
 			if (superJumping)
 			{
-				bool num6 = Physics.SphereCast(base.transform.position, 3f, rb.velocity.normalized, out var hitInfo4, rb.velocity.magnitude * Time.fixedDeltaTime, LayerMaskDefaults.Get(LMD.Environment));
+				RaycastHit hitInfo4;
+				bool num6 = Physics.SphereCast(base.transform.position, 3f, rb.velocity.normalized, out hitInfo4, rb.velocity.magnitude * Time.fixedDeltaTime, LayerMaskDefaults.Get(LMD.Environment));
 				if (!num6 && didCollide && Physics.SphereCast(base.transform.position, 3f, -rb.velocity.normalized, out hitInfo4, rb.velocity.magnitude * Time.fixedDeltaTime, LayerMaskDefaults.Get(LMD.Environment)))
 				{
 					UnityEngine.Object.Instantiate(rubble, hitInfo4.point, Quaternion.LookRotation(hitInfo4.normal));

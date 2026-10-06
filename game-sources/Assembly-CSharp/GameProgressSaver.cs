@@ -10,11 +10,11 @@ public static class GameProgressSaver
 {
 	public enum WeaponCustomizationType
 	{
-		Revolver = 0,
-		Shotgun = 1,
-		Nailgun = 2,
-		Railcannon = 3,
-		RocketLauncher = 4
+		Revolver,
+		Shotgun,
+		Nailgun,
+		Railcannon,
+		RocketLauncher
 	}
 
 	public static int currentSlot = 0;
@@ -92,7 +92,7 @@ public static class GameProgressSaver
 		{
 			Directory.CreateDirectory(SavePath);
 		}
-		if (SceneHelper.IsPlayingCustom | forceCustom)
+		if (SceneHelper.IsPlayingCustom || forceCustom)
 		{
 			if (!Directory.Exists(customSavesDir))
 			{
@@ -395,7 +395,8 @@ public static class GameProgressSaver
 	public static void SaveProgress(int levelNum)
 	{
 		Debug.Log($"[FS] Saving Progress for Level {levelNum}");
-		GameProgressData gameProgress = GetGameProgress(out var path);
+		string path;
+		GameProgressData gameProgress = GetGameProgress(out path);
 		if (gameProgress.levelNum < levelNum || gameProgress.difficulty != MonoSingleton<PrefsManager>.Instance.GetInt("difficulty"))
 		{
 			gameProgress.levelNum = levelNum;
@@ -416,7 +417,8 @@ public static class GameProgressSaver
 	public static void SecretFound(int secretNum)
 	{
 		lastTotalSecrets = -1;
-		RankData rankData = GetRankData(out var path);
+		string path;
+		RankData rankData = GetRankData(out path);
 		if (rankData.levelNumber != MonoSingleton<StatsManager>.Instance.levelNumber && !SceneHelper.IsPlayingCustom)
 		{
 			return;
@@ -465,7 +467,8 @@ public static class GameProgressSaver
 			return;
 		}
 		level--;
-		GameProgressData gameProgress = GetGameProgress(out var path);
+		string path;
+		GameProgressData gameProgress = GetGameProgress(out path);
 		if (level < gameProgress.primeLevels.Length)
 		{
 			if (state <= gameProgress.primeLevels[level])
@@ -524,7 +527,8 @@ public static class GameProgressSaver
 	public static void SetEncoreProgress(int levelNum)
 	{
 		Debug.Log($"[FS] Saving Encore Progress for Level {levelNum}");
-		GameProgressData gameProgress = GetGameProgress(out var path);
+		string path;
+		GameProgressData gameProgress = GetGameProgress(out path);
 		if (gameProgress.encores < levelNum || gameProgress.difficulty != MonoSingleton<PrefsManager>.Instance.GetInt("difficulty"))
 		{
 			gameProgress.encores = levelNum;

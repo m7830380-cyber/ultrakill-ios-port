@@ -496,15 +496,15 @@ public class CheatsManager : MonoSingleton<CheatsManager>
 						item.iconTarget.sprite = MonoSingleton<IconManager>.Instance.CurrentIcons.genericCheatIcon;
 					}
 				}
-				item.stateButton.onClick.AddListener(() =>
+				item.stateButton.onClick.AddListener(delegate
 				{
 					ToggleCheat(cheat);
 				});
-				item.bindButton.onClick.AddListener(() =>
+				item.bindButton.onClick.AddListener(delegate
 				{
 					StartRebind(cheat);
 				});
-				item.resetBindButton.onClick.AddListener(() =>
+				item.resetBindButton.onClick.AddListener(delegate
 				{
 					MonoSingleton<CheatBinds>.Instance.ResetCheatBind(cheat.Identifier);
 					UpdateCheatState(item, cheat);

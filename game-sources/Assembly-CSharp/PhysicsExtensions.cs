@@ -4,7 +4,8 @@ public static class PhysicsExtensions
 {
 	public static void SetCustomGravity(this Rigidbody rigidbody, Vector3 gravity)
 	{
-		CustomGravity orAddComponent = rigidbody.GetOrAddComponent<CustomGravity>(out var exists);
+		bool exists;
+		CustomGravity orAddComponent = rigidbody.GetOrAddComponent<CustomGravity>(out exists);
 		if (!exists)
 		{
 			orAddComponent.enabled = false;
@@ -19,7 +20,7 @@ public static class PhysicsExtensions
 			gravity = component.gravity;
 			return true;
 		}
-		gravity = default;
+		gravity = default(Vector3);
 		return false;
 	}
 

@@ -126,7 +126,10 @@ public class SecondaryRevolver : MonoBehaviour
 		{
 			direction = targeter.CurrentTargetAimPosition - camObj.transform.position;
 		}
-		bool flag = PortalPhysicsV2.Raycast(camObj.transform.position, direction, float.PositiveInfinity, LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment), out var hitInfo, out var _, out var _);
+		PhysicsCastResult hitInfo;
+		PortalTraversalV2[] portalTraversals;
+		Vector3 endPoint;
+		bool flag = PortalPhysicsV2.Raycast(camObj.transform.position, direction, float.PositiveInfinity, LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment), out hitInfo, out portalTraversals, out endPoint);
 		shotHitPoint = (flag ? hitInfo.point : Vector3.zero);
 		GameObject gameObject = Object.Instantiate(secBeamPoint, gunBarrel.transform.position, gunBarrel.transform.rotation);
 		if ((bool)targeter.CurrentTarget && targeter.IsAutoAimed)

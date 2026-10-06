@@ -117,7 +117,8 @@ public class FishBait : MonoBehaviour
 			float t = (flyProgress - num) / (1f - num);
 			float a = landTarget.y - 1f;
 			baitPoint.position = Vector3.Lerp(landTarget, initialParent.position, flyProgress);
-			bool flag = Physics.Raycast(baitPoint.position + Vector3.up * 2f, Vector3.down, out var hitInfo, 10f, LayerMaskDefaults.Get(LMD.EnvironmentAndBigEnemies));
+			RaycastHit hitInfo;
+			bool flag = Physics.Raycast(baitPoint.position + Vector3.up * 2f, Vector3.down, out hitInfo, 10f, LayerMaskDefaults.Get(LMD.EnvironmentAndBigEnemies));
 			baitPoint.position = new Vector3(baitPoint.position.x, Mathf.Max(Mathf.Lerp(a, initialParent.position.y, t), flag ? hitInfo.point.y : float.NegativeInfinity), baitPoint.position.z);
 		}
 	}

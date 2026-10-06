@@ -406,7 +406,8 @@ public class Grenade : MonoBehaviour, ITarget
 			float num4 = vector.y * num + vector.x * num2;
 			num4 = (MonoSingleton<PrefsManager>.Instance.GetBool("InvertRocketRide") ? (0f - num4) : num4);
 			base.transform.Rotate(num4 * Time.deltaTime * 165f, num3 * Time.deltaTime * 165f, 0f, Space.Self);
-			Vector3 position = ((!Physics.Raycast(base.transform.position + base.transform.forward, base.transform.up, 4f, LayerMaskDefaults.Get(LMD.Environment))) ? (base.transform.position + base.transform.up * 2f + base.transform.forward) : ((!Physics.Raycast(base.transform.position + base.transform.forward, -gravityDirection, out var hitInfo, 2f, LayerMaskDefaults.Get(LMD.Environment))) ? (base.transform.position + base.transform.forward) : (base.transform.position + base.transform.forward + gravityDirection * hitInfo.distance)));
+			RaycastHit hitInfo;
+			Vector3 position = ((!Physics.Raycast(base.transform.position + base.transform.forward, base.transform.up, 4f, LayerMaskDefaults.Get(LMD.Environment))) ? (base.transform.position + base.transform.up * 2f + base.transform.forward) : ((!Physics.Raycast(base.transform.position + base.transform.forward, -gravityDirection, out hitInfo, 2f, LayerMaskDefaults.Get(LMD.Environment))) ? (base.transform.position + base.transform.forward) : (base.transform.position + base.transform.forward + gravityDirection * hitInfo.distance)));
 			instance.transform.position = position;
 			instance.rb.position = position;
 			MonoSingleton<CameraController>.Instance.CameraShake(0.1f);
@@ -562,7 +563,7 @@ public class Grenade : MonoBehaviour, ITarget
 			{
 				explosion.toIgnore = ignoreEnemyType;
 			}
-			if (rocket & super & big)
+			if (rocket && super && big)
 			{
 				explosion.maxSize *= 2.5f;
 				explosion.speed *= 2.5f;

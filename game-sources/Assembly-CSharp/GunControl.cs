@@ -556,7 +556,9 @@ public class GunControl : MonoSingleton<GunControl>
 		{
 			lastSlotIndex = currentSlotIndex;
 		}
-		if (targetVariationIndex != currentVariationIndex)
+		int? num = targetVariationIndex;
+		int num2 = currentVariationIndex;
+		if (num != num2)
 		{
 			lastVariationIndex = currentVariationIndex;
 		}
@@ -568,13 +570,23 @@ public class GunControl : MonoSingleton<GunControl>
 		}
 		else if (currentSlotIndex == targetSlotIndex)
 		{
-			int num = MonoSingleton<PrefsManager>.Instance.GetInt("WeaponRedrawBehaviour");
-			currentVariationIndex = num switch
+			int num3 = MonoSingleton<PrefsManager>.Instance.GetInt("WeaponRedrawBehaviour");
+			switch (num3)
 			{
-				0 => loop(currentVariationIndex + 1, slots[targetSlotIndex - 1].Count), 
-				1 => 0, 
-				2 => currentVariationIndex, 
-			};
+			case 0:
+				num2 = loop(currentVariationIndex + 1, slots[targetSlotIndex - 1].Count);
+				break;
+			case 1:
+				num2 = 0;
+				break;
+			case 2:
+				num2 = currentVariationIndex;
+				break;
+			default:
+				global::_003CPrivateImplementationDetails_003E.ThrowSwitchExpressionException(num3);
+				break;
+			}
+			currentVariationIndex = num2;
 		}
 		else
 		{
@@ -596,7 +608,7 @@ public class GunControl : MonoSingleton<GunControl>
 			PlayerPrefs.SetInt("LasVar", lastVariationIndex);
 			PlayerPrefs.SetInt("LasSlo", lastSlotIndex);
 		}
-		OnWeaponChange?.Invoke(currentWeapon);
+		this.OnWeaponChange?.Invoke(currentWeapon);
 		shud.SnapFreshnessSlider();
 	}
 
@@ -626,7 +638,7 @@ public class GunControl : MonoSingleton<GunControl>
 				}
 			}
 		}
-		OnWeaponChange?.Invoke(currentWeapon);
+		this.OnWeaponChange?.Invoke(currentWeapon);
 	}
 
 	public void NoWeapon()
@@ -697,7 +709,7 @@ public class GunControl : MonoSingleton<GunControl>
 	{
 		if (killCharge < killMeter.maxValue)
 		{
-			killCharge++;
+			killCharge += 1f;
 			if (killCharge > killMeter.maxValue)
 			{
 				killCharge = killMeter.maxValue;

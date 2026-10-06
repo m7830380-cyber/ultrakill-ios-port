@@ -306,7 +306,7 @@ public class Shotgun : MonoBehaviour
 				Invoke("Pump", wid.delay);
 			}
 		}
-		if ((((float)sinceLastCore > 0.5f) & flag2) && variation != 1 && gc.activated && !GameStateManager.Instance.PlayerInputLocked && ((variation == 0 && !resettingCores) || (variation == 2 && MonoSingleton<WeaponCharges>.Instance.shoSawCharge >= 1f && gunReady)))
+		if ((float)sinceLastCore > 0.5f && flag2 && variation != 1 && gc.activated && !GameStateManager.Instance.PlayerInputLocked && ((variation == 0 && !resettingCores) || (variation == 2 && MonoSingleton<WeaponCharges>.Instance.shoSawCharge >= 1f && gunReady)))
 		{
 			charging = true;
 			if (grenadeForce < 60f)
@@ -621,18 +621,20 @@ public class Shotgun : MonoBehaviour
 		else
 		{
 			Vector3 vector = position + forward;
-			bool flag = PortalPhysicsV2.Raycast(position, forward, 1f, LayerMaskDefaults.Get(LMD.Environment), out var hitInfo, out var portalTraversals2, out endPoint);
-			Quaternion quaternion2 = cam.transform.rotation;
+			PhysicsCastResult hitInfo;
+			PortalTraversalV2[] portalTraversals2;
+			bool flag = PortalPhysicsV2.Raycast(position, forward, 1f, LayerMaskDefaults.Get(LMD.Environment), out hitInfo, out portalTraversals2, out endPoint);
+			Quaternion quaternion = cam.transform.rotation;
 			Matrix4x4 matrix4x = Matrix4x4.identity;
 			if (portalTraversals2.Length != 0)
 			{
 				matrix4x = PortalUtils.GetTravelMatrix(portalTraversals2);
-				quaternion2 = matrix4x.rotation * quaternion2;
+				quaternion = matrix4x.rotation * quaternion;
 				if (portalTraversals2.AllHasFlag(PortalTravellerFlags.PlayerProjectile, out var blocked))
 				{
 					Vector3 exitPoint = portalTraversals2[^1].exitPoint;
 					matrix4x = PortalUtils.GetTravelMatrix(portalTraversals2);
-					quaternion2 = matrix4x.rotation * quaternion2;
+					quaternion = matrix4x.rotation * quaternion;
 					if (flag)
 					{
 						float num2 = Vector3.Distance(exitPoint, hitInfo.point) - 0.1f;
@@ -662,7 +664,7 @@ public class Shotgun : MonoBehaviour
 				}
 				vector = position + forward * num3;
 			}
-			GameObject gameObject2 = Object.Instantiate(explosion, vector, quaternion2);
+			GameObject gameObject2 = Object.Instantiate(explosion, vector, quaternion);
 			if ((bool)targeter.CurrentTarget && targeter.IsAutoAimed)
 			{
 				Vector3 vector2 = targeter.CurrentTargetAimPosition;
@@ -825,7 +827,10 @@ public class Shotgun : MonoBehaviour
 				_ = array[i];
 				Vector3 vector2 = position + vector * 0.5f;
 				Vector3 vector3 = vector;
-				bool flag = PortalPhysicsV2.Raycast(position, vector, 0.5f, LayerMaskDefaults.Get(LMD.EnvironmentAndBigEnemies), out var hitInfo, out var portalTraversals, out var _);
+				PhysicsCastResult hitInfo;
+				PortalTraversalV2[] portalTraversals;
+				Vector3 endPoint;
+				bool flag = PortalPhysicsV2.Raycast(position, vector, 0.5f, LayerMaskDefaults.Get(LMD.EnvironmentAndBigEnemies), out hitInfo, out portalTraversals, out endPoint);
 				if (portalTraversals.Length != 0)
 				{
 					if (portalTraversals.AllHasFlag(PortalTravellerFlags.PlayerProjectile, out blocked))

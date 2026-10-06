@@ -154,7 +154,7 @@ public class Landmine : MonoBehaviour
 
 	private void Explode()
 	{
-		Explode(false);
+		Explode(super: false);
 	}
 
 	private void Explode(bool super = false)

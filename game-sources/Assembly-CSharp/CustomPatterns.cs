@@ -199,7 +199,7 @@ public class CustomPatterns : MonoBehaviour
 				sprite.texture.filterMode = FilterMode.Point;
 				gameObject.GetComponentInChildren<TMP_Text>(includeInactive: true).text = tile.path;
 				gameObject.GetComponent<Image>().sprite = sprite;
-				gameObject.GetComponent<ControllerPointer>().OnPressed.AddListener(() =>
+				gameObject.GetComponent<ControllerPointer>().OnPressed.AddListener(delegate
 				{
 					TogglePattern(tile.path, isPack: true);
 				});
@@ -237,7 +237,7 @@ public class CustomPatterns : MonoBehaviour
 			gameObject2.GetComponent<Image>().sprite = sprite4;
 			gameObject2.SetActive(value: true);
 			string key = Path.GetFileName(path);
-			gameObject2.GetComponent<ControllerPointer>().OnPressed.AddListener(() =>
+			gameObject2.GetComponent<ControllerPointer>().OnPressed.AddListener(delegate
 			{
 				TogglePattern(key, isPack: false);
 			});

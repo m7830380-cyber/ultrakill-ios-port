@@ -76,7 +76,7 @@ public class BloodsplatterManager : MonoSingleton<BloodsplatterManager>
 			{
 				noLayers = true;
 			}
-			if ((num | flag) && go.TryGetComponent<MeshRenderer>(out var component))
+			if ((num || flag) && go.TryGetComponent<MeshRenderer>(out var component))
 			{
 				Material sharedMaterial = component.sharedMaterial;
 				if ((bool)sharedMaterial && sharedMaterial.IsKeywordEnabled("VERTEX_DISPLACEMENT"))
@@ -85,7 +85,7 @@ public class BloodsplatterManager : MonoSingleton<BloodsplatterManager>
 				}
 			}
 			Transform transform = go.transform;
-			bool flag6 = flag2 | flag3 | flag4 | flag5;
+			bool flag6 = flag2 || flag3 || flag4 || flag5;
 			if (!flag6)
 			{
 				flag6 |= (bool)cdatabase && cdatabase.scrollers.Contains(transform);
@@ -407,7 +407,7 @@ public class BloodsplatterManager : MonoSingleton<BloodsplatterManager>
 		{
 			num = (parentIndex = 1);
 		}
-		reuseParentIndex?.Invoke(num);
+		this.reuseParentIndex?.Invoke(num);
 		parentMatrices[num] = initialMatrix;
 		return num;
 	}
@@ -503,7 +503,7 @@ public class BloodsplatterManager : MonoSingleton<BloodsplatterManager>
 			if (value != BSType.dontpool && value != BSType.unknown)
 			{
 				gorePool.Add(value, new Queue<GameObject>());
-				num2++;
+				num2 += 1f;
 			}
 		}
 		opm = MonoSingleton<OptionsManager>.Instance;
@@ -587,8 +587,8 @@ public class BloodsplatterManager : MonoSingleton<BloodsplatterManager>
 		if ((float)sinceLastStep >= 0.128f)
 		{
 			sinceLastStep = 0f;
-			ParticleCollisionStep?.Invoke(0.128f);
-			PostCollisionStep?.Invoke();
+			this.ParticleCollisionStep?.Invoke(0.128f);
+			this.PostCollisionStep?.Invoke();
 		}
 		if (goreOn && !usedComputeShadersAtStart && meshDirty)
 		{
@@ -643,7 +643,7 @@ public class BloodsplatterManager : MonoSingleton<BloodsplatterManager>
 			totalStainMesh.subMeshCount = 1;
 			MeshUpdateFlags meshUpdateFlags = MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontNotifyMeshUsers | MeshUpdateFlags.DontRecalculateBounds;
 			totalStainMesh.SetSubMesh(0, new SubMeshDescriptor(0, 6 * currentBloodCount), meshUpdateFlags);
-			meshDataArray = default;
+			meshDataArray = default(Mesh.MeshDataArray);
 			totalStainMesh.RecalculateBounds();
 		}
 	}
@@ -651,7 +651,7 @@ public class BloodsplatterManager : MonoSingleton<BloodsplatterManager>
 	public void ClearStains()
 	{
 		propIndex = 0;
-		StainsCleared?.Invoke();
+		this.StainsCleared?.Invoke();
 	}
 
 	private void OnDestroy()

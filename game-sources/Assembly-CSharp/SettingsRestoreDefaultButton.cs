@@ -108,7 +108,7 @@ public class SettingsRestoreDefaultButton : MonoBehaviour
 			{
 				defaultFloat = 0f;
 			}
-			slider.onValueChanged.AddListener((float _) =>
+			slider.onValueChanged.AddListener(delegate
 			{
 				UpdateSelf();
 			});
@@ -119,7 +119,7 @@ public class SettingsRestoreDefaultButton : MonoBehaviour
 			{
 				defaultBool = false;
 			}
-			toggle.onValueChanged.AddListener((bool _) =>
+			toggle.onValueChanged.AddListener(delegate
 			{
 				UpdateSelf();
 			});
@@ -130,7 +130,7 @@ public class SettingsRestoreDefaultButton : MonoBehaviour
 			{
 				defaultInt = 0;
 			}
-			dropdown.onValueChanged.AddListener((int _) =>
+			dropdown.onValueChanged.AddListener(delegate
 			{
 				UpdateSelf();
 			});
