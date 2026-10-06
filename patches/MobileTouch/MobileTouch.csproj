@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <Compile Remove="LegacyInputSynthesizer.Engine.cs" />
+  </ItemGroup>
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>9</LangVersion>
@@ -30,6 +33,14 @@
     </Reference>
     <Reference Include="NewBlood.LegacyInput">
       <HintPath>$(GameManaged)\NewBlood.LegacyInput.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.ResourceManager">
+      <HintPath>$(GameManaged)\Unity.ResourceManager.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Addressables">
+      <HintPath>$(GameManaged)\Unity.Addressables.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

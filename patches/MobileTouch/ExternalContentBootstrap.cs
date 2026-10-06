@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using System.IO.Compression;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace UltrakillIOS
 {
@@ -113,22 +113,38 @@ namespace UltrakillIOS
                 return;
             }
 
-            var addrType = Type.GetType("UnityEngine.AddressableAssets.Addressables, Unity.Addressables");
-            if (addrType == null)
+            try
             {
-                return;
-            }
+                var bundledStreaming = Application.streamingAssetsPath;
+                var externalStreaming = ContentStreamingAssetsPath;
+                Addressables.InternalIdTransformFunc = location =>
+                {
+                    var id = location.InternalId;
+                    if (string.IsNullOrEmpty(id))
+                    {
+                        return id;
+                    }
 
-            var prop = addrType.GetProperty("ResourceManager", BindingFlags.Public | BindingFlags.Static);
-            var rm = prop?.GetValue(null);
-            if (rm == null)
+                    if (id.StartsWith(bundledStreaming, StringComparison.Ordinal))
+                    {
+                        return externalStreaming + id.Substring(bundledStreaming.Length);
+                    }
+
+                    if (id.IndexOf("StreamingAssets", StringComparison.Ordinal) >= 0)
+                    {
+                        var idx = id.IndexOf("StreamingAssets", StringComparison.Ordinal);
+                        var tail = id.Substring(idx + "StreamingAssets".Length).TrimStart('/', '\\');
+                        return Path.Combine(externalStreaming, tail);
+                    }
+
+                    return id;
+                };
+                Debug.Log("[UltrakillIOS] Addressables paths → " + externalStreaming);
+            }
+            catch (Exception ex)
             {
-                return;
+                Debug.LogWarning("[UltrakillIOS] Addressables remap failed: " + ex.Message);
             }
-
-            // Full ULTRAKILL Unity port should register Addressables.InternalIdTransformFunc
-            // to swap Application.streamingAssetsPath → ContentStreamingAssetsPath.
-            Debug.Log("[UltrakillIOS] Addressables remap hook point ready; wire in game assembly for full port.");
         }
 
         private static string Sha256File(string path)
