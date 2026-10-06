@@ -5,7 +5,6 @@ unity-ultrakill/Temp/
 unity-ultrakill/UserSettings/
 unity-ultrakill/Assets/Game/
 unity-ultrakill/Assets/Plugins/RetailManaged/
-unity-ultrakill/Assets/Scenes/MainBoot.unity
 port-sources/
 .tools/
 !.tools/.gitkeep

@@ -20,7 +20,8 @@ else {
     Copy-Item (Join-Path $src "LegacyInputSynthesizer.Engine.cs") (Join-Path $dest "LegacyInputSynthesizer.cs") -Force
 }
 
-if (Test-Path $RipRoot) {
+$ripScriptsFolder = Join-Path $RipRoot "Scripts"
+if ((Test-Path $RipRoot) -and (Test-Path $ripScriptsFolder)) {
     $ripScripts = Join-Path $UnityProject "Assets\RipScripts"
     if (Test-Path $ripScripts) {
         Remove-Item -Recurse -Force $ripScripts

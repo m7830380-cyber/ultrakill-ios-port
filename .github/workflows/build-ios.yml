@@ -8,7 +8,7 @@ on:
 
 env:
   UNITY_VERSION: 2022.3.62f1
-  PROJECT_PATH: unity-ios
+  PROJECT_PATH: unity-ultrakill
 
 jobs:
   ios-unsigned:
@@ -16,10 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare ULTRAKILL port tree for CI
+        run: bash scripts/ci-prepare-unity-ultrakill.sh
+
       - uses: actions/cache@v4
         with:
           path: ${{ env.PROJECT_PATH }}/Library
-          key: Library-${{ hashFiles(format('{0}/**', env.PROJECT_PATH)) }}
+          key: Library-${{ hashFiles(format('{0}/**', env.PROJECT_PATH), 'game-sources/**') }}
           restore-keys: |
             Library-
 
@@ -59,12 +62,12 @@ jobs:
           set -euo pipefail
           BUILD_DIR="$GITHUB_WORKSPACE/$PROJECT_PATH/build/iOS"
           APP_PATH="$(find "$BUILD_DIR" -name '*.app' -path '*/Build/Products/*' | head -n 1)"
-          rm -rf Payload ULTRAKILL-Engine-unsigned.ipa
+          rm -rf Payload ULTRAKILL-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
-          zip -qr ULTRAKILL-Engine-unsigned.ipa Payload
+          zip -qr ULTRAKILL-unsigned.ipa Payload
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ultrakill-ios-engine-ipa
-          path: ULTRAKILL-Engine-unsigned.ipa
+          name: ultrakill-ios-ipa
+          path: ULTRAKILL-unsigned.ipa

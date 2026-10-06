@@ -39,15 +39,13 @@ $env:ULTRAKILL_RIP = "C:\Users\v0id\Downloads\cockadoodledo\fdadsfsadfff"
 
 `Assets/Game` junctions to your rip’s `Scripts/Assembly-CSharp` (~1500 files). Retail `Managed` DLLs (except `Assembly-CSharp.dll`) go to `Assets/Plugins/RetailManaged` as references. Boot scene is copied from `ULTRAKILL_Data/level0`. Define `ULTRAKILL_FULL_PORT` enables Addressables remap into the Documents zip.
 
-CI still builds **`unity-ios`** (shell only). Build the game IPA locally on a Mac from `unity-ultrakill`, or pack that folder for a custom workflow.
-
-## Engine shell (touch + external loader)
+**GitHub Actions** builds **`unity-ultrakill`** on every push to `main` (artifact **`ultrakill-ios-ipa`**). Managed DLLs live in `unity-ios/Assets/Plugins/UltrakillManaged` (committed). Optional decompiled sources:
 
 ```powershell
-.\scripts\Sync-EngineScripts.ps1
+.\scripts\Sync-GameSources.ps1   # copies rip -> game-sources/Assembly-CSharp, then commit + push
 ```
 
-CI artifact `ultrakill-ios-engine-ipa` builds this tree.
+If `game-sources` is in the repo, CI compiles from dnSpy/ilspy scripts; otherwise CI uses retail `Assembly-CSharp.dll` from the same Managed set.
 
 ## GitHub Actions
 
