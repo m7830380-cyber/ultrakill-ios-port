@@ -47,7 +47,27 @@ Sources: `patches/MobileTouch/`.
    - **patch-assembly** — builds `UltrakillMobileTouch.dll` and merged `Assembly-CSharp.dll` when `game-managed/` exists
    - **ios-unsigned** — Unity iOS export + zip **unsigned.ipa** artifact
 
-The bundled `unity-ios` project is a **CI smoke target** (minimal scene). Replace it with your full port tree when building real ULTRAKILL on device.
+## One IPA (full game + touch patch)
+
+CI builds **ULTRAKILL + touch controls** from a bundled Unity export (not the empty smoke app).
+
+On your PC (ULTRAKILL installed):
+
+```powershell
+# 1) Export with AssetRipper GUI, OR:
+.\scripts\Export-UnityViaAssetRipper.ps1
+
+# 2) Inject touch DLL + scripts into the export
+.\scripts\Apply-TouchPatchToUnity.ps1
+
+# 3) Tarball for GitHub Actions (~several GB)
+.\scripts\Package-UnityExport.ps1
+
+# 4) Upload once (private release is fine)
+gh release create unity-export artifacts/unity-export.tar.gz --repo YOUR_USER/ultrakill-ios-port --title "Unity export for CI"
+```
+
+Then run **Build unsigned iOS IPA** on GitHub. Artifact: `ultrakill-ios-unsigned-ipa` → `ULTRAKILL-iOS-unsigned.ipa`.
 
 ## Legal
 

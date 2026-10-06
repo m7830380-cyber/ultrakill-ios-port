@@ -17,7 +17,8 @@ $ExportPath = (Resolve-Path -LiteralPath (New-Item -ItemType Directory -Force -P
 $logDir = Join-Path $PSScriptRoot "..\artifacts\assetripper"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
-$proc = Start-Process -FilePath $AssetRipperExe -ArgumentList @("--port", $Port, "--headless") -PassThru -WindowStyle Hidden
+$arDir = Split-Path -Parent $AssetRipperExe
+$proc = Start-Process -FilePath $AssetRipperExe -WorkingDirectory $arDir -ArgumentList @("--port", $Port, "--headless") -PassThru -WindowStyle Hidden
 $base = "http://127.0.0.1:$Port"
 
 try {
