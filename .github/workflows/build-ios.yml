@@ -47,7 +47,7 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: Library
+          path: ${{ env.PROJECT_PATH }}/Library
           key: Library-${{ hashFiles('unity-ios/**') }}
           restore-keys: |
             Library-
@@ -65,21 +65,41 @@ jobs:
           versioning: None
           customParameters: -nographics -batchmode
 
-      - name: Build unsigned IPA from Xcode output
+      - name: Xcode build (unsigned)
         run: |
           set -euo pipefail
           BUILD_DIR="${{ env.PROJECT_PATH }}/build/iOS"
-          APP_PATH="$(find "$BUILD_DIR" -maxdepth 3 -name '*.app' | head -n 1)"
+          cd "$BUILD_DIR"
+          xcodebuild \
+            -project Unity-iPhone.xcodeproj \
+            -scheme Unity-iPhone \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$BUILD_DIR/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          BUILD_DIR="${{ env.PROJECT_PATH }}/build/iOS"
+          APP_PATH="$(find "$BUILD_DIR/DerivedData" -name '*.app' -path '*/Build/Products/*' | head -n 1)"
           if [ -z "$APP_PATH" ]; then
-            echo "No .app found under $BUILD_DIR — export Unity iOS player first."
-            ls -la "$BUILD_DIR" || true
+            APP_PATH="$(find "$BUILD_DIR" -name '*.app' | head -n 1)"
+          fi
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app found after xcodebuild"
+            find "$BUILD_DIR" -maxdepth 5 -type d -name '*.app' || true
             exit 1
           fi
           rm -rf Payload unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           zip -qr unsigned.ipa Payload
-          echo "Created unsigned.ipa ($(du -h unsigned.ipa | cut -f1))"
+          echo "Created unsigned.ipa ($(du -h unsigned.ipa | cut -f1)) from $APP_PATH"
 
       - uses: actions/upload-artifact@v4
         with:
