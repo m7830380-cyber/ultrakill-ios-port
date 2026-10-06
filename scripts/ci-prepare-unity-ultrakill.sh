@@ -49,6 +49,9 @@ rm -rf "$PROJECT/Assets/Game"
 if [[ -d "$SOURCES" ]] && [[ -n "$(ls -A "$SOURCES" 2>/dev/null || true)" ]]; then
   echo "Using decompiled sources from game-sources/Assembly-CSharp"
   cp -R "$SOURCES" "$PROJECT/Assets/Game"
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -File "$ROOT/scripts/Clean-GameSources.ps1" -Root "$PROJECT/Assets/Game"
+  fi
   copy_third_party_dll
 else
   echo "ERROR: game-sources/Assembly-CSharp missing. Run scripts/Sync-GameSources.ps1 locally and push."

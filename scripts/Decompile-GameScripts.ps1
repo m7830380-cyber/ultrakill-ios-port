@@ -24,4 +24,5 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 Write-Host "Decompiling $dll -> $OutputDir (same as dnSpy export)..."
 & $ilspy $dll -p -o $OutputDir -lv CSharp10_0
+& (Join-Path $PSScriptRoot "Clean-GameSources.ps1") -Root $OutputDir
 Write-Host "Done. Point ULTRAKILL_RIP or Setup-UnityPortFromDecompile at parent of Assembly-CSharp folder."
