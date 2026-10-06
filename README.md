@@ -45,7 +45,7 @@ $env:ULTRAKILL_RIP = "C:\Users\v0id\Downloads\cockadoodledo\fdadsfsadfff"
 .\scripts\Sync-GameSources.ps1   # copies rip -> game-sources/Assembly-CSharp, then commit + push
 ```
 
-If `game-sources` is in the repo, CI compiles from dnSpy/ilspy scripts; otherwise CI uses retail `Assembly-CSharp.dll` from the same Managed set.
+CI builds game logic from retail **`Assembly-CSharp.dll`** (same binary you’d patch in dnSpy). `game-sources/` is for local script edits; full recompile on Actions is not reliable yet.
 
 ## GitHub Actions
 

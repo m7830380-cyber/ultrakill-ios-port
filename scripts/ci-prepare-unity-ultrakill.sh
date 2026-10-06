@@ -46,17 +46,19 @@ fi
 
 # Prefer decompiled sources in repo when present; otherwise IL2CPP uses Assembly-CSharp.dll from RetailManaged.
 rm -rf "$PROJECT/Assets/Game"
-if [[ -d "$SOURCES" ]] && [[ -n "$(ls -A "$SOURCES" 2>/dev/null || true)" ]]; then
-  echo "Using decompiled sources from game-sources/Assembly-CSharp"
-  cp -R "$SOURCES" "$PROJECT/Assets/Game"
-  if command -v pwsh >/dev/null 2>&1; then
-    pwsh -File "$ROOT/scripts/Clean-GameSources.ps1" -Root "$PROJECT/Assets/Game"
-  fi
-  copy_third_party_dll
-else
-  echo "ERROR: game-sources/Assembly-CSharp missing. Run scripts/Sync-GameSources.ps1 locally and push."
+# GitHub CI: compile retail Assembly-CSharp.dll (dnSpy/ilspy output is not clean enough to compile as ~1500 scripts).
+rm -rf "$PROJECT/Assets/Game"
+copy_third_party_dll
+if [[ ! -f "$MANAGED_SRC/Assembly-CSharp.dll" ]]; then
+  echo "Missing $MANAGED_SRC/Assembly-CSharp.dll"
   exit 1
 fi
+cp "$MANAGED_SRC/Assembly-CSharp.dll" "$MANAGED_DST/"
+# Referenced by game assembly; stripped from iOS player via IosPluginFilter.
+if [[ -f "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" ]]; then
+  cp "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" "$MANAGED_DST/"
+fi
+echo "CI game code: Assembly-CSharp.dll + third-party Managed refs (UltrakillIOS sources for touch/zip)."
 
 BOOT="$PROJECT/Assets/Scenes/MainBoot.unity"
 if [[ ! -f "$BOOT" ]]; then
