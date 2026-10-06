@@ -68,14 +68,15 @@ jobs:
       - name: Xcode build (unsigned)
         run: |
           set -euo pipefail
-          BUILD_DIR="${{ env.PROJECT_PATH }}/build/iOS"
+          BUILD_DIR="$GITHUB_WORKSPACE/${{ env.PROJECT_PATH }}/build/iOS"
+          DERIVED_DATA="$BUILD_DIR/DerivedData"
           cd "$BUILD_DIR"
           xcodebuild \
             -project Unity-iPhone.xcodeproj \
             -scheme Unity-iPhone \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath "$BUILD_DIR/DerivedData" \
+            -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -85,11 +86,8 @@ jobs:
       - name: Package unsigned IPA
         run: |
           set -euo pipefail
-          BUILD_DIR="${{ env.PROJECT_PATH }}/build/iOS"
-          APP_PATH="$(find "$BUILD_DIR/DerivedData" -name '*.app' -path '*/Build/Products/*' | head -n 1)"
-          if [ -z "$APP_PATH" ]; then
-            APP_PATH="$(find "$BUILD_DIR" -name '*.app' | head -n 1)"
-          fi
+          BUILD_DIR="$GITHUB_WORKSPACE/${{ env.PROJECT_PATH }}/build/iOS"
+          APP_PATH="$(find "$BUILD_DIR" -name '*.app' -path '*/Build/Products/*' | head -n 1)"
           if [ -z "$APP_PATH" ]; then
             echo "No .app found after xcodebuild"
             find "$BUILD_DIR" -maxdepth 5 -type d -name '*.app' || true
