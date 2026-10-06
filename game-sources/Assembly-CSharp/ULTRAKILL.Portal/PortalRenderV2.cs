@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -30,7 +30,7 @@ public class PortalRenderV2 : MonoBehaviour
 		public float nearClip;
 	}
 
-	private struct Vertex
+	public struct Vertex
 	{
 		public float3 position;
 
@@ -91,7 +91,7 @@ public class PortalRenderV2 : MonoBehaviour
 		internal float4 clipPlane;
 	}
 
-	private struct PrepassData
+	public struct PrepassData
 	{
 		public int handleIndex;
 
@@ -116,7 +116,7 @@ public class PortalRenderV2 : MonoBehaviour
 		}
 	}
 
-	private struct PortalView
+	public struct PortalView
 	{
 		public CameraData camData;
 

@@ -26,4 +26,17 @@ foreach ($name in @(
 Get-ChildItem $Root -Filter "__JobReflectionRegistrationOutput__*.cs" -File -ErrorAction SilentlyContinue |
     Remove-Item -Force
 
+$bcl = Join-Path $Root "System.Collections.Generic"
+if (Test-Path $bcl) {
+    Remove-Item -Recurse -Force $bcl
+}
+
+$portalRender = Join-Path $Root "ULTRAKILL.Portal\PortalRenderV2.cs"
+if (Test-Path $portalRender) {
+    $text = Get-Content $portalRender -Raw
+    $text = $text -replace '\bprivate struct\b', 'public struct'
+    $text = $text -replace '\bprivate readonly struct\b', 'public readonly struct'
+    Set-Content $portalRender $text -Encoding UTF8 -NoNewline
+}
+
 Write-Host "Cleaned ilspy artifacts under $Root"
