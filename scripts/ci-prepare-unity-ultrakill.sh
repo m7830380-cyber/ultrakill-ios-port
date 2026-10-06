@@ -20,18 +20,17 @@ fi
 
 mkdir -p "$MANAGED_DST"
 rm -rf "$MANAGED_DST"/*
-for dll in "$MANAGED_SRC"/*.dll; do
-  base="$(basename "$dll")"
-  case "$base" in
-    UnityEngine.*|UnityEngine.dll|mscorlib.dll|netstandard.dll|System.*)
-      continue
-      ;;
-    Facepunch.*)
-      continue
-      ;;
-  esac
-  cp "$dll" "$MANAGED_DST/"
-done
+copy_third_party_dll() {
+  for dll in "$MANAGED_SRC"/*.dll; do
+    base="$(basename "$dll")"
+    case "$base" in
+      Assembly-CSharp.dll|Unity.*|UnityEngine.*|mscorlib.dll|netstandard.dll|System.*|Mono.Security.dll)
+        continue
+        ;;
+    esac
+    cp "$dll" "$MANAGED_DST/"
+  done
+}
 
 # Touch + zip loader (full port defines)
 if command -v pwsh >/dev/null 2>&1; then
@@ -50,13 +49,10 @@ rm -rf "$PROJECT/Assets/Game"
 if [[ -d "$SOURCES" ]] && [[ -n "$(ls -A "$SOURCES" 2>/dev/null || true)" ]]; then
   echo "Using decompiled sources from game-sources/Assembly-CSharp"
   cp -R "$SOURCES" "$PROJECT/Assets/Game"
-  rm -f "$MANAGED_DST/Assembly-CSharp.dll"
+  copy_third_party_dll
 else
-  echo "Using precompiled Assembly-CSharp.dll (sync game-sources to compile from dnSpy/ilspy on CI)"
-  if [[ ! -f "$MANAGED_DST/Assembly-CSharp.dll" ]]; then
-    echo "Assembly-CSharp.dll missing in RetailManaged"
-    exit 1
-  fi
+  echo "ERROR: game-sources/Assembly-CSharp missing. Run scripts/Sync-GameSources.ps1 locally and push."
+  exit 1
 fi
 
 BOOT="$PROJECT/Assets/Scenes/MainBoot.unity"

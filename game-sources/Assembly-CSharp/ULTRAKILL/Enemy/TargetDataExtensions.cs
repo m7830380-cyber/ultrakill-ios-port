@@ -1,0 +1,160 @@
+using System;
+using ULTRAKILL.Portal;
+using Unity.Mathematics;
+using UnityEngine;
+
+namespace ULTRAKILL.Enemy;
+
+public static class TargetDataExtensions
+{
+	public static TargetData ToData(this TargetDataRef src)
+	{
+		return new TargetData
+		{
+			handle = src.CreateHandle(),
+			portalMatrix = src.portalMatrix,
+			position = src.position,
+			headPosition = src.headPosition,
+			realPosition = src.target.Position,
+			realHeadPosition = src.target.HeadPosition,
+			velocity = src.velocity
+		};
+	}
+
+	public static float SqrDist(this TargetDataRef @this, Vector3 point)
+	{
+		return (@this.position - point).sqrMagnitude;
+	}
+
+	public static float DistanceTo(this TargetDataRef @this, Vector3 point)
+	{
+		return (@this.position - point).magnitude;
+	}
+
+	public static bool IsObstructed(this TargetDataRef @this, Vector3 point, LayerMask layerMask, bool toHead = false)
+	{
+		RaycastHit obstructionResult;
+		return @this.IsObstructed(point, layerMask, toHead, out obstructionResult);
+	}
+
+	public static bool IsObstructed(this TargetDataRef @this, Vector3 point, LayerMask layerMask, bool toHead, out RaycastHit obstructionResult)
+	{
+		PortalTraversalV2[] traversals;
+		return @this.IsObstructed(point, layerMask, toHead, out obstructionResult, out traversals);
+	}
+
+	public static bool IsObstructed(this TargetDataRef @this, Vector3 point, LayerMask layerMask, bool toHead, out RaycastHit obstructionResult, out PortalTraversalV2[] traversals)
+	{
+		obstructionResult = default;
+		traversals = Array.Empty<PortalTraversalV2>();
+		if (@this.isSequenceCulled)
+		{
+			return true;
+		}
+		Vector3 end = (toHead ? @this.headPosition : @this.position);
+		PortalScene scene = @this.scene;
+		PortalHandleSequence portals = @this.portals;
+		if (portals.Count == 0)
+		{
+			if (scene.FindPortalBetween(point, end, out var _, out var _, out var _, allowBackfaces: true))
+			{
+				return true;
+			}
+			bool result = Physics.Linecast(point, toHead ? @this.headPosition : @this.position, out var hitInfo, layerMask, QueryTriggerInteraction.Ignore);
+			obstructionResult = hitInfo;
+			return result;
+		}
+		PortalHandleSequence sequence = portals.Reversed();
+		if (!scene.TraversePortalSequence(point, end, @this.target.Position, sequence, out var outSegments))
+		{
+			return true;
+		}
+		for (int i = 0; i < outSegments.Length; i++)
+		{
+			PortalScene.PortalRaySegment portalRaySegment = outSegments[i];
+			float3 float5 = portalRaySegment.direction * 0.1f;
+			float3 float6 = portalRaySegment.start + float5;
+			float3 float7 = portalRaySegment.end - float5;
+			if (scene.FindPortalBetween(float6, float7, out var _, out var _, out var _, allowBackfaces: true))
+			{
+				return true;
+			}
+		}
+		for (int j = 0; j < outSegments.Length; j++)
+		{
+			PortalScene.PortalRaySegment portalRaySegment2 = outSegments[j];
+			if (Physics.Linecast(portalRaySegment2.start, portalRaySegment2.end, out var hitInfo2, layerMask, QueryTriggerInteraction.Ignore))
+			{
+				obstructionResult = hitInfo2;
+				return true;
+			}
+		}
+		traversals = new PortalTraversalV2[outSegments.Length - 1];
+		int length = outSegments.Length;
+		PortalScene.PortalRaySegment portalRaySegment3 = outSegments[0];
+		float3 float8 = math.normalize(portalRaySegment3.direction);
+		for (int k = 1; k < length; k++)
+		{
+			PortalScene.PortalRaySegment portalRaySegment4 = outSegments[k];
+			float3 float9 = math.normalize(portalRaySegment4.direction);
+			traversals[k - 1] = new PortalTraversalV2(portalRaySegment3.end, float8, portalRaySegment4.start, float9, portalRaySegment3.handle.Reverse(), scene.GetPortalObject(portalRaySegment3.handle));
+			portalRaySegment3 = portalRaySegment4;
+			float8 = float9;
+		}
+		return false;
+	}
+
+	public static Vector3 PredictTargetPosition(this TargetData data, float time, bool aimAtHead = false, bool includeGravity = false, bool assumeGroundMovement = false)
+	{
+		return PredictTargetPosition(data.target, in data.portalMatrix, in data.velocity, time, aimAtHead, includeGravity, assumeGroundMovement);
+	}
+
+	public static Vector3 PredictTargetPosition(this TargetDataRef data, float time, bool aimAtHead = false, bool includeGravity = false, bool assumeGroundMovement = false)
+	{
+		return PredictTargetPosition(data.target, in data.portalMatrix, in data.velocity, time, aimAtHead, includeGravity, assumeGroundMovement);
+	}
+
+	public static Vector3 PredictTargetPosition(ITarget target, in Matrix4x4 portalMatrix, in Vector3 velocity, float time, bool aimAtHead = false, bool includeGravity = false, bool assumeGroundMovement = false)
+	{
+		Vector3 vector = velocity * time;
+		if (includeGravity)
+		{
+			bool flag = false;
+			if (target.isPlayer)
+			{
+				flag = MonoSingleton<PlayerTracker>.Instance.GetOnGround();
+			}
+			else if (target.EID != null && (bool)target.Rigidbody)
+			{
+				flag = target.Rigidbody.isKinematic;
+			}
+			if (!flag)
+			{
+				Vector3 vector2 = portalMatrix.MultiplyVector(Physics.gravity);
+				vector += 0.5f * vector2 * (time * time);
+			}
+		}
+		Vector3 vector3 = (aimAtHead ? target.HeadPosition : target.Position);
+		Vector3 direction = portalMatrix.inverse.MultiplyVector(vector);
+		if (PortalPhysicsV2.Raycast(vector3, direction, direction.magnitude, LayerMaskDefaults.Get(LMD.Environment), out var hitInfo, out var portalTraversals, out var _, QueryTriggerInteraction.Ignore))
+		{
+			Vector3 point = hitInfo.point;
+			if (portalTraversals.Length != 0)
+			{
+				for (int num = portalTraversals.Length - 1; num >= 0; num--)
+				{
+					PortalTraversalV2 portalTraversalV = portalTraversals[num];
+					PortalSide side = portalTraversalV.portalHandle.side;
+					point = portalTraversalV.portalObject.GetTravelMatrix(side.Reverse()).MultiplyPoint3x4(point);
+				}
+			}
+			if (assumeGroundMovement)
+			{
+				direction = vector3 + new Vector3(direction.x, point.y - vector3.y, direction.z);
+				return portalMatrix.MultiplyPoint3x4(direction);
+			}
+			return portalMatrix.MultiplyPoint3x4(point);
+		}
+		return vector + vector3;
+	}
+}
