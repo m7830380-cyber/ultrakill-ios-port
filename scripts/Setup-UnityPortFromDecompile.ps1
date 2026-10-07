@@ -67,15 +67,6 @@ if (-not $SkipManagedDlls) {
         ForEach-Object { Copy-Item $_.FullName (Join-Path $pluginsRetail $_.Name) }
 }
 
-# Boot scene from retail data (same Unity version as PC build)
-$scenesDir = Join-Path $assets "Scenes"
-New-Item -ItemType Directory -Force -Path $scenesDir | Out-Null
-$level0 = Join-Path $RetailPath "ULTRAKILL_Data\level0"
-if (Test-Path $level0) {
-    Copy-Item $level0 (Join-Path $scenesDir "MainBoot.unity") -Force
-    Write-Host "Copied retail level0 -> Assets/Scenes/MainBoot.unity"
-}
-
 # Player defines for full port (Addressables remap compile)
 $projectSettings = Join-Path $UnityProject "ProjectSettings\ProjectSettings.asset"
 if (-not (Test-Path $projectSettings)) {
@@ -101,8 +92,8 @@ $editorBuild = Join-Path $UnityProject "ProjectSettings\EditorBuildSettings.asse
     '  serializedVersion: 2',
     '  m_Scenes:',
     '  - enabled: 1',
-    '    path: Assets/Scenes/MainBoot.unity',
-    '    guid: 00000000000000000000000000000000',
+    '    path: Assets/Scenes/Bootstrap.unity',
+    '    guid: a1b2c3d4e5f60718293a4b5c6d7e8f90',
     '  m_configObjects: {}'
 ) | Set-Content $editorBuild -Encoding UTF8
 Write-Host ""

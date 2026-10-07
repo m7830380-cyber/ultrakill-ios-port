@@ -2,7 +2,6 @@
 using System;
 using System.IO;
 using System.Reflection;
-using Newtonsoft.Json;
 using UnityEngine;
 
 namespace UltrakillIOS
@@ -32,25 +31,25 @@ namespace UltrakillIOS
                 var path = Path.Combine(streaming, "GameBuildSettings.json");
                 if (!File.Exists(path))
                 {
-                    Debug.Log("[UltrakillIOS] No GameBuildSettings.json in external StreamingAssets; using game defaults.");
+                    UltrakillLog.Info("Hooks", "No GameBuildSettings.json in external StreamingAssets; using game defaults.");
                     return;
                 }
 
                 var gameSettingsType = Type.GetType("GameBuildSettings, Assembly-CSharp");
                 if (gameSettingsType == null)
                 {
-                    Debug.LogWarning("[UltrakillIOS] GameBuildSettings type not found.");
+                    UltrakillLog.Warn("Hooks", "GameBuildSettings type not found in Assembly-CSharp.");
                     return;
                 }
 
-                var instance = JsonConvert.DeserializeObject(File.ReadAllText(path), gameSettingsType);
+                var instance = JsonUtility.FromJson(File.ReadAllText(path), gameSettingsType);
                 var field = gameSettingsType.GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic);
                 field?.SetValue(null, instance);
-                Debug.Log("[UltrakillIOS] GameBuildSettings loaded from " + path);
+                UltrakillLog.Info("Hooks", "GameBuildSettings loaded from " + path);
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("[UltrakillIOS] GameBuildSettings preload failed: " + ex.Message);
+                UltrakillLog.Warn("Hooks", "GameBuildSettings preload failed: " + ex.Message);
             }
         }
     }

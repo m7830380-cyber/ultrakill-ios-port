@@ -21,8 +21,11 @@ public static class IosUnsignedBuild
 
         if (scenes.Length == 0)
         {
-            scenes = new[] { "Assets/Scenes/MainBoot.unity" };
+            scenes = new[] { "Assets/Scenes/Bootstrap.unity" };
         }
+
+        Debug.Log("Build scenes: " + string.Join(", ", scenes));
+        Debug.Log("Extra scripting defines: " + string.Join(";", PlayerDefines));
 
         var output = Path.Combine("build", "iOS");
         if (Directory.Exists(output))
@@ -35,7 +38,8 @@ public static class IosUnsignedBuild
             scenes = scenes,
             locationPathName = output,
             target = BuildTarget.iOS,
-            options = BuildOptions.Development
+            options = BuildOptions.Development,
+            extraScriptingDefines = PlayerDefines
         };
 
         var report = BuildPipeline.BuildPlayer(options);
@@ -49,6 +53,9 @@ public static class IosUnsignedBuild
     }
 
     private const string IosBundleId = "com.ultrakill.ios.port";
+
+    // ProjectSettings.asset in this repo is a stub that Unity does not apply on CI, so defines are passed per build.
+    private static readonly string[] PlayerDefines = { "ULTRAKILL_FULL_PORT" };
 
     private static void EnsureIosPlayerSettings()
     {

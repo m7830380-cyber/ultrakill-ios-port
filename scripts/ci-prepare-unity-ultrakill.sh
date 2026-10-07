@@ -79,9 +79,15 @@ if [[ -f "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" ]]; then
 fi
 echo "CI game code: Assembly-CSharp.dll + third-party Managed refs (UltrakillIOS sources for touch/zip)."
 
-if [[ ! -f "$PROJECT/Assets/Scenes/MainBoot.unity" ]]; then
-  echo "Missing Assets/Scenes/MainBoot.unity (run scripts/Update-MainBootScene.ps1 on Windows)"
+# Steam level0 is a compiled player scene; Unity cannot import it as an editor scene.
+rm -f "$PROJECT/Assets/Scenes/MainBoot.unity" "$PROJECT/Assets/Scenes/MainBoot.unity.meta"
+
+if [[ ! -f "$PROJECT/Assets/Scenes/Bootstrap.unity" ]]; then
+  echo "Missing Assets/Scenes/Bootstrap.unity"
   exit 1
 fi
+
+echo "UltrakillIOS overlay:"
+ls "$PROJECT/Assets/UltrakillIOS"
 
 echo "CI port tree ready under $PROJECT"

@@ -8,6 +8,9 @@ namespace UltrakillIOS
 {
     internal static class AddressablesContentRemap
     {
+        private const int LoggedRemapLimit = 25;
+        private static int _loggedRemaps;
+
         public static void Install(string externalStreamingAssetsPath, string bundledStreamingAssetsPath)
         {
             if (string.IsNullOrEmpty(externalStreamingAssetsPath))
@@ -15,9 +18,11 @@ namespace UltrakillIOS
                 return;
             }
 
-            var bundled = bundledStreamingAssetsPath ?? Application.streamingAssetsPath;
-            Addressables.ResourceManager.InternalIdTransformFunc = location => Remap(location, bundled, externalStreamingAssetsPath);
-            Debug.Log("[UltrakillIOS] Addressables paths remapped to external StreamingAssets.");
+            var bundled = (bundledStreamingAssetsPath ?? Application.streamingAssetsPath).Replace('\\', '/');
+            var external = externalStreamingAssetsPath.Replace('\\', '/');
+            Addressables.ResourceManager.InternalIdTransformFunc = location => Remap(location, bundled, external);
+            UltrakillLog.Info("Addressables", "Remap installed: '" + bundled + "' -> '" + external + "'");
+            UltrakillLog.Info("Addressables", "RuntimePath: " + Addressables.RuntimePath);
         }
 
         private static string Remap(IResourceLocation location, string bundled, string external)
@@ -28,20 +33,31 @@ namespace UltrakillIOS
                 return id;
             }
 
-            if (id.StartsWith(bundled, System.StringComparison.Ordinal))
+            // Retail catalog was built on Windows and stores paths with backslashes.
+            var normalized = id.Replace('\\', '/');
+            var result = normalized;
+            if (normalized.StartsWith(bundled, System.StringComparison.Ordinal))
             {
-                return external + id.Substring(bundled.Length);
+                result = external + normalized.Substring(bundled.Length);
+            }
+            else
+            {
+                var marker = "StreamingAssets/";
+                var idx = normalized.IndexOf(marker, System.StringComparison.Ordinal);
+                if (idx >= 0)
+                {
+                    result = Path.Combine(external, normalized.Substring(idx + marker.Length));
+                }
             }
 
-            var marker = "StreamingAssets";
-            var idx = id.IndexOf(marker, System.StringComparison.Ordinal);
-            if (idx >= 0)
+            if (_loggedRemaps < LoggedRemapLimit && result != id)
             {
-                var tail = id.Substring(idx + marker.Length).TrimStart('/', '\\');
-                return Path.Combine(external, tail);
+                _loggedRemaps++;
+                var exists = File.Exists(result) ? "exists" : "NOT FOUND";
+                UltrakillLog.Info("Addressables", "Remap " + id + " -> " + result + " (" + exists + ")");
             }
 
-            return id;
+            return result;
         }
     }
 }

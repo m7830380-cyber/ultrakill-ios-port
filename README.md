@@ -36,7 +36,7 @@ $env:ULTRAKILL_RIP = "C:\Users\v0id\Downloads\cockadoodledo\fdadsfsadfff"
 # Open unity-ultrakill in Unity 2022.3.62f1, fix compile (Steam etc.), build iOS
 ```
 
-`Assets/Game` junctions to your rip’s `Scripts/Assembly-CSharp` (~1500 files). Retail `Managed` DLLs (except `Assembly-CSharp.dll`) go to `Assets/Plugins/RetailManaged` as references. Boot scene is copied from `ULTRAKILL_Data/level0`. Define `ULTRAKILL_FULL_PORT` enables Addressables remap into the Documents zip.
+`Assets/Game` junctions to your rip’s `Scripts/Assembly-CSharp` (~1500 files). Retail `Managed` DLLs (except `Assembly-CSharp.dll`) go to `Assets/Plugins/RetailManaged` as references. Define `ULTRAKILL_FULL_PORT` (passed by `IosUnsignedBuild`) enables the Addressables remap into `Documents/ULTRAKILL-Content`.
 
 **GitHub Actions** builds **`unity-ultrakill`** on every push to `main` (artifact **`ultrakill-ios-ipa`**). Managed DLLs live in `unity-ios/Assets/Plugins/UltrakillManaged` (committed). Optional decompiled sources:
 
@@ -44,9 +44,15 @@ $env:ULTRAKILL_RIP = "C:\Users\v0id\Downloads\cockadoodledo\fdadsfsadfff"
 .\scripts\Sync-GameSources.ps1   # copies rip -> game-sources/Assembly-CSharp, then commit + push
 ```
 
-CI builds with retail **`Assembly-CSharp.dll`** plus the real boot scene **`MainBoot.unity`** (copied from Steam `level0`). After external data is bound, the retail **`Bootstrap`** flow runs (Tutorial / Intro via Addressables).
+CI builds with retail **`Assembly-CSharp.dll`** and `Bootstrap.unity`. On launch, `RetailBootProbe` initializes Addressables from the external catalog and tries to load `Main Menu` / `Intro` / `Tutorial`, logging each step.
 
-Local script work: `game-sources/Assembly-CSharp` (~1500 files). Link into Unity with `.\scripts\Link-GameScripts.ps1` (do not commit `Assets/Game` with the DLL present). Refresh boot scene: `.\scripts\Update-MainBootScene.ps1`.
+Steam's `level0` cannot be used as a scene: it is a compiled player file, which Unity rejects as an editor scene ("Invalid serialized file header").
+
+Local script work: `game-sources/Assembly-CSharp` (~1500 files). Link into Unity with `.\scripts\Link-GameScripts.ps1` (do not commit `Assets/Game` with the DLL present).
+
+## Logs
+
+Every session writes `Documents/ULTRAKILL-Logs/session-<date>-<time>.txt` (last 10 kept), visible in **Files → On My iPhone → ULTRAKILL**. The in-game **LOG** button (top-right) toggles a live console with the boot status.
 
 ## GitHub Actions
 

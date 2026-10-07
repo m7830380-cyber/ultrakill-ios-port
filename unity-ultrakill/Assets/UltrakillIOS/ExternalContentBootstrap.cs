@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Reflection;
+using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -37,7 +37,7 @@ namespace UltrakillIOS
             }
             catch (Exception ex)
             {
-                Debug.LogError("[UltrakillIOS] External content bootstrap failed: " + ex);
+                UltrakillLog.Error("Content", "External content bootstrap failed: " + ex);
             }
 #endif
         }
@@ -64,13 +64,17 @@ namespace UltrakillIOS
         {
             var documents = GetDocumentsPath();
             var dataPath = Path.Combine(documents, ContentFolderName, DataFolderName);
+            UltrakillLog.Info("Content", "Documents: " + documents);
+            UltrakillLog.Info("Content", "Bundled streamingAssetsPath: " + Application.streamingAssetsPath);
 
             if (!Directory.Exists(dataPath))
             {
-                Debug.LogWarning(
-                    "[UltrakillIOS] Missing " + dataPath
-                    + " — unpack game data into Documents/" + ExpectedDocumentsPath
+                UltrakillLog.Warn(
+                    "Content",
+                    "Missing " + dataPath + " — unpack game data into Documents/" + ExpectedDocumentsPath
                     + " (Files → On My iPhone → ULTRAKILL).");
+                LogDirectory("Documents", documents);
+                LogDirectory(ContentFolderName, Path.Combine(documents, ContentFolderName));
                 return;
             }
 
@@ -79,19 +83,30 @@ namespace UltrakillIOS
 
         private static void BindPaths(string dataPath)
         {
-            if (!Directory.Exists(dataPath))
-            {
-                Debug.LogError("[UltrakillIOS] Data folder not found: " + dataPath);
-                return;
-            }
-
             ContentDataPath = dataPath;
             ContentStreamingAssetsPath = Path.Combine(dataPath, "StreamingAssets");
             IsReady = true;
-            Debug.Log("[UltrakillIOS] External data ready at " + dataPath);
+            UltrakillLog.Info("Content", "External data ready at " + dataPath);
+            LogDirectory(DataFolderName, dataPath);
+            if (!Directory.Exists(ContentStreamingAssetsPath))
+            {
+                UltrakillLog.Warn("Content", "No StreamingAssets folder at " + ContentStreamingAssetsPath);
+            }
 #if ULTRAKILL_FULL_PORT
             RetailGameHooks.OnExternalDataBound();
 #endif
+        }
+
+        private static void LogDirectory(string label, string path)
+        {
+            if (!Directory.Exists(path))
+            {
+                UltrakillLog.Info("Content", label + " does not exist: " + path);
+                return;
+            }
+
+            var entries = Directory.GetFileSystemEntries(path).Select(e => Path.GetFileName(e)).Take(40).ToArray();
+            UltrakillLog.Info("Content", label + " contains " + entries.Length + " entries: " + string.Join(", ", entries));
         }
 
         private static void HookAddressablesPathRemap()
@@ -101,23 +116,10 @@ namespace UltrakillIOS
                 return;
             }
 
-            var addrType = Type.GetType("UnityEngine.AddressableAssets.Addressables, Unity.Addressables");
-            if (addrType == null)
-            {
-                return;
-            }
-
-            var prop = addrType.GetProperty("ResourceManager", BindingFlags.Public | BindingFlags.Static);
-            var rm = prop?.GetValue(null);
-            if (rm == null)
-            {
-                return;
-            }
-
 #if ULTRAKILL_FULL_PORT
             AddressablesContentRemap.Install(ContentStreamingAssetsPath, Application.streamingAssetsPath);
 #else
-            Debug.Log("[UltrakillIOS] Engine-only build: Addressables remap skipped (use unity-ultrakill + ULTRAKILL_FULL_PORT).");
+            UltrakillLog.Info("Content", "Engine-only build: Addressables remap skipped (ULTRAKILL_FULL_PORT not defined).");
 #endif
         }
     }
