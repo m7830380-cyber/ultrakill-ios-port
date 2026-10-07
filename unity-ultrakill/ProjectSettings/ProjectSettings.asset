@@ -5,7 +5,9 @@ PlayerSettings:
   productName: ULTRAKILL
   companyName: UltrakillIOSPort
   applicationIdentifier:
+    Standalone: com.ultrakill.ios.port
     iPhone: com.ultrakill.ios.port
+    iOS: com.ultrakill.ios.port
   bundleVersion: 1.0
   allowUnsafeCode: 1
   assemblyVersionValidation: 0

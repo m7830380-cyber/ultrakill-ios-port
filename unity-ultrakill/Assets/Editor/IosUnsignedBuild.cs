@@ -12,6 +12,7 @@ public static class IosUnsignedBuild
     public static void Build()
     {
         DisableBurstCompilation();
+        EnsureIosPlayerSettings();
 
         var scenes = EditorBuildSettings.scenes
             .Where(s => s.enabled)
@@ -45,6 +46,20 @@ public static class IosUnsignedBuild
         }
 
         Debug.Log("iOS Xcode project exported to " + output);
+    }
+
+    private const string IosBundleId = "com.ultrakill.ios.port";
+
+    private static void EnsureIosPlayerSettings()
+    {
+        PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.iOS, IosBundleId);
+        if (string.IsNullOrEmpty(PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.iOS)))
+        {
+            Debug.LogError("iOS bundle identifier is empty after SetApplicationIdentifier.");
+            EditorApplication.Exit(1);
+        }
+
+        Debug.Log("Using iOS bundle identifier: " + PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.iOS));
     }
 
     private static void DisableBurstCompilation()
