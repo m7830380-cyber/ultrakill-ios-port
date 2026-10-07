@@ -11,6 +11,8 @@ public static class IosUnsignedBuild
     /// </summary>
     public static void Build()
     {
+        DisableBurstCompilation();
+
         var scenes = EditorBuildSettings.scenes
             .Where(s => s.enabled)
             .Select(s => s.path)
@@ -43,5 +45,12 @@ public static class IosUnsignedBuild
         }
 
         Debug.Log("iOS Xcode project exported to " + output);
+    }
+
+    private static void DisableBurstCompilation()
+    {
+        var burstEditor = System.Type.GetType("Unity.Burst.Editor.BurstCompiler, Unity.Burst.Editor");
+        var options = burstEditor?.GetProperty("Options", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.GetValue(null);
+        options?.GetType().GetProperty("EnableBurstCompilation")?.SetValue(options, false);
     }
 }

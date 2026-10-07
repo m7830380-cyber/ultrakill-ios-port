@@ -43,6 +43,7 @@ copy_third_party_dll() {
     Autodesk.Fbx.dll
     FbxBuildTestAssets.dll
     UltrakillMobileTouch.dll
+    System.Runtime.CompilerServices.Unsafe.dll
   )
   for name in "${allow[@]}"; do
     if [[ -f "$MANAGED_SRC/$name" ]]; then
@@ -76,9 +77,8 @@ if [[ -f "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" ]]; then
 fi
 echo "CI game code: Assembly-CSharp.dll + third-party Managed refs (UltrakillIOS sources for touch/zip)."
 
-BOOT="$PROJECT/Assets/Scenes/MainBoot.unity"
-if [[ ! -f "$BOOT" ]]; then
-  echo "Missing $BOOT (commit retail level0 as MainBoot.unity)"
+if [[ ! -f "$PROJECT/Assets/Scenes/Bootstrap.unity" ]]; then
+  echo "Missing Assets/Scenes/Bootstrap.unity"
   exit 1
 fi
 
