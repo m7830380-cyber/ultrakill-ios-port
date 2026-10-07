@@ -21,7 +21,7 @@ public static class IosUnsignedBuild
 
         if (scenes.Length == 0)
         {
-            scenes = new[] { "Assets/Scenes/Bootstrap.unity" };
+            scenes = new[] { "Assets/Scenes/MainBoot.unity" };
         }
 
         var output = Path.Combine("build", "iOS");

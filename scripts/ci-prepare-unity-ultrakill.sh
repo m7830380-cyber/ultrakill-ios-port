@@ -59,6 +59,8 @@ if command -v pwsh >/dev/null 2>&1; then
     Copy-Item '$ROOT/patches/MobileTouch/LegacyInputSynthesizer.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
     Copy-Item '$ROOT/patches/MobileTouch/AddressablesContentRemap.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
     Copy-Item '$ROOT/patches/MobileTouch/ExternalContentBootstrap.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
+    Copy-Item '$ROOT/patches/MobileTouch/RetailGameHooks.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
+    Copy-Item '$ROOT/patches/MobileTouch/ContentStatusHud.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
   "
 else
   echo "pwsh not found; overlay must already be in unity-ultrakill/Assets/UltrakillIOS"
@@ -77,10 +79,8 @@ if [[ -f "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" ]]; then
 fi
 echo "CI game code: Assembly-CSharp.dll + third-party Managed refs (UltrakillIOS sources for touch/zip)."
 
-rm -f "$PROJECT/Assets/Scenes/MainBoot.unity" "$PROJECT/Assets/Scenes/MainBoot.unity.meta"
-
-if [[ ! -f "$PROJECT/Assets/Scenes/Bootstrap.unity" ]]; then
-  echo "Missing Assets/Scenes/Bootstrap.unity"
+if [[ ! -f "$PROJECT/Assets/Scenes/MainBoot.unity" ]]; then
+  echo "Missing Assets/Scenes/MainBoot.unity (run scripts/Update-MainBootScene.ps1 on Windows)"
   exit 1
 fi
 

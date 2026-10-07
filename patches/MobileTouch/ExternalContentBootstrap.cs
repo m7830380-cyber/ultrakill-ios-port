@@ -89,6 +89,9 @@ namespace UltrakillIOS
             ContentStreamingAssetsPath = Path.Combine(dataPath, "StreamingAssets");
             IsReady = true;
             Debug.Log("[UltrakillIOS] External data ready at " + dataPath);
+#if ULTRAKILL_FULL_PORT
+            RetailGameHooks.OnExternalDataBound();
+#endif
         }
 
         private static void HookAddressablesPathRemap()

@@ -14,13 +14,16 @@ namespace UltrakillIOS
 
             if (ExternalContentBootstrap.IsReady)
             {
+#if ULTRAKILL_FULL_PORT
+                return;
+#else
                 GUI.Label(
                     rect,
                     "ULTRAKILL data is loaded.\n\n"
-                    + "This IPA is the engine shell only — it does not include the game executable (scenes, scripts, Addressables). "
-                    + "Gray screen + touch overlay is expected until the full Unity port is built.\n\n"
+                    + "Engine shell only — install the full port IPA for gameplay.\n\n"
                     + "Data: " + ExternalContentBootstrap.ContentDataPath);
                 return;
+#endif
             }
 
             GUI.Label(

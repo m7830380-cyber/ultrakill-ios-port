@@ -44,7 +44,9 @@ $env:ULTRAKILL_RIP = "C:\Users\v0id\Downloads\cockadoodledo\fdadsfsadfff"
 .\scripts\Sync-GameSources.ps1   # copies rip -> game-sources/Assembly-CSharp, then commit + push
 ```
 
-CI builds game logic from retail **`Assembly-CSharp.dll`** (same binary you’d patch in dnSpy). `game-sources/` is for local script edits; full recompile on Actions is not reliable yet.
+CI builds with retail **`Assembly-CSharp.dll`** plus the real boot scene **`MainBoot.unity`** (copied from Steam `level0`). After external data is bound, the retail **`Bootstrap`** flow runs (Tutorial / Intro via Addressables).
+
+Local script work: `game-sources/Assembly-CSharp` (~1500 files). Link into Unity with `.\scripts\Link-GameScripts.ps1` (do not commit `Assets/Game` with the DLL present). Refresh boot scene: `.\scripts\Update-MainBootScene.ps1`.
 
 ## GitHub Actions
 
