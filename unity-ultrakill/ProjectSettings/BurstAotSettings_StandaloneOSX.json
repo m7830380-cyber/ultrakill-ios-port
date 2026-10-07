@@ -1,0 +1,11 @@
+{
+  "MonoBehaviour": {
+    "Version": 4,
+    "EnableBurstCompilation": false,
+    "EnableOptimisations": false,
+    "EnableSafetyChecks": false,
+    "EnableDebugInAllBuilds": false,
+    "DebugDataKind": 1,
+    "OptimizeFor": 0
+  }
+}

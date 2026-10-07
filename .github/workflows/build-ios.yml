@@ -37,7 +37,7 @@ jobs:
           targetPlatform: iOS
           buildMethod: IosUnsignedBuild.Build
           versioning: None
-          customParameters: -nographics -batchmode -disableAssemblyUpdater
+          customParameters: -nographics -batchmode -disableAssemblyUpdater -burst-disable-compilation
 
       - name: Xcode build (unsigned)
         run: |

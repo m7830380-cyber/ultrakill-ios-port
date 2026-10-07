@@ -49,6 +49,10 @@ public static class IosUnsignedBuild
 
     private static void DisableBurstCompilation()
     {
+        var burst = System.Type.GetType("Unity.Burst.BurstCompiler, Unity.Burst");
+        burst?.GetProperty("DisableCompilation", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            ?.SetValue(null, true);
+
         var burstEditor = System.Type.GetType("Unity.Burst.Editor.BurstCompiler, Unity.Burst.Editor");
         var options = burstEditor?.GetProperty("Options", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.GetValue(null);
         options?.GetType().GetProperty("EnableBurstCompilation")?.SetValue(options, false);
