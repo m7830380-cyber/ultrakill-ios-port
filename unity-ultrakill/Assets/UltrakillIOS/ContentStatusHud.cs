@@ -23,7 +23,11 @@ namespace UltrakillIOS
                 return;
             }
 
-            GUI.Label(rect, "Copy " + ExternalContentBootstrap.ZipFileName + " into Files → On My iPhone → ULTRAKILL (Documents), then restart the app.");
+            GUI.Label(
+                rect,
+                "Unpack game data into Documents/"
+                + ExternalContentBootstrap.ExpectedDocumentsPath
+                + " (Files → On My iPhone → ULTRAKILL), then restart the app.");
 #endif
         }
     }

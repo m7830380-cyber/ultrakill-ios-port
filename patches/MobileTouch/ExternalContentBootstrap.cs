@@ -1,24 +1,25 @@
 using System;
 using System.IO;
-using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using UnityEngine;
 
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Loads ULTRAKILL_Data from Documents/ULTRAKILL-Content.zip (sidestep huge IPA).
+    /// Uses ULTRAKILL_Data from Documents/ULTRAKILL-Content (you unpack the content archive yourself).
     /// </summary>
     public static class ExternalContentBootstrap
     {
-        public const string ZipFileName = "ULTRAKILL-Content.zip";
+        public const string ContentFolderName = "ULTRAKILL-Content";
         public const string DataFolderName = "ULTRAKILL_Data";
 
         public static string ContentDataPath { get; private set; }
         public static string ContentStreamingAssetsPath { get; private set; }
         public static bool IsReady { get; private set; }
+
+        public static string ExpectedDocumentsPath =>
+            ContentFolderName + "/" + DataFolderName;
 
 #if UNITY_IOS && !UNITY_EDITOR
         [DllImport("__Internal")]
@@ -31,7 +32,7 @@ namespace UltrakillIOS
 #if UNITY_IOS && !UNITY_EDITOR
             try
             {
-                InstallFromDocumentsZip();
+                BindFromDocumentsFolder();
                 HookAddressablesPathRemap();
             }
             catch (Exception ex)
@@ -59,36 +60,20 @@ namespace UltrakillIOS
 #endif
         }
 
-        private static void InstallFromDocumentsZip()
+        private static void BindFromDocumentsFolder()
         {
             var documents = GetDocumentsPath();
-            var zipPath = Path.Combine(documents, ZipFileName);
-            var cacheRoot = Path.Combine(Application.persistentDataPath, "ultrakill-content");
-            var dataPath = Path.Combine(cacheRoot, DataFolderName);
-            var markerPath = Path.Combine(cacheRoot, "installed.sha256");
+            var dataPath = Path.Combine(documents, ContentFolderName, DataFolderName);
 
-            if (!File.Exists(zipPath))
+            if (!Directory.Exists(dataPath))
             {
-                Debug.LogWarning("[UltrakillIOS] Missing " + zipPath + " — copy " + ZipFileName + " into the app Documents folder (Files → On My iPhone → ULTRAKILL).");
+                Debug.LogWarning(
+                    "[UltrakillIOS] Missing " + dataPath
+                    + " — unpack game data into Documents/" + ExpectedDocumentsPath
+                    + " (Files → On My iPhone → ULTRAKILL).");
                 return;
             }
 
-            var zipHash = Sha256File(zipPath);
-            if (File.Exists(markerPath) && File.ReadAllText(markerPath) == zipHash && Directory.Exists(dataPath))
-            {
-                BindPaths(dataPath);
-                return;
-            }
-
-            if (Directory.Exists(cacheRoot))
-            {
-                Directory.Delete(cacheRoot, true);
-            }
-
-            Directory.CreateDirectory(cacheRoot);
-            Debug.Log("[UltrakillIOS] Extracting " + zipPath + " …");
-            ZipFile.ExtractToDirectory(zipPath, cacheRoot);
-            File.WriteAllText(markerPath, zipHash);
             BindPaths(dataPath);
         }
 
@@ -96,7 +81,7 @@ namespace UltrakillIOS
         {
             if (!Directory.Exists(dataPath))
             {
-                Debug.LogError("[UltrakillIOS] Extracted zip did not contain " + DataFolderName);
+                Debug.LogError("[UltrakillIOS] Data folder not found: " + dataPath);
                 return;
             }
 
@@ -131,13 +116,6 @@ namespace UltrakillIOS
 #else
             Debug.Log("[UltrakillIOS] Engine-only build: Addressables remap skipped (use unity-ultrakill + ULTRAKILL_FULL_PORT).");
 #endif
-        }
-
-        private static string Sha256File(string path)
-        {
-            using var sha = SHA256.Create();
-            using var stream = File.OpenRead(path);
-            return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", string.Empty).ToLowerInvariant();
         }
     }
 }

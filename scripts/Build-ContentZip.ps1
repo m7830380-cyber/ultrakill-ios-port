@@ -35,7 +35,7 @@ if ($RipRoot -and (Test-Path $RipRoot)) {
 $manifest = @{
     builtUtc   = (Get-Date).ToUniversalTime().ToString("o")
     source     = $RetailData
-    zipLayout  = "Extract to cache; app expects ULTRAKILL_Data at zip root"
+    zipLayout  = "Unpack zip into Documents/ULTRAKILL-Content so ULTRAKILL_Data lives at Documents/ULTRAKILL-Content/ULTRAKILL_Data"
 } | ConvertTo-Json
 $manifest | Set-Content (Join-Path $staging "manifest.json") -Encoding UTF8
 

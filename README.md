@@ -1,14 +1,13 @@
 # ultrakill-ios-port
 
-**Split install:** small **engine IPA** (GitHub Actions) + large **`ULTRAKILL-Content.zip`** (you copy to the phone). No multi‑GB uploads to GitHub.
+**Split install:** small **engine IPA** (GitHub Actions) + large **game data folder** on the phone (you unpack yourself). No multi‑GB uploads to GitHub.
 
 ## Phone setup
 
-1. Install the unsigned engine IPA (`ULTRAKILL-Engine-unsigned.ipa` from Actions artifacts).
-2. On PC, build the content zip (see below).
-3. Copy `ULTRAKILL-Content.zip` to the phone (AirDrop, USB, iCloud Drive, etc.).
-4. In **Files**, put the zip in **On My iPhone → ULTRAKILL** (the app’s Documents folder).
-5. Launch the app — it extracts once into app storage and remaps `StreamingAssets` / Addressables paths.
+1. Install the unsigned engine IPA (`ULTRAKILL-unsigned.ipa` from Actions artifacts).
+2. On PC, build the content zip (see below) and **unpack** it on the phone (or unpack on PC and copy the folder).
+3. In **Files → On My iPhone → ULTRAKILL**, create **`ULTRAKILL-Content`** and put **`ULTRAKILL_Data`** inside it (same layout as the zip root).
+4. Launch the app — it uses that folder directly (no in-app unzip) and remaps `StreamingAssets` / Addressables paths.
 
 ## Build content zip (Windows, needs Steam ULTRAKILL)
 
