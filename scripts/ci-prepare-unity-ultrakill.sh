@@ -21,20 +21,33 @@ fi
 mkdir -p "$MANAGED_DST"
 rm -rf "$MANAGED_DST"/*
 copy_third_party_dll() {
-  for dll in "$MANAGED_SRC"/*.dll; do
-    base="$(basename "$dll")"
-    case "$base" in
-      Assembly-CSharp.dll|UnityEngine.*|UnityEngine.dll|mscorlib.dll|netstandard.dll|Mono.Security.dll)
-        continue
-        ;;
-      System.*)
-        case "$base" in
-          System.Runtime.CompilerServices.Unsafe.dll) ;;
-          *) continue ;;
-        esac
-        ;;
-    esac
-    cp "$dll" "$MANAGED_DST/"
+  # Only Hakita/third-party DLLs. Never copy Unity.* — those come from Packages/manifest.json.
+  local allow=(
+    NewBlood.DomainReloading.dll
+    NewBlood.EngineInterop.dll
+    NewBlood.LegacyInput.dll
+    Naelstrof.JigglePhysics.dll
+    NavMeshComponents.dll
+    MaskedOcclusionCulling.dll
+    Newtonsoft.Json.dll
+    UnityUIExtensions.dll
+    Vertx.Debugging.Runtime.dll
+    TriInspector.dll
+    plog.dll
+    plog.unity.dll
+    pcon.core.dll
+    PrivateAPIEditorBridge.Core.dll
+    PrivateAPIEngineBridge.Core.dll
+    PrivateAPIEngineBridge.Ping.dll
+    Bcl.CollectionsMarshal.dll
+    Autodesk.Fbx.dll
+    FbxBuildTestAssets.dll
+    UltrakillMobileTouch.dll
+  )
+  for name in "${allow[@]}"; do
+    if [[ -f "$MANAGED_SRC/$name" ]]; then
+      cp "$MANAGED_SRC/$name" "$MANAGED_DST/"
+    fi
   done
 }
 
@@ -50,9 +63,6 @@ else
   echo "pwsh not found; overlay must already be in unity-ultrakill/Assets/UltrakillIOS"
 fi
 
-# Prefer decompiled sources in repo when present; otherwise IL2CPP uses Assembly-CSharp.dll from RetailManaged.
-rm -rf "$PROJECT/Assets/Game"
-# GitHub CI: compile retail Assembly-CSharp.dll (dnSpy/ilspy output is not clean enough to compile as ~1500 scripts).
 rm -rf "$PROJECT/Assets/Game"
 copy_third_party_dll
 if [[ ! -f "$MANAGED_SRC/Assembly-CSharp.dll" ]]; then
