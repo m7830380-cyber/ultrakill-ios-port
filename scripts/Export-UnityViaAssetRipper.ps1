@@ -1,6 +1,7 @@
 param(
     [string]$RetailPath = $env:ULTRAKILL_RETAIL,
-    [string]$ExportPath = "$PSScriptRoot\..\unity-ultrakill",
+    # Contents of this folder are deleted before export; never point it at unity-ultrakill.
+    [string]$ExportPath = "C:\Users\v0id\ultrakill-export",
     [int]$Port = 53342,
     [string]$AssetRipperExe = "$PSScriptRoot\..\.tools\ar\AssetRipper.GUI.Free.exe"
 )
@@ -30,9 +31,31 @@ function Wait-ForAssetRipper {
     throw "AssetRipper web UI did not start on port $Port"
 }
 
+function Set-ExportSettings {
+    # Scripts stay as the retail DLL so prefab/scene MonoScript references match the Assembly-CSharp shipped in the IPA.
+    # Unchecked HTML checkboxes are omitted, so IgnoreStreamingAssets stays false and the Addressables bundles are exported.
+    $settings = @{
+        ScriptExportMode           = "DllExportWithoutRenaming"
+        ScriptLanguageVersion      = "CSharp10_0"
+        ScriptContentLevel         = "Level2"
+        ShaderExportMode           = "Decompile"
+        BundledAssetsExportMode    = "GroupByBundleName"
+        ImageExportFormat          = "Png"
+        AudioExportFormat          = "Default"
+        TextExportMode             = "Parse"
+        SpriteExportMode           = "Texture2D"
+        LightmapTextureExportFormat = "Image"
+        EnableStaticMeshSeparation = "true"
+        DefaultVersion             = "2022.3.29f1"
+    }
+    Invoke-WebRequest -Uri "$base/Settings/Update" -Method Post -Body $settings -UseBasicParsing -TimeoutSec 60 | Out-Null
+    Write-Host "AssetRipper settings applied: scripts=DLL, shaders=Decompile, bundles=GroupByBundleName"
+}
+
 $proc = Start-Process -FilePath $AssetRipperExe -WorkingDirectory $arDir -ArgumentList @("--port", $Port, "--launch-browser", "false") -PassThru -WindowStyle Hidden
 try {
     Wait-ForAssetRipper
+    Set-ExportSettings
     Write-Host "Loading retail folder: $RetailPath"
 
     $loadJob = Start-Job -ScriptBlock {
@@ -57,8 +80,14 @@ try {
         Invoke-WebRequest -Uri $Uri -Method Post -Body @{ Path = $Path; CreateSubfolder = "false" } -TimeoutSec $Timeout | Out-Null
     } -ArgumentList "$base/Export/UnityProject", $ExportPath, $httpTimeout
 
+    $drive = New-Object System.IO.DriveInfo ([System.IO.Path]::GetPathRoot($ExportPath))
     while ($exportJob.State -eq "Running") {
-        Write-Host "$(Get-Date -Format HH:mm:ss) Exporting Unity project..."
+        $freeGb = [math]::Round($drive.AvailableFreeSpace / 1GB, 1)
+        Write-Host "$(Get-Date -Format HH:mm:ss) Exporting Unity project... free on $($drive.Name): $freeGb GB"
+        if ($freeGb -lt 3) {
+            Stop-Job $exportJob
+            throw "Aborted export: less than 3 GB free on $($drive.Name)"
+        }
         Start-Sleep -Seconds 60
     }
     Receive-Job $exportJob -ErrorAction Stop | Out-Null
