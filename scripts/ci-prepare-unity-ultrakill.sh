@@ -42,7 +42,6 @@ copy_third_party_dll() {
     Bcl.CollectionsMarshal.dll
     Autodesk.Fbx.dll
     FbxBuildTestAssets.dll
-    UltrakillMobileTouch.dll
     System.Runtime.CompilerServices.Unsafe.dll
   )
   for name in "${allow[@]}"; do
