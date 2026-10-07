@@ -43,6 +43,7 @@ copy_third_party_dll() {
     Autodesk.Fbx.dll
     FbxBuildTestAssets.dll
     System.Runtime.CompilerServices.Unsafe.dll
+    Unity.InternalAPIEngineBridge.001.dll
   )
   for name in "${allow[@]}"; do
     if [[ -f "$MANAGED_SRC/$name" ]]; then
@@ -72,7 +73,7 @@ if [[ ! -f "$MANAGED_SRC/Assembly-CSharp.dll" ]]; then
   exit 1
 fi
 cp "$MANAGED_SRC/Assembly-CSharp.dll" "$MANAGED_DST/"
-# Referenced by game assembly; stripped from iOS player via IosPluginFilter.
+# Referenced by Assembly-CSharp, so IL2CPP needs it; SteamClient.Init fails at runtime and the game catches it.
 if [[ -f "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" ]]; then
   cp "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" "$MANAGED_DST/"
 fi

@@ -59,11 +59,6 @@ public static class IosPluginFilter
             return true;
         }
 
-        if (fileName.StartsWith("Facepunch."))
-        {
-            return true;
-        }
-
         return false;
     }
 }

@@ -59,6 +59,10 @@ public static class IosUnsignedBuild
 
     private static void EnsureIosPlayerSettings()
     {
+        // Retail code and Addressables rely on reflection; keep the linker as conservative as IL2CPP allows.
+        PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.iOS, ManagedStrippingLevel.Minimal);
+        Debug.Log("Managed stripping level: " + PlayerSettings.GetManagedStrippingLevel(BuildTargetGroup.iOS));
+
         PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.iOS, IosBundleId);
         if (string.IsNullOrEmpty(PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.iOS)))
         {

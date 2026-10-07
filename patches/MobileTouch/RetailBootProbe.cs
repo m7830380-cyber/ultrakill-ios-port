@@ -33,7 +33,9 @@ namespace UltrakillIOS
         {
             SceneManager.sceneLoaded += (scene, mode) => UltrakillLog.Info("Scene", "Loaded '" + scene.name + "' (" + mode + "), roots=" + scene.rootCount);
             UltrakillLog.Info(Area, "Active scene: '" + SceneManager.GetActiveScene().name + "', build scenes=" + SceneManager.sceneCountInBuildSettings);
+            UltrakillLog.Info(Area, "Overlay assembly: " + typeof(RetailBootProbe).Assembly.GetName().Name);
             UltrakillLog.Info(Area, "Assembly-CSharp Bootstrap type: " + (Type.GetType("Bootstrap, Assembly-CSharp") != null ? "found" : "MISSING"));
+            UltrakillLog.Info(Area, "Assembly-CSharp SceneHelper type: " + (Type.GetType("SceneHelper, Assembly-CSharp") != null ? "found" : "MISSING"));
 
             if (!ExternalContentBootstrap.IsReady)
             {
