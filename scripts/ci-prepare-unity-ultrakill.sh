@@ -77,6 +77,8 @@ if [[ -f "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" ]]; then
 fi
 echo "CI game code: Assembly-CSharp.dll + third-party Managed refs (UltrakillIOS sources for touch/zip)."
 
+rm -f "$PROJECT/Assets/Scenes/MainBoot.unity" "$PROJECT/Assets/Scenes/MainBoot.unity.meta"
+
 if [[ ! -f "$PROJECT/Assets/Scenes/Bootstrap.unity" ]]; then
   echo "Missing Assets/Scenes/Bootstrap.unity"
   exit 1

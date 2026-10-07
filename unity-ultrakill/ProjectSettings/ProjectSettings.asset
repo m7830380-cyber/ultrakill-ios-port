@@ -3,6 +3,10 @@
 --- !u!129 &1
 PlayerSettings:
   productName: ULTRAKILL
+  companyName: UltrakillIOSPort
+  applicationIdentifier:
+    iPhone: com.ultrakill.ios.port
+  bundleVersion: 1.0
   allowUnsafeCode: 1
   assemblyVersionValidation: 0
   scriptingDefineSymbols:
