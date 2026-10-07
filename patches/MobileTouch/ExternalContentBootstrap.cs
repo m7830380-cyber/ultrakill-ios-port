@@ -14,6 +14,11 @@ namespace UltrakillIOS
         public const string ContentFolderName = "ULTRAKILL-Content";
         public const string DataFolderName = "ULTRAKILL_Data";
 
+        public const string FileListName = "filelist.txt";
+
+        /// <summary>-1 when no filelist.txt was found to check against.</summary>
+        public static int MissingFileCount { get; private set; } = -1;
+
         public static string ContentDataPath { get; private set; }
         public static string ContentStreamingAssetsPath { get; private set; }
         public static bool IsReady { get; private set; }
@@ -79,6 +84,63 @@ namespace UltrakillIOS
             }
 
             BindPaths(dataPath);
+            VerifyAgainstFileList(Path.Combine(documents, ContentFolderName));
+        }
+
+        private static void VerifyAgainstFileList(string contentRoot)
+        {
+            var listPath = Path.Combine(contentRoot, FileListName);
+            if (!File.Exists(listPath))
+            {
+                UltrakillLog.Info("Content", "No " + FileListName + " in " + ContentFolderName + "; skipping completeness check.");
+                return;
+            }
+
+            var listed = 0;
+            var missing = 0;
+            var wrongSize = 0;
+            var examples = new System.Collections.Generic.List<string>();
+            foreach (var line in File.ReadLines(listPath))
+            {
+                var tab = line.IndexOf('\t');
+                if (tab <= 0 || !long.TryParse(line.Substring(0, tab), out var expected))
+                {
+                    continue;
+                }
+
+                listed++;
+                var relative = line.Substring(tab + 1);
+                var file = new FileInfo(Path.Combine(contentRoot, relative));
+                if (!file.Exists)
+                {
+                    missing++;
+                    if (examples.Count < 25)
+                    {
+                        examples.Add("missing " + relative);
+                    }
+                }
+                else if (file.Length != expected)
+                {
+                    wrongSize++;
+                    if (examples.Count < 25)
+                    {
+                        examples.Add("size " + file.Length + "/" + expected + " " + relative);
+                    }
+                }
+            }
+
+            MissingFileCount = missing + wrongSize;
+            if (MissingFileCount == 0)
+            {
+                UltrakillLog.Info("Content", "Completeness check: all " + listed + " files present with correct sizes.");
+                return;
+            }
+
+            UltrakillLog.Error("Content", "Completeness check: " + missing + " missing, " + wrongSize + " wrong size, out of " + listed + " files. Re-copy the content folder.");
+            foreach (var example in examples)
+            {
+                UltrakillLog.Warn("Content", example);
+            }
         }
 
         private static void BindPaths(string dataPath)

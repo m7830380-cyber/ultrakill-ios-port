@@ -39,6 +39,13 @@ $manifest = @{
 } | ConvertTo-Json
 $manifest | Set-Content (Join-Path $staging "manifest.json") -Encoding UTF8
 
+# The app compares this against what actually landed on the phone (iOS unzip has dropped files before).
+$stagingRoot = [System.IO.Path]::GetFullPath($staging).TrimEnd('\') + '\'
+$fileList = Get-ChildItem (Join-Path $staging "ULTRAKILL_Data") -Recurse -File |
+    ForEach-Object { "$($_.Length)`t$($_.FullName.Substring($stagingRoot.Length).Replace('\', '/'))" }
+[System.IO.File]::WriteAllLines((Join-Path $staging "filelist.txt"), $fileList)
+Write-Host "filelist.txt: $($fileList.Count) files"
+
 New-Item -ItemType Directory -Force -Path (Split-Path $OutputZip) | Out-Null
 if (Test-Path $OutputZip) {
     Remove-Item -Force $OutputZip

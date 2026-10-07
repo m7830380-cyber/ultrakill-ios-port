@@ -57,10 +57,16 @@ namespace UltrakillIOS
             {
                 return "Data: missing — unpack into Documents/" + ExternalContentBootstrap.ExpectedDocumentsPath;
             }
+            var data = ExternalContentBootstrap.MissingFileCount switch
+            {
+                -1 => "Data: found (unchecked)",
+                0 => "Data: complete",
+                var n => "Data: " + n + " files missing/damaged"
+            };
 #if ULTRAKILL_FULL_PORT
-            return "Data: OK | Boot: " + RetailBootProbe.Status;
+            return data + " | Boot: " + RetailBootProbe.Status;
 #else
-            return "Data: OK | Engine shell build (ULTRAKILL_FULL_PORT not defined)";
+            return data + " | Engine shell build (ULTRAKILL_FULL_PORT not defined)";
 #endif
         }
 
