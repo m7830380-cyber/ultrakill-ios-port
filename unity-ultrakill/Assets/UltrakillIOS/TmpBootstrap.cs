@@ -9,9 +9,8 @@ using UnityEngine.TextCore.LowLevel;
 namespace UltrakillIOS
 {
     /// <summary>
-    /// IPA has no TMP Essential Resources. Inject TMP_Settings + a dynamic OS font.
-    /// Do NOT AssetBundle.LoadFromFile fonts.bundle — Addressables owns that file; a second
-    /// load makes Main Menu fail with "same files is already loaded".
+    /// IPA ships no TMP Essential Resources. Inject settings + a real font from Resources/Fonts/Arial.
+    /// Never AssetBundle.LoadFromFile fonts.bundle (Addressables owns it).
     /// </summary>
     internal static class TmpBootstrap
     {
@@ -25,14 +24,12 @@ namespace UltrakillIOS
         {
             EnsureSettings();
             EnsureRuntimeFont();
-            SceneManager.sceneLoaded += OnSceneLoaded;
-        }
-
-        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            EnsureSettings();
-            EnsureRuntimeFont();
-            ApplyFontToScene();
+            SceneManager.sceneLoaded += (_, __) =>
+            {
+                EnsureSettings();
+                EnsureRuntimeFont();
+                ApplyFontToScene();
+            };
         }
 
         private static void EnsureSettings()
@@ -45,8 +42,7 @@ namespace UltrakillIOS
             try
             {
                 var settingsType = typeof(TMP_Settings);
-                var instanceField = settingsType.GetField("s_Instance", BindingFlags.Static | BindingFlags.NonPublic)
-                    ?? settingsType.GetField("s_Instance", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                var instanceField = settingsType.GetField("s_Instance", BindingFlags.Static | BindingFlags.NonPublic);
 
                 var existing = Resources.Load<TMP_Settings>("TMP Settings");
                 if (existing != null)
@@ -69,7 +65,7 @@ namespace UltrakillIOS
                 s_settingsReady = instanceField?.GetValue(null) != null;
                 UltrakillLog.Info(Area, s_settingsReady
                     ? "Injected runtime TMP_Settings + empty style sheet"
-                    : "Failed to inject TMP_Settings (field missing)");
+                    : "Failed to inject TMP_Settings");
             }
             catch (Exception ex)
             {
@@ -86,17 +82,16 @@ namespace UltrakillIOS
 
             try
             {
-                var osFont = Font.CreateDynamicFontFromOSFont(
-                    new[] { "Helvetica Neue", "Helvetica", "Arial", "San Francisco" },
-                    90);
-                if (osFont == null)
+                var source = Resources.Load<Font>("Fonts/Arial")
+                    ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
+                if (source == null)
                 {
-                    UltrakillLog.Warn(Area, "OS font unavailable");
+                    UltrakillLog.Warn(Area, "No Arial font in Resources or builtin");
                     return;
                 }
 
                 var font = TMP_FontAsset.CreateFontAsset(
-                    osFont,
+                    source,
                     90,
                     9,
                     GlyphRenderMode.SDFAA,
@@ -106,19 +101,27 @@ namespace UltrakillIOS
 
                 if (font == null)
                 {
-                    UltrakillLog.Warn(Area, "TMP_FontAsset.CreateFontAsset returned null");
+                    UltrakillLog.Warn(Area, "CreateFontAsset failed for " + source.name);
                     return;
                 }
 
-                font.name = "UltrakillIOS-RuntimeFont";
+                font.name = "UltrakillIOS-ArialSDF";
                 font.hideFlags = HideFlags.HideAndDontSave;
 
                 var shader = Shader.Find("TextMeshPro/Mobile/Distance Field")
                     ?? Shader.Find("TextMeshPro/Distance Field")
                     ?? Shader.Find("UI/Default");
-                if (shader != null && font.material != null)
+                if (shader != null)
                 {
-                    font.material.shader = shader;
+                    if (font.material != null)
+                    {
+                        font.material.shader = shader;
+                    }
+
+                    if (font.material == null)
+                    {
+                        font.material = new Material(shader) { name = "UltrakillIOS-ArialMat" };
+                    }
                 }
 
                 var settings = typeof(TMP_Settings)
@@ -131,7 +134,7 @@ namespace UltrakillIOS
 
                 s_font = font;
                 s_fontReady = true;
-                UltrakillLog.Info(Area, "Runtime TMP font ready from OS font '" + osFont.name + "'");
+                UltrakillLog.Info(Area, "Runtime TMP font ready from '" + source.name + "' shader=" + (shader != null ? shader.name : "null"));
             }
             catch (Exception ex)
             {
@@ -147,7 +150,11 @@ namespace UltrakillIOS
             }
 
             var texts = UnityEngine.Object.FindObjectsOfType<TMP_Text>(true);
-            var fixedCount = 0;
+            var replaced = 0;
+            var shader = Shader.Find("TextMeshPro/Mobile/Distance Field")
+                ?? Shader.Find("TextMeshPro/Distance Field")
+                ?? Shader.Find("UI/Default");
+
             foreach (var text in texts)
             {
                 if (text == null)
@@ -155,26 +162,16 @@ namespace UltrakillIOS
                     continue;
                 }
 
-                // Retail scene fonts often deserialize as missing scripts; replace everything.
-                if (text.font != s_font)
+                text.font = s_font;
+                if (shader != null)
                 {
-                    text.font = s_font;
-                    fixedCount++;
+                    text.fontSharedMaterial = s_font.material;
                 }
 
-                if (text.fontSharedMaterial != null)
-                {
-                    var shader = Shader.Find("TextMeshPro/Mobile/Distance Field")
-                        ?? Shader.Find("TextMeshPro/Distance Field")
-                        ?? Shader.Find("UI/Default");
-                    if (shader != null && text.fontSharedMaterial.shader != shader)
-                    {
-                        text.fontSharedMaterial.shader = shader;
-                    }
-                }
+                replaced++;
             }
 
-            UltrakillLog.Info(Area, "Applied runtime TMP font; replaced=" + fixedCount + " total=" + texts.Length);
+            UltrakillLog.Info(Area, "Applied runtime TMP font to " + replaced + " texts");
         }
 
         private static void SetField(object obj, string name, object value)
@@ -184,8 +181,8 @@ namespace UltrakillIOS
                 return;
             }
 
-            var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-            obj.GetType().GetField(name, flags)?.SetValue(obj, value);
+            obj.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                ?.SetValue(obj, value);
         }
     }
 }

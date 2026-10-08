@@ -5,7 +5,8 @@
         "Unity.Addressables",
         "Unity.ResourceManager",
         "Unity.InputSystem",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

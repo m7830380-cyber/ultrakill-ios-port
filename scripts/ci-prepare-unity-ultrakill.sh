@@ -56,11 +56,9 @@ copy_third_party_dll() {
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -File "$ROOT/scripts/Sync-EngineScripts.ps1" -UnityProject "$PROJECT" -RipRoot "$ROOT/game-sources"
   pwsh -Command "
-    Copy-Item '$ROOT/patches/MobileTouch/LegacyInputSynthesizer.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
-    Copy-Item '$ROOT/patches/MobileTouch/AddressablesContentRemap.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
-    Copy-Item '$ROOT/patches/MobileTouch/ExternalContentBootstrap.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
-    Copy-Item '$ROOT/patches/MobileTouch/RetailGameHooks.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
-    Copy-Item '$ROOT/patches/MobileTouch/ContentStatusHud.cs' '$PROJECT/Assets/UltrakillIOS/' -Force
+    Get-ChildItem '$ROOT/patches/MobileTouch' -Filter '*.cs' |
+      Where-Object { $_.Name -notmatch '\.Engine\.cs$' } |
+      Copy-Item -Destination '$PROJECT/Assets/UltrakillIOS/' -Force
   "
 else
   echo "pwsh not found; overlay must already be in unity-ultrakill/Assets/UltrakillIOS"

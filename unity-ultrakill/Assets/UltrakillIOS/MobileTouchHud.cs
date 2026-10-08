@@ -32,6 +32,23 @@ namespace UltrakillIOS
                 return;
             }
 
+#if ULTRAKILL_FULL_PORT
+            // Main menu / UI scenes: do not steal touches — MenuUiBootstrap drives the cursor.
+            if (MenuUiBootstrap.IsMenuModeActive())
+            {
+                _moveVector = Vector2.zero;
+                _moveFingerId = -1;
+                _lookFingerId = -1;
+                LegacyInputSynthesizer.ApplyMovement(Vector2.zero);
+                LegacyInputSynthesizer.SetFire(false);
+                LegacyInputSynthesizer.SetAltFire(false);
+                LegacyInputSynthesizer.SetJump(false);
+                LegacyInputSynthesizer.SetSlide(false);
+                LegacyInputSynthesizer.SetDash(false);
+                return;
+            }
+#endif
+
             PollTouches();
             LegacyInputSynthesizer.ApplyMovement(_moveVector);
         }
@@ -127,9 +144,9 @@ namespace UltrakillIOS
             }
         }
 
-        private static bool IsMoveZone(Vector2 pos) => pos.x < Screen.width * 0.45f && pos.y < Screen.height * 0.75f;
+        private static bool IsMoveZone(Vector2 pos) => pos.x < Screen.width * 0.45f && pos.y < Screen.height * 0.55f;
 
-        private static bool IsLookZone(Vector2 pos) => pos.x > Screen.width * 0.45f && pos.y < Screen.height * 0.8f;
+        private static bool IsLookZone(Vector2 pos) => pos.x > Screen.width * 0.55f && pos.y < Screen.height * 0.7f;
 
         private void OnGUI()
         {
@@ -137,6 +154,13 @@ namespace UltrakillIOS
             {
                 return;
             }
+
+#if ULTRAKILL_FULL_PORT
+            if (MenuUiBootstrap.IsMenuModeActive())
+            {
+                return;
+            }
+#endif
 
             DrawMoveStick();
             DrawActionButtons();
