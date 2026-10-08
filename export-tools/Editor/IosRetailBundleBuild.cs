@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
-using UnityEditor.Build.Content;
 using UnityEditor.Build.Pipeline;
 using UnityEditor.Build.Pipeline.Interfaces;
 using UnityEditor.Build.Pipeline.Tasks;
@@ -14,6 +14,7 @@ using UnityEngine;
 /// and the GUID internal names so the retail catalog.json can be reused unchanged apart from the platform folder.
 /// Run with: Unity -batchmode -buildTarget iOS -projectPath ExportedProject -executeMethod IosRetailBundleBuild.Build
 ///   -catalogMap path/to/catalog-map.json -outDir path/to/output
+/// Optional: -onlyBundle assets_assets_assets/shaders.bundle
 /// </summary>
 public static class IosRetailBundleBuild
 {
@@ -24,14 +25,17 @@ public static class IosRetailBundleBuild
     [Serializable] private class SceneInfo { public string key; public string internalId; public string bundle; }
 
     private const string BundleRoot = "Assets/Asset_Bundles";
-
-    // Build-IosBundles.ps1 renames AssetRipper's "<hash>.bundle" folders, which Unity treats as opaque macOS plugins.
     private const string BundleFolderSuffix = "_bundle";
+    private static readonly Regex ShaderNameRegex = new Regex(@"Shader\s+""([^""]+)""", RegexOptions.Compiled);
+    private static readonly Regex DuplicateSuffix = new Regex(@"_\d+$");
 
     public static void Build()
     {
         var mapPath = GetArg("-catalogMap");
         var outDir = GetArg("-outDir");
+        string onlyBundle = null;
+        try { onlyBundle = GetArg("-onlyBundle"); } catch { /* optional */ }
+
         var map = JsonUtility.FromJson<CatalogMap>(File.ReadAllText(mapPath));
         var scenePaths = AssetDatabase.FindAssets("t:Scene").Select(AssetDatabase.GUIDToAssetPath)
             .GroupBy(p => Path.GetFileNameWithoutExtension(p)).ToDictionary(g => g.Key, g => g.First());
@@ -43,6 +47,11 @@ public static class IosRetailBundleBuild
 
         foreach (var bundle in map.bundles)
         {
+            if (onlyBundle != null && bundle.file != onlyBundle && !bundle.file.StartsWith("shader_") && !bundle.file.StartsWith("monoscript_"))
+            {
+                continue;
+            }
+
             if (bundle.file.StartsWith("shader_")) { shaderBundle = bundle.file; continue; }
             if (bundle.file.StartsWith("monoscript_")) { monoScriptBundle = bundle.file; continue; }
 
@@ -74,7 +83,9 @@ public static class IosRetailBundleBuild
                     ? Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Where(f => !f.EndsWith(".meta")).Select(f => f.Replace('\\', '/'))
                         .Where(IsImportedAsset).ToList()
                     : new List<string>();
+
                 var byName = new Dictionary<string, List<string>>();
+                var shaderPathByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var file in files)
                 {
                     var raw = NormalizeName(Path.GetFileNameWithoutExtension(file));
@@ -84,11 +95,16 @@ public static class IosRetailBundleBuild
                     {
                         AddCandidate(byName, deduped, file);
                     }
+
+                    if (file.EndsWith(".shader", StringComparison.OrdinalIgnoreCase))
+                    {
+                        IndexShaderFile(file, byName, shaderPathByName);
+                    }
                 }
 
                 foreach (var asset in bundle.assets.GroupBy(a => a.internalId).Select(PickPrimaryEntry))
                 {
-                    var path = FindExportedPath(asset, byName, claimed);
+                    var path = FindExportedPath(asset, byName, claimed, shaderPathByName);
                     if (path == null)
                     {
                         if (unmatched < 200)
@@ -101,7 +117,8 @@ public static class IosRetailBundleBuild
 
                     claimed.Add(path);
                     assetNames.Add(path);
-                    addressableNames.Add(asset.internalId);
+                    // Keep retail catalog primary keys so Addressables and materials resolve the same names.
+                    addressableNames.Add(asset.primaryKey);
                     matched++;
                 }
 
@@ -125,6 +142,7 @@ public static class IosRetailBundleBuild
                 assetNames = assetNames.ToArray(),
                 addressableNames = addressableNames.ToArray(),
             });
+            Debug.Log("[IosBundles] queued " + bundle.file + " with " + assetNames.Count + " assets");
         }
 
         Debug.Log("[IosBundles] matched " + matched + " catalog assets, unmatched " + unmatched + ", bundles " + builds.Count);
@@ -137,8 +155,11 @@ public static class IosRetailBundleBuild
 
         var tasks = DefaultBuildTasks.Create(DefaultBuildTasks.Preset.AssetBundleBuiltInShaderExtraction);
         var shaderIndex = tasks.ToList().FindIndex(t => t is CreateBuiltInShadersBundle);
-        tasks[shaderIndex] = new CreateBuiltInShadersBundle(shaderBundle);
-        tasks.Insert(shaderIndex + 1, new CreateMonoScriptBundle(monoScriptBundle));
+        tasks[shaderIndex] = new CreateBuiltInShadersBundle(shaderBundle ?? "shader_unitybuiltinshaders.bundle");
+        if (!string.IsNullOrEmpty(monoScriptBundle))
+        {
+            tasks.Insert(shaderIndex + 1, new CreateMonoScriptBundle(monoScriptBundle));
+        }
 
         var code = ContentPipeline.BuildAssetBundles(parameters, new BundleBuildContent(builds), out IBundleBuildResults results, tasks);
         Debug.Log("[IosBundles] build result: " + code + ", bundles written: " + (results?.BundleInfos.Count ?? 0));
@@ -148,19 +169,86 @@ public static class IosRetailBundleBuild
         }
     }
 
+    private static void IndexShaderFile(string file, Dictionary<string, List<string>> byName, Dictionary<string, string> shaderPathByName)
+    {
+        try
+        {
+            var text = File.ReadAllText(file);
+            var match = ShaderNameRegex.Match(text.Length > 800 ? text.Substring(0, 800) : text);
+            if (!match.Success)
+            {
+                return;
+            }
+
+            var shaderName = match.Groups[1].Value;
+            shaderPathByName[shaderName] = file;
+            AddCandidate(byName, NormalizeName(shaderName), file);
+            AddCandidate(byName, NormalizeName(shaderName.Replace('/', '-')), file);
+            AddCandidate(byName, NormalizeName(Path.GetFileName(shaderName)), file);
+
+            // Catalog files look like ULTRAKILL-unlit-transparent-ambient.shader while the
+            // shader name is often psx/unlit/transparent/ambient or ULTRAKILL/....
+            var leaf = NormalizeName(shaderName.Split('/').Last());
+            AddCandidate(byName, leaf, file);
+            AddCandidate(byName, "ultrakill-" + leaf, file);
+            AddCandidate(byName, "psx-" + leaf, file);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[IosBundles] failed reading shader " + file + ": " + ex.Message);
+        }
+    }
+
     private static AssetInfo PickPrimaryEntry(IGrouping<string, AssetInfo> entries)
     {
-        // A texture is listed as Texture2D and Sprite under one GUID; the bundle needs the main asset.
         return entries.OrderBy(e => e.type == "UnityEngine.Sprite" ? 1 : 0).First();
     }
 
-    private static string FindExportedPath(AssetInfo asset, Dictionary<string, List<string>> byName, HashSet<string> claimed)
+    private static string FindExportedPath(
+        AssetInfo asset,
+        Dictionary<string, List<string>> byName,
+        HashSet<string> claimed,
+        Dictionary<string, string> shaderPathByName)
     {
         var name = NormalizeName(Path.GetFileNameWithoutExtension(asset.primaryKey));
         var ext = Path.GetExtension(asset.primaryKey).ToLowerInvariant();
+
+        if (ext == ".shader")
+        {
+            // Prefer exact Shader "Name" hits from the file body.
+            foreach (var kv in shaderPathByName)
+            {
+                if (claimed.Contains(kv.Value))
+                {
+                    continue;
+                }
+
+                var leaf = NormalizeName(kv.Key.Split('/').Last());
+                if (name == leaf || name.EndsWith(leaf) || leaf.EndsWith(name.Replace("ultrakill-", ""))
+                    || name.Replace("ultrakill-", "") == leaf
+                    || name.Replace('-', '/') == NormalizeName(kv.Key)
+                    || NormalizeName(kv.Key.Replace('/', '-')) == name)
+                {
+                    return kv.Value;
+                }
+            }
+        }
+
         var candidates = byName.TryGetValue(name, out var list)
             ? list.Where(p => !claimed.Contains(p)).ToList()
             : new List<string>();
+
+        if (candidates.Count == 0 && ext == ".shader")
+        {
+            // Fuzzy: strip common prefixes and compare alphanumerics only.
+            var compact = Compact(name);
+            candidates = byName
+                .Where(kv => Compact(kv.Key) == compact || Compact(kv.Key).EndsWith(compact) || compact.EndsWith(Compact(kv.Key)))
+                .SelectMany(kv => kv.Value)
+                .Where(p => !claimed.Contains(p) && p.EndsWith(".shader", StringComparison.OrdinalIgnoreCase))
+                .Distinct()
+                .ToList();
+        }
 
         if (candidates.Count == 0)
         {
@@ -173,8 +261,10 @@ public static class IosRetailBundleBuild
             ?? candidates[0];
     }
 
-    // AssetRipper writes repeated names as Name_0, Name_1, ...
-    private static readonly System.Text.RegularExpressions.Regex DuplicateSuffix = new System.Text.RegularExpressions.Regex("_\\d+$");
+    private static string Compact(string name)
+    {
+        return new string(NormalizeName(name).Where(char.IsLetterOrDigit).ToArray());
+    }
 
     private static string NormalizeName(string name)
     {
@@ -183,6 +273,11 @@ public static class IosRetailBundleBuild
 
     private static void AddCandidate(Dictionary<string, List<string>> byName, string key, string path)
     {
+        if (string.IsNullOrEmpty(key))
+        {
+            return;
+        }
+
         if (!byName.TryGetValue(key, out var list))
         {
             byName[key] = list = new List<string>();
