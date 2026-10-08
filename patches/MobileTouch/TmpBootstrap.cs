@@ -1,35 +1,37 @@
 #if ULTRAKILL_FULL_PORT
 using System;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.TextCore.LowLevel;
 
 namespace UltrakillIOS
 {
     /// <summary>
-    /// The IPA never imported TMP Essential Resources, so TMP_Settings.defaultStyleSheet is null and all text is blank.
-    /// Inject a runtime TMP_Settings + style sheet, then pull a font from the external fonts.bundle.
+    /// IPA has no TMP Essential Resources. Inject TMP_Settings + a dynamic OS font.
+    /// Do NOT AssetBundle.LoadFromFile fonts.bundle — Addressables owns that file; a second
+    /// load makes Main Menu fail with "same files is already loaded".
     /// </summary>
     internal static class TmpBootstrap
     {
         private const string Area = "TMP";
         private static bool s_settingsReady;
         private static bool s_fontReady;
+        private static TMP_FontAsset s_font;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Install()
         {
             EnsureSettings();
+            EnsureRuntimeFont();
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             EnsureSettings();
-            EnsureFontFromBundle();
+            EnsureRuntimeFont();
             ApplyFontToScene();
         }
 
@@ -46,7 +48,6 @@ namespace UltrakillIOS
                 var instanceField = settingsType.GetField("s_Instance", BindingFlags.Static | BindingFlags.NonPublic)
                     ?? settingsType.GetField("s_Instance", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
 
-                // Prefer Resources if the IPA later ships real essentials.
                 var existing = Resources.Load<TMP_Settings>("TMP Settings");
                 if (existing != null)
                 {
@@ -60,7 +61,6 @@ namespace UltrakillIOS
                 settings.hideFlags = HideFlags.HideAndDontSave;
                 var styleSheet = ScriptableObject.CreateInstance<TMP_StyleSheet>();
                 styleSheet.hideFlags = HideFlags.HideAndDontSave;
-                // Empty sheet is enough to stop defaultStyleSheet NRE; styles are optional for plain text.
                 SetField(settings, "m_defaultStyleSheet", styleSheet);
                 SetField(settings, "m_enableEmojiSupport", true);
                 SetField(settings, "m_getFontFeaturesAtRuntime", true);
@@ -77,47 +77,44 @@ namespace UltrakillIOS
             }
         }
 
-        private static void EnsureFontFromBundle()
+        private static void EnsureRuntimeFont()
         {
-            if (s_fontReady)
+            if (s_fontReady && s_font != null)
             {
                 return;
             }
 
             try
             {
-                var streaming = ExternalContentBootstrap.ContentStreamingAssetsPath;
-                if (string.IsNullOrEmpty(streaming))
+                var osFont = Font.CreateDynamicFontFromOSFont(
+                    new[] { "Helvetica Neue", "Helvetica", "Arial", "San Francisco" },
+                    90);
+                if (osFont == null)
                 {
+                    UltrakillLog.Warn(Area, "OS font unavailable");
                     return;
                 }
 
-                var path = Path.Combine(streaming, "aa", "iOS", "assets_assets_assets", "fonts.bundle");
-                if (!File.Exists(path))
-                {
-                    UltrakillLog.Warn(Area, "fonts.bundle not found at " + path);
-                    return;
-                }
+                var font = TMP_FontAsset.CreateFontAsset(
+                    osFont,
+                    90,
+                    9,
+                    GlyphRenderMode.SDFAA,
+                    1024,
+                    1024,
+                    AtlasPopulationMode.Dynamic);
 
-                var bundle = AssetBundle.LoadFromFile(path);
-                if (bundle == null)
-                {
-                    UltrakillLog.Warn(Area, "Could not open fonts.bundle");
-                    return;
-                }
-
-                var fonts = bundle.LoadAllAssets<TMP_FontAsset>();
-                UltrakillLog.Info(Area, "fonts.bundle TMP_FontAsset count=" + fonts.Length);
-                var font = fonts.FirstOrDefault(f => f != null);
                 if (font == null)
                 {
+                    UltrakillLog.Warn(Area, "TMP_FontAsset.CreateFontAsset returned null");
                     return;
                 }
 
-                // Point materials at a shader that exists in this player.
+                font.name = "UltrakillIOS-RuntimeFont";
+                font.hideFlags = HideFlags.HideAndDontSave;
+
                 var shader = Shader.Find("TextMeshPro/Mobile/Distance Field")
                     ?? Shader.Find("TextMeshPro/Distance Field")
-                    ?? Shader.Find("UI/Default_UK")
                     ?? Shader.Find("UI/Default");
                 if (shader != null && font.material != null)
                 {
@@ -132,34 +129,19 @@ namespace UltrakillIOS
                     SetField(settings, "m_defaultFontAsset", font);
                 }
 
-                TMP_Settings.fallbackFontAssets?.Clear();
+                s_font = font;
                 s_fontReady = true;
-                UltrakillLog.Info(Area, "Default TMP font set to " + font.name);
+                UltrakillLog.Info(Area, "Runtime TMP font ready from OS font '" + osFont.name + "'");
             }
             catch (Exception ex)
             {
-                UltrakillLog.Error(Area, "Font load failed: " + ex.Message);
+                UltrakillLog.Error(Area, "Runtime font create failed: " + ex.Message);
             }
         }
 
         private static void ApplyFontToScene()
         {
-            if (!s_fontReady)
-            {
-                return;
-            }
-
-            TMP_FontAsset font = null;
-            try
-            {
-                var settings = typeof(TMP_Settings)
-                    .GetField("s_Instance", BindingFlags.Static | BindingFlags.NonPublic)
-                    ?.GetValue(null) as TMP_Settings;
-                font = GetField(settings, "m_defaultFontAsset") as TMP_FontAsset;
-            }
-            catch { /* ignore */ }
-
-            if (font == null)
+            if (!s_fontReady || s_font == null)
             {
                 return;
             }
@@ -168,16 +150,22 @@ namespace UltrakillIOS
             var fixedCount = 0;
             foreach (var text in texts)
             {
-                if (text.font == null)
+                if (text == null)
                 {
-                    text.font = font;
+                    continue;
+                }
+
+                // Retail scene fonts often deserialize as missing scripts; replace everything.
+                if (text.font != s_font)
+                {
+                    text.font = s_font;
                     fixedCount++;
                 }
 
                 if (text.fontSharedMaterial != null)
                 {
                     var shader = Shader.Find("TextMeshPro/Mobile/Distance Field")
-                        ?? Shader.Find("UI/Default_UK")
+                        ?? Shader.Find("TextMeshPro/Distance Field")
                         ?? Shader.Find("UI/Default");
                     if (shader != null && text.fontSharedMaterial.shader != shader)
                     {
@@ -186,7 +174,7 @@ namespace UltrakillIOS
                 }
             }
 
-            UltrakillLog.Info(Area, "Applied TMP font to scene texts; null-font fixes=" + fixedCount + " total=" + texts.Length);
+            UltrakillLog.Info(Area, "Applied runtime TMP font; replaced=" + fixedCount + " total=" + texts.Length);
         }
 
         private static void SetField(object obj, string name, object value)
@@ -197,19 +185,7 @@ namespace UltrakillIOS
             }
 
             var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-            var field = obj.GetType().GetField(name, flags);
-            field?.SetValue(obj, value);
-        }
-
-        private static object GetField(object obj, string name)
-        {
-            if (obj == null)
-            {
-                return null;
-            }
-
-            var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-            return obj.GetType().GetField(name, flags)?.GetValue(obj);
+            obj.GetType().GetField(name, flags)?.SetValue(obj, value);
         }
     }
 }
