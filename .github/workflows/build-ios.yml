@@ -6,9 +6,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 env:
   UNITY_VERSION: 2022.3.62f1
   PROJECT_PATH: unity-ultrakill
+  IPA_PATH: unity-ultrakill/build/iOS/ULTRAKILL-unsigned.ipa
 
 jobs:
   ios-unsigned:
@@ -67,7 +71,41 @@ jobs:
           cp -R "$APP_PATH" Payload/
           zip -qr ULTRAKILL-unsigned.ipa Payload
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload workflow artifact
+        id: artifact
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
         with:
           name: ultrakill-ios-ipa
-          path: ULTRAKILL-unsigned.ipa
+          path: ${{ env.IPA_PATH }}
+          if-no-files-found: error
+
+      - name: Publish IPA to GitHub Release (artifact quota fallback)
+        id: release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          IPA="$GITHUB_WORKSPACE/$IPA_PATH"
+          if [[ ! -f "$IPA" ]]; then
+            echo "IPA missing at $IPA"
+            exit 1
+          fi
+          TAG="ios-latest"
+          SHA="${{ github.sha }}"
+          RUN="${{ github.run_number }}"
+          NOTES="Unsigned ULTRAKILL iOS IPA from workflow run ${RUN} (${SHA})."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$IPA" --clobber
+            gh release edit "$TAG" --notes "$NOTES (updated $(date -u +%Y-%m-%dT%H:%MZ))"
+          else
+            gh release create "$TAG" "$IPA" --title "Latest unsigned iOS IPA" --notes "$NOTES"
+          fi
+          echo "Download: https://github.com/${{ github.repository }}/releases/tag/${TAG}"
+
+      - name: Require IPA published somewhere
+        if: steps.artifact.outcome != 'success' && steps.release.outcome != 'success'
+        run: |
+          echo "Artifact upload failed and GitHub Release upload failed."
+          exit 1
