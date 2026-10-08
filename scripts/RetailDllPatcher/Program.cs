@@ -17,10 +17,13 @@ if (!File.Exists(dllPath))
 var resolver = new DefaultAssemblyResolver();
 var dllDir = Path.GetDirectoryName(dllPath)!;
 resolver.AddSearchDirectory(dllDir);
-var managedSrc = Path.GetFullPath(Path.Combine(dllDir, "..", "..", "..", "unity-ios", "Assets", "Plugins", "UltrakillManaged"));
-if (Directory.Exists(managedSrc))
+for (var i = 1; i < args.Length; i++)
 {
-    resolver.AddSearchDirectory(managedSrc);
+    var dir = Path.GetFullPath(args[i]);
+    if (Directory.Exists(dir))
+    {
+        resolver.AddSearchDirectory(dir);
+    }
 }
 
 var readerParams = new ReaderParameters

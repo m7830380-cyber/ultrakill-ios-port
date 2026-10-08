@@ -72,15 +72,15 @@ if [[ ! -f "$MANAGED_SRC/Assembly-CSharp.dll" ]]; then
   echo "Missing $MANAGED_SRC/Assembly-CSharp.dll"
   exit 1
 fi
-cp "$MANAGED_SRC/Assembly-CSharp.dll" "$MANAGED_DST/"
-if command -v dotnet >/dev/null 2>&1; then
-  dotnet run --project "$ROOT/scripts/RetailDllPatcher/RetailDllPatcher.csproj" -c Release -- "$MANAGED_DST/Assembly-CSharp.dll"
-else
-  echo "WARNING: dotnet not found; Assembly-CSharp.dll not patched for iOS prefs path"
-fi
 # Referenced by Assembly-CSharp, so IL2CPP needs it; SteamClient.Init fails at runtime and the game catches it.
 if [[ -f "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" ]]; then
   cp "$MANAGED_SRC/Facepunch.Steamworks.Win64.dll" "$MANAGED_DST/"
+fi
+cp "$MANAGED_SRC/Assembly-CSharp.dll" "$MANAGED_DST/"
+if command -v dotnet >/dev/null 2>&1; then
+  dotnet run --project "$ROOT/scripts/RetailDllPatcher/RetailDllPatcher.csproj" -c Release -- "$MANAGED_DST/Assembly-CSharp.dll" "$MANAGED_DST" "$MANAGED_SRC"
+else
+  echo "WARNING: dotnet not found; Assembly-CSharp.dll not patched for iOS prefs path"
 fi
 echo "CI game code: Assembly-CSharp.dll + third-party Managed refs (UltrakillIOS sources for touch/zip)."
 
