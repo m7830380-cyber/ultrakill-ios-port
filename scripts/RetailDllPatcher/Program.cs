@@ -61,8 +61,21 @@ var persistentGetter = new MethodReference("get_persistentDataPath", module.Type
 {
     HasThis = false,
 };
-var pathCombine = module.ImportReference(
-    typeof(Path).GetMethod(nameof(Path.Combine), new[] { typeof(string), typeof(string) })!);
+var systemRef = module.AssemblyReferences.FirstOrDefault(r =>
+    r.Name is "mscorlib" or "netstandard" or "System.Runtime");
+if (systemRef == null)
+{
+    Console.Error.WriteLine("No mscorlib/netstandard reference in Assembly-CSharp.");
+    return 1;
+}
+
+var pathType = new TypeReference("System.IO", "Path", module, systemRef);
+var pathCombine = new MethodReference("Combine", module.TypeSystem.String, pathType)
+{
+    HasThis = false,
+};
+pathCombine.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
+pathCombine.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
 
 getter.Body.Instructions.Clear();
 getter.Body.Variables.Clear();
