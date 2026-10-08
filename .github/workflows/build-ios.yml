@@ -65,11 +65,20 @@ jobs:
         run: |
           set -euo pipefail
           BUILD_DIR="$GITHUB_WORKSPACE/$PROJECT_PATH/build/iOS"
+          cd "$BUILD_DIR"
           APP_PATH="$(find "$BUILD_DIR" -name '*.app' -path '*/Build/Products/*' | head -n 1)"
+          if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
+            echo "No .app found under $BUILD_DIR"
+            find "$BUILD_DIR" -name '*.app' -print || true
+            exit 1
+          fi
+          echo "Packaging: $APP_PATH"
           rm -rf Payload ULTRAKILL-unsigned.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           zip -qr ULTRAKILL-unsigned.ipa Payload
+          ls -lh ULTRAKILL-unsigned.ipa
+          test -f "$GITHUB_WORKSPACE/$IPA_PATH"
 
       - name: Upload workflow artifact
         id: artifact
@@ -105,7 +114,13 @@ jobs:
           echo "Download: https://github.com/${{ github.repository }}/releases/tag/${TAG}"
 
       - name: Require IPA published somewhere
-        if: steps.artifact.outcome != 'success' && steps.release.outcome != 'success'
+        if: always() && !cancelled()
         run: |
-          echo "Artifact upload failed and GitHub Release upload failed."
-          exit 1
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            [[ "${{ steps.artifact.outcome }}" == "success" ]] || { echo "PR builds require workflow artifact upload."; exit 1; }
+          else
+            [[ "${{ steps.artifact.outcome }}" == "success" || "${{ steps.release.outcome }}" == "success" ]] || {
+              echo "Artifact upload failed and GitHub Release upload failed."
+              exit 1
+            }
+          fi
