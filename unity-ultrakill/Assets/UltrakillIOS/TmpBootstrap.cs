@@ -60,10 +60,7 @@ namespace UltrakillIOS
                 settings.hideFlags = HideFlags.HideAndDontSave;
                 var styleSheet = ScriptableObject.CreateInstance<TMP_StyleSheet>();
                 styleSheet.hideFlags = HideFlags.HideAndDontSave;
-
-                // Ensure at least a Normal style so GetStyle does not NRE.
-                TryEnsureNormalStyle(styleSheet);
-
+                // Empty sheet is enough to stop defaultStyleSheet NRE; styles are optional for plain text.
                 SetField(settings, "m_defaultStyleSheet", styleSheet);
                 SetField(settings, "m_enableEmojiSupport", true);
                 SetField(settings, "m_getFontFeaturesAtRuntime", true);
@@ -190,30 +187,6 @@ namespace UltrakillIOS
             }
 
             UltrakillLog.Info(Area, "Applied TMP font to scene texts; null-font fixes=" + fixedCount + " total=" + texts.Length);
-        }
-
-        private static void TryEnsureNormalStyle(TMP_StyleSheet sheet)
-        {
-            try
-            {
-                var style = new TMP_Style("Normal", string.Empty, string.Empty);
-                var listField = typeof(TMP_StyleSheet).GetField("m_StyleList", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (listField == null)
-                {
-                    return;
-                }
-
-                var list = Activator.CreateInstance(listField.FieldType) as System.Collections.IList;
-                list?.Add(style);
-                listField.SetValue(sheet, list);
-                typeof(TMP_StyleSheet)
-                    .GetMethod("RefreshStyles", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                    ?.Invoke(sheet, null);
-            }
-            catch (Exception ex)
-            {
-                UltrakillLog.Warn(Area, "Could not seed Normal TMP style: " + ex.Message);
-            }
         }
 
         private static void SetField(object obj, string name, object value)
