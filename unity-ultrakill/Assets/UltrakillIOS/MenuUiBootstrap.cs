@@ -228,7 +228,7 @@ namespace UltrakillIOS
 
             var touch = Input.GetTouch(0);
             _lastPos = touch.position;
-            var pressed = touch.phase != TouchPhase.Ended && touch.phase != TouchPhase.Canceled;
+            var pressed = touch.phase != UnityEngine.TouchPhase.Ended && touch.phase != UnityEngine.TouchPhase.Canceled;
             SetMouse(_lastPos, pressed);
             _mouseDown = pressed;
         }
