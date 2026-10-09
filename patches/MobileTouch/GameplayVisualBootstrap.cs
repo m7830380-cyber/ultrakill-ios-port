@@ -5,12 +5,17 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Tutorial shaft black: many secondary cameras stay enabled and clear/cover the world.
-    /// Keep only Main Camera, solid clear, no occlusion; force bright unlit world mats.
+    /// Black-screen root causes (session 135511):
+    /// 1) We set RenderSettings.skybox=null while SkyboxEnabler restores CameraClearFlags.Skybox
+    ///    → null skybox clear = pure black (worse than before).
+    /// 2) We force-enabled 207 disabled Renderers (intro/fade planes covering the view).
+    /// 3) SolidColor gray was overwritten before render; need OnPreCull.
+    /// Keep Main Camera + HUD Camera only; cyan diagnostic clear; kill opaque fullscreen UI.
     /// </summary>
     internal sealed class GameplayVisualBootstrap : MonoBehaviour
     {
@@ -36,9 +41,17 @@ namespace UltrakillIOS
             "StainVoxelManager",
             "BloodsplatterManager",
             "BloodstainParent",
+            "SkyboxEnabler",
+            "IntroTextController",
+            "IntroViolenceScreen",
         };
 
+        private static readonly Color DiagnosticClear = new Color(0.35f, 0.75f, 0.95f, 1f); // cyan — if you see this, camera clears
+
+        private static Camera _main;
         private static bool _loggedCamNames;
+        private static bool _hookedPreCull;
+        private static Material _brightSky;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
@@ -56,6 +69,7 @@ namespace UltrakillIOS
         private void OnEnable()
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
+            EnsurePreCullHook();
         }
 
         private void OnDisable()
@@ -63,50 +77,218 @@ namespace UltrakillIOS
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
+        private void OnDestroy()
+        {
+            if (_hookedPreCull)
+            {
+                Camera.onPreCull -= OnAnyCameraPreCull;
+                _hookedPreCull = false;
+            }
+        }
+
+        private static void EnsurePreCullHook()
+        {
+            if (_hookedPreCull)
+            {
+                return;
+            }
+
+            Camera.onPreCull += OnAnyCameraPreCull;
+            _hookedPreCull = true;
+        }
+
+        /// <summary>Last word before render — game scripts cannot leave Skybox+null = black.</summary>
+        private static void OnAnyCameraPreCull(Camera cam)
+        {
+            if (cam == null)
+            {
+                return;
+            }
+
+            if (_main != null && cam == _main)
+            {
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = DiagnosticClear;
+                cam.useOcclusionCulling = false;
+                if (cam.cullingMask == 0)
+                {
+                    cam.cullingMask = ~0;
+                }
+
+                return;
+            }
+
+            var n = cam.gameObject.name;
+            // HUD Camera is depth-only overlay — allow it.
+            if (n.IndexOf("HUD", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                cam.clearFlags = CameraClearFlags.Depth;
+                cam.enabled = true;
+                return;
+            }
+
+            // Everything else off.
+            if (cam.enabled && (_main == null || cam != _main))
+            {
+                cam.enabled = false;
+            }
+        }
+
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             _loggedCamNames = false;
             MuteSpam();
+            StripBlackUiOverlays();
             FixCameras(forceLog: true);
+            ForceBrightSky();
             if (Time.timeScale <= 0f)
             {
                 Time.timeScale = 1f;
             }
+
+            TryEndStuckIntro();
         }
 
         private void LateUpdate()
         {
-            // Every frame while in gameplay — secondary cams re-enable themselves.
-            var inMenu = false;
+            EnsurePreCullHook();
+            MuteSpam();
+            FixCameras(forceLog: Time.frameCount % 60 == 0);
+            if (Time.frameCount % 30 == 0)
+            {
+                StripBlackUiOverlays();
+            }
+        }
+
+        private static void ForceBrightSky()
+        {
+            // Do NOT leave skybox null — SkyboxEnabler / portals flip clearFlags back to Skybox.
+            if (_brightSky == null)
+            {
+                var sh = Shader.Find("Skybox/Procedural")
+                    ?? Shader.Find("Skybox/Cubemap")
+                    ?? Shader.Find("Unlit/Color")
+                    ?? Shader.Find("UltrakillIOS/UnlitTexture");
+                if (sh != null)
+                {
+                    _brightSky = new Material(sh);
+                    if (_brightSky.HasProperty("_SkyTint"))
+                    {
+                        _brightSky.SetColor("_SkyTint", new Color(0.7f, 0.85f, 1f));
+                    }
+
+                    if (_brightSky.HasProperty("_GroundColor"))
+                    {
+                        _brightSky.SetColor("_GroundColor", new Color(0.4f, 0.4f, 0.45f));
+                    }
+
+                    if (_brightSky.HasProperty("_Exposure"))
+                    {
+                        _brightSky.SetFloat("_Exposure", 1.3f);
+                    }
+
+                    if (_brightSky.HasProperty("_Color"))
+                    {
+                        _brightSky.SetColor("_Color", new Color(0.6f, 0.8f, 1f));
+                    }
+                }
+            }
+
+            if (_brightSky != null)
+            {
+                RenderSettings.skybox = _brightSky;
+            }
+
+            RenderSettings.fog = false;
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = Color.white;
+            RenderSettings.ambientIntensity = 1.5f;
+        }
+
+        private static void TryEndStuckIntro()
+        {
             try
             {
-                var sh = Type.GetType("SceneHelper, Assembly-CSharp");
-                var inst = sh?.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-                var cur = inst != null
-                    ? sh.GetProperty("CurrentScene", BindingFlags.Public | BindingFlags.Instance)?.GetValue(inst) as string
-                    : null;
-                inMenu = string.IsNullOrEmpty(cur)
-                    || cur.IndexOf("Menu", StringComparison.OrdinalIgnoreCase) >= 0
-                    || cur.IndexOf("b3e7f2f8", StringComparison.OrdinalIgnoreCase) >= 0;
+                var omType = Type.GetType("OptionsManager, Assembly-CSharp");
+                var om = omType != null ? UnityEngine.Object.FindObjectOfType(omType) : null;
+                if (om != null)
+                {
+                    var f = omType.GetField("inIntro", BindingFlags.Instance | BindingFlags.Public);
+                    if (f != null && f.FieldType == typeof(bool))
+                    {
+                        f.SetValue(om, false);
+                    }
+                }
             }
             catch
             {
                 /* ignore */
             }
+        }
 
-            if (!inMenu)
+        private static void StripBlackUiOverlays()
+        {
+            var stripped = 0;
+            foreach (var img in UnityEngine.Object.FindObjectsOfType<Image>(true))
             {
-                FixCameras(forceLog: Time.frameCount % 60 == 0);
-            }
-            else if (Time.frameCount % 15 == 0)
-            {
-                MuteSpam();
-                FixCameras(forceLog: Time.frameCount % 60 == 0);
+                if (img == null || !img.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                var rt = img.rectTransform;
+                if (rt == null)
+                {
+                    continue;
+                }
+
+                var rect = rt.rect;
+                var covers = rect.width >= Screen.width * 0.7f && rect.height >= Screen.height * 0.7f;
+                var name = img.gameObject.name;
+                var namedFade = name.IndexOf("fade", StringComparison.OrdinalIgnoreCase) >= 0
+                    || name.IndexOf("blocker", StringComparison.OrdinalIgnoreCase) >= 0
+                    || name.IndexOf("splash", StringComparison.OrdinalIgnoreCase) >= 0
+                    || name.IndexOf("black", StringComparison.OrdinalIgnoreCase) >= 0
+                    || name.IndexOf("intro", StringComparison.OrdinalIgnoreCase) >= 0
+                    || name.IndexOf("violence", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                var dark = img.color.a > 0.6f && img.color.maxColorComponent < 0.25f;
+                var opaque = img.color.a > 0.85f;
+
+                if ((covers && (dark || opaque)) || (namedFade && img.color.a > 0.3f))
+                {
+                    var c = img.color;
+                    c.a = 0f;
+                    img.color = c;
+                    img.enabled = false;
+                    stripped++;
+                }
             }
 
-            if (Time.frameCount % 15 == 0)
+            // Also CanvasGroup full-screen fades
+            foreach (var cg in UnityEngine.Object.FindObjectsOfType<CanvasGroup>(true))
             {
-                MuteSpam();
+                if (cg == null || !cg.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                var n = cg.gameObject.name;
+                if (cg.alpha > 0.5f
+                    && (n.IndexOf("fade", StringComparison.OrdinalIgnoreCase) >= 0
+                        || n.IndexOf("intro", StringComparison.OrdinalIgnoreCase) >= 0
+                        || n.IndexOf("blocker", StringComparison.OrdinalIgnoreCase) >= 0
+                        || n.IndexOf("splash", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    cg.alpha = 0f;
+                    cg.blocksRaycasts = false;
+                    stripped++;
+                }
+            }
+
+            if (stripped > 0)
+            {
+                UltrakillLog.Info(Area, "Stripped " + stripped + " black/fullscreen UI overlays");
             }
         }
 
@@ -167,8 +349,12 @@ namespace UltrakillIOS
 
         private static void FixCameras(bool forceLog)
         {
+            ForceBrightSky();
+            EnsurePreCullHook();
+
             var cams = UnityEngine.Object.FindObjectsOfType<Camera>(true);
             Camera main = null;
+            Camera hud = null;
 
             foreach (var cam in cams)
             {
@@ -179,11 +365,13 @@ namespace UltrakillIOS
 
                 var n = cam.gameObject.name;
                 if (cam.CompareTag("MainCamera")
-                    || n.Equals("Main Camera", StringComparison.OrdinalIgnoreCase)
                     || n.IndexOf("Main Camera", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     main = cam;
-                    break;
+                }
+                else if (n.IndexOf("HUD", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    hud = cam;
                 }
             }
 
@@ -191,13 +379,18 @@ namespace UltrakillIOS
             {
                 foreach (var cam in cams)
                 {
-                    if (cam != null && cam.gameObject.name.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) < 0)
+                    if (cam != null
+                        && cam.gameObject.name.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) < 0
+                        && cam.gameObject.name.IndexOf("Preview", StringComparison.OrdinalIgnoreCase) < 0
+                        && cam.gameObject.name.IndexOf("Portal", StringComparison.OrdinalIgnoreCase) < 0)
                     {
                         main = cam;
                         break;
                     }
                 }
             }
+
+            _main = main;
 
             var disabled = 0;
             foreach (var cam in cams)
@@ -207,12 +400,11 @@ namespace UltrakillIOS
                     continue;
                 }
 
-                if (main != null && cam == main)
+                if (cam == main || cam == hud)
                 {
                     continue;
                 }
 
-                // Kill every secondary camera — they clear black over the Tutorial shaft.
                 if (cam.enabled)
                 {
                     cam.enabled = false;
@@ -224,13 +416,13 @@ namespace UltrakillIOS
             {
                 main.enabled = true;
                 main.gameObject.tag = "MainCamera";
-                main.depth = 100f;
+                main.depth = 0f;
                 main.cullingMask = ~0;
                 main.useOcclusionCulling = false;
                 main.clearFlags = CameraClearFlags.SolidColor;
-                main.backgroundColor = new Color(0.62f, 0.62f, 0.68f, 1f);
+                main.backgroundColor = DiagnosticClear;
                 main.allowHDR = false;
-                main.allowMSAA = false;
+                main.targetTexture = null;
                 if (main.nearClipPlane > 0.05f)
                 {
                     main.nearClipPlane = 0.05f;
@@ -255,22 +447,15 @@ namespace UltrakillIOS
                     flash.intensity = 4f;
                     flash.color = Color.white;
                     flash.shadows = LightShadows.None;
-                    UltrakillLog.Info(Area, "Attached camera flashlight");
                 }
             }
-            else if (cams.Length == 0)
+
+            if (hud != null)
             {
-                var go = new GameObject("UltrakillIOS.EmergencyCamera");
-                main = go.AddComponent<Camera>();
-                main.tag = "MainCamera";
-                main.clearFlags = CameraClearFlags.SolidColor;
-                main.backgroundColor = new Color(0.5f, 0.2f, 0.2f, 1f);
-                main.depth = 100;
-                main.cullingMask = ~0;
-                main.useOcclusionCulling = false;
-                go.AddComponent<AudioListener>();
-                DontDestroyOnLoad(go);
-                UltrakillLog.Warn(Area, "No cameras — spawned emergency camera");
+                hud.enabled = true;
+                hud.depth = 10f;
+                hud.clearFlags = CameraClearFlags.Depth;
+                hud.useOcclusionCulling = false;
             }
 
             try
@@ -286,6 +471,12 @@ namespace UltrakillIOS
                     {
                         camField.SetValue(cc, main);
                     }
+
+                    var hudField = ccType.GetField("hudCamera", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                    if (hudField != null && hud != null)
+                    {
+                        hudField.SetValue(cc, hud);
+                    }
                 }
             }
             catch (Exception ex)
@@ -293,41 +484,18 @@ namespace UltrakillIOS
                 UltrakillLog.Warn(Area, "CameraController wire failed: " + ex.Message);
             }
 
-            var lightsOn = 0;
-            foreach (var light in UnityEngine.Object.FindObjectsOfType<Light>(true))
-            {
-                if (light != null && !light.enabled)
-                {
-                    light.enabled = true;
-                    lightsOn++;
-                }
-            }
-
-            RenderSettings.fog = false;
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = Color.white;
-            RenderSettings.ambientIntensity = 1.5f;
-            RenderSettings.skybox = null;
-
-            // Material force only on scene load / periodic log — avoid .materials instance leak.
+            // Remap mats only periodically — NEVER re-enable disabled renderers (that covered the view).
             var matsFixed = 0;
-            var renderersOn = 0;
             if (forceLog)
             {
                 var fallback = Shader.Find("UltrakillIOS/UnlitTexture") ?? Shader.Find("Unlit/Color");
                 if (fallback != null)
                 {
-                    foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
+                    foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(false))
                     {
-                        if (r == null)
+                        if (r == null || !r.enabled || !r.gameObject.activeInHierarchy)
                         {
                             continue;
-                        }
-
-                        if (!r.enabled)
-                        {
-                            r.enabled = true;
-                            renderersOn++;
                         }
 
                         var mats = r.sharedMaterials;
@@ -346,11 +514,11 @@ namespace UltrakillIOS
                             }
 
                             var sn = m.shader != null ? m.shader.name : "";
-                            if (m.shader != fallback
+                            if (!sn.StartsWith("UltrakillIOS/", StringComparison.Ordinal)
                                 && !sn.StartsWith("UI/", StringComparison.Ordinal)
                                 && !sn.StartsWith("TextMeshPro/", StringComparison.Ordinal)
                                 && !sn.StartsWith("Sprites/", StringComparison.Ordinal)
-                                && !sn.StartsWith("UltrakillIOS/", StringComparison.Ordinal))
+                                && !sn.StartsWith("Skybox/", StringComparison.Ordinal))
                             {
                                 m.shader = fallback;
                                 matsFixed++;
@@ -397,17 +565,19 @@ namespace UltrakillIOS
                         sb.Append(c.enabled ? '+' : '-');
                         sb.Append(c.name);
                         sb.Append("(d=").Append(c.depth.ToString("0.#"));
-                        sb.Append(",cf=").Append(c.clearFlags).Append(") ");
+                        sb.Append(",cf=").Append(c.clearFlags);
+                        sb.Append(",bg=").Append(ColorUtility.ToHtmlStringRGB(c.backgroundColor));
+                        sb.Append(") ");
                     }
                 }
 
                 UltrakillLog.Info(Area, "Cameras enabled=" + enabledCount
                     + " disabledOthers=" + disabled
                     + " main=" + (main != null ? main.name : "null")
-                    + " lightsReenabled=" + lightsOn
+                    + " hud=" + (hud != null ? hud.name : "null")
                     + " matsForced=" + matsFixed
-                    + " renderersOn=" + renderersOn
-                    + " ambient=" + RenderSettings.ambientLight);
+                    + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL")
+                    + " clear=" + ColorUtility.ToHtmlStringRGB(DiagnosticClear));
 
                 if (!_loggedCamNames && sb.Length > 0)
                 {

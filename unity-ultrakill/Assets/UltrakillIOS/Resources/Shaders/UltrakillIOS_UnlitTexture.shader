@@ -54,11 +54,10 @@ Shader "UltrakillIOS/UnlitTexture"
 				if (dot(tint, 1) < 0.2) tint = fixed3(1, 1, 1);
 
 				fixed3 rgb = tex.rgb * tint;
-				// Hard floor — black textures / missing Metal samples still show geometry.
-				rgb = max(rgb, fixed3(0.28, 0.28, 0.32));
-				rgb = saturate(rgb * 1.8 + 0.12);
-				// UV tint so shaft walls are never a flat void even with broken tex.
-				rgb += fixed3(frac(i.uv.x * 4.0), frac(i.uv.y * 4.0), 0.15) * 0.12;
+				// Hard visibility floor + warm tint so shafts are never ink-black.
+				rgb = max(rgb, fixed3(0.45, 0.42, 0.38));
+				rgb = saturate(rgb * 1.6 + 0.15);
+				rgb += fixed3(frac(i.uv.x * 3.0), frac(i.uv.y * 3.0), 0.1) * 0.1;
 				return fixed4(saturate(rgb), 1);
 			}
 			ENDCG

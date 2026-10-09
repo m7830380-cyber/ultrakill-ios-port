@@ -66,6 +66,9 @@ namespace UltrakillIOS
             "StaticSceneOptimizer",
             "TimeController",
             "AudioMixerController",
+            "SkyboxEnabler",
+            "IntroTextController",
+            "IntroViolenceScreen",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -432,16 +435,8 @@ namespace UltrakillIOS
                         var t = m.GetTexture(prop);
                         if (t != null)
                         {
-                            // Prefer real albedo over bump if both exist.
-                            if (prop != "_BumpMap" || albedo == null)
-                            {
-                                albedo = t;
-                            }
-
-                            if (prop != "_BumpMap")
-                            {
-                                break;
-                            }
+                            albedo = t;
+                            break;
                         }
                     }
 
