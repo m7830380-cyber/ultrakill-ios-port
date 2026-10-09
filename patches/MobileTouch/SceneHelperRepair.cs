@@ -382,9 +382,10 @@ namespace UltrakillIOS
 
         private static void RemapBrokenShaders()
         {
-            // iOS shaders.bundle is stubs — anything not our fallback draws black in shafts.
-            var fallback = Shader.Find("UltrakillIOS/UnlitTexture")
-                ?? Shader.Find("Unlit/Color")
+            // iOS shaders.bundle is stubs. UnlitTexture draws black on device (session 173712);
+            // built-in Unlit/Color is the only proven-visible fallback.
+            var fallback = Shader.Find("Unlit/Color")
+                ?? Shader.Find("UltrakillIOS/UnlitTexture")
                 ?? Shader.Find("Sprites/Default")
                 ?? Shader.Find("UI/Default");
             if (fallback == null)
@@ -418,11 +419,15 @@ namespace UltrakillIOS
 
                     var sh = m.shader;
                     var name = sh != null ? sh.name : "";
-                    // Keep only our fallback + UI/text. Force everything else through UnlitTexture.
+                    // Keep overlay + UI + built-in Unlit/Color (Playable forces this for visible geo).
+                    // Remapping Unlit/Color → UnlitTexture was undoing the only shader that drew
+                    // on device (session 173712 black walls / 165503 flash-then-black).
                     var keep = name.StartsWith("UltrakillIOS/", StringComparison.Ordinal)
                         || name.StartsWith("UI/", StringComparison.Ordinal)
                         || name.StartsWith("TextMeshPro/", StringComparison.Ordinal)
-                        || name.StartsWith("Sprites/", StringComparison.Ordinal);
+                        || name.StartsWith("Sprites/", StringComparison.Ordinal)
+                        || name.StartsWith("Unlit/", StringComparison.Ordinal)
+                        || name.StartsWith("Skybox/", StringComparison.Ordinal);
                     if (sh != null && keep)
                     {
                         continue;

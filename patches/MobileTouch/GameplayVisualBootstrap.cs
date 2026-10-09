@@ -50,8 +50,8 @@ namespace UltrakillIOS
             "StyleHUD",
         };
 
-        // Soft sky — cyan was only for proving clear worked.
-        private static readonly Color DiagnosticClear = new Color(0.55f, 0.62f, 0.72f, 1f);
+        // Loud cyan: if the phone shows this, clear works and world geo is not drawing.
+        private static readonly Color DiagnosticClear = new Color(0.2f, 0.75f, 0.85f, 1f);
 
         private static Camera _main;
         private static bool _loggedCamNames;
@@ -141,6 +141,11 @@ namespace UltrakillIOS
             if (cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Nothing)
             {
                 cam.clearFlags = CameraClearFlags.SolidColor;
+            }
+
+            // Match Playable diagnostic cyan — if user sees this, clear works and geo is missing.
+            if (cam.clearFlags == CameraClearFlags.SolidColor)
+            {
                 cam.backgroundColor = DiagnosticClear;
             }
         }
@@ -151,6 +156,7 @@ namespace UltrakillIOS
             MuteSpam();
             HideSpuriousScoreHud();
             ForceBrightSky();
+            StripBlackUiOverlays();
             FixCameras(forceLog: true);
             if (Time.timeScale <= 0f)
             {
@@ -629,7 +635,8 @@ namespace UltrakillIOS
             var matsFixed = 0;
             if (forceLog)
             {
-                var fallback = Shader.Find("UltrakillIOS/UnlitTexture") ?? Shader.Find("Unlit/Color");
+                // Prefer built-in Unlit/Color — UnlitTexture draws black on device (173712).
+                var fallback = Shader.Find("Unlit/Color") ?? Shader.Find("UltrakillIOS/UnlitTexture");
                 if (fallback != null)
                 {
                     foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(false))
@@ -659,9 +666,15 @@ namespace UltrakillIOS
                                 && !sn.StartsWith("UI/", StringComparison.Ordinal)
                                 && !sn.StartsWith("TextMeshPro/", StringComparison.Ordinal)
                                 && !sn.StartsWith("Sprites/", StringComparison.Ordinal)
-                                && !sn.StartsWith("Skybox/", StringComparison.Ordinal))
+                                && !sn.StartsWith("Skybox/", StringComparison.Ordinal)
+                                && !sn.StartsWith("Unlit/", StringComparison.Ordinal))
                             {
                                 m.shader = fallback;
+                                if (m.HasProperty("_Color"))
+                                {
+                                    m.SetColor("_Color", new Color(0.78f, 0.72f, 0.62f, 1f));
+                                }
+
                                 matsFixed++;
                                 changed = true;
                             }

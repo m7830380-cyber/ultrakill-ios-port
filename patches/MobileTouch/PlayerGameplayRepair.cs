@@ -8,14 +8,12 @@ using UnityEngine.SceneManagement;
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Session 165503 root causes (not guesses):
-    /// 1) ForceWorldOnce set RenderSettings.skybox=null while SkyboxEnabler/triggers set
-    ///    clearFlags=Skybox → pure black after a brief geometry flash.
-    /// 2) SceneHelper remapped UnlitTexture then ForceWorldOnce replaced every mat with one
-    ///    Unlit/Color → "2 colour slideshow".
-    /// 3) NewMovement Update stubbed + nm.enabled=false → no fall woosh; only ambient wind.
-    /// 4) GunControl.YesWeapon IndexOutOfRange aborts PlayerActivator mid-Activate.
-    /// Keep SolidColor clear, keep a sky material, leave UnlitTexture remap alone, drive move/look.
+    /// Session 173712 proof (after skybox fix):
+    /// - clearFlags stays SolidColor bg=59667A the whole time → NOT the skybox-black bug.
+    /// - Player falls 105→-0.5 at z=-67 and stands — physics OK, wind OK.
+    /// - UnlitTexture remap alone = black walls (shader/bundle stubs fail on Metal).
+    /// - Session 165503 Unlit/Color wipe briefly showed geometry then skybox clear killed it.
+    /// Fix: one-shot bright Unlit/Color on world renderers + keep SolidColor clear + keep sky.
     /// </summary>
     internal sealed class PlayerGameplayRepair : MonoBehaviour
     {
@@ -24,11 +22,14 @@ namespace UltrakillIOS
         private const float LookSens = 0.12f;
 
         private static Material _skyMat;
+        private static Material _worldMat;
         private static bool _worldDone;
         private static bool _hudDone;
         private static bool _preCullHooked;
         private static string _lastScene;
         private static Camera _mainCam;
+        // Loud clear so "black" vs "clear showing / no geo" is unambiguous on device.
+        private static readonly Color DiagnosticBg = new Color(0.2f, 0.75f, 0.85f, 1f);
 
         private Rigidbody _rb;
         private Transform _camTr;
@@ -146,10 +147,15 @@ namespace UltrakillIOS
             KillIntro();
             MuteClimbStep();
             BindPlayer();
-            EnsureVisibleWorld();
+            ForceBrightWorldMats();
             UltrakillLog.Info(Area, "Deferred repair done scene=" + _lastScene
                 + " bound=" + _bound + " worldDone=" + _worldDone
                 + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL"));
+            // Late-spawned addressable meshes — second pass without clearing sky/clearFlags.
+            yield return new WaitForSecondsRealtime(0.75f);
+            _worldDone = false;
+            ForceBrightWorldMats();
+            LevelLookHorizon();
         }
 
         private void Update()
@@ -169,11 +175,22 @@ namespace UltrakillIOS
 
             if (!_worldDone && IsGameplayScene())
             {
-                EnsureVisibleWorld();
+                ForceBrightWorldMats();
             }
 
             DriveMoveLook();
             MaybeDiag();
+        }
+
+        private void LevelLookHorizon()
+        {
+            if (!_bound || _camTr == null)
+            {
+                return;
+            }
+
+            _pitch = 0f;
+            _camTr.rotation = Quaternion.Euler(0f, _yaw, 0f);
         }
 
         private void MaybeDiag()
@@ -190,11 +207,25 @@ namespace UltrakillIOS
             }
 
             var cam = _camTr.GetComponent<Camera>();
+            var hitInfo = "none";
+            if (Physics.Raycast(_camTr.position, _camTr.forward, out var hit, 80f))
+            {
+                hitInfo = hit.collider.name + "@" + hit.distance.ToString("F1")
+                    + " layer=" + hit.collider.gameObject.layer;
+                var r = hit.collider.GetComponent<Renderer>()
+                    ?? hit.collider.GetComponentInChildren<Renderer>();
+                if (r != null && r.sharedMaterial != null && r.sharedMaterial.shader != null)
+                {
+                    hitInfo += " sh=" + r.sharedMaterial.shader.name;
+                }
+            }
+
             UltrakillLog.Info(Area, "DIAG pos=" + _rb.position.ToString("F1")
                 + " vy=" + _rb.velocity.y.ToString("F1")
                 + " clear=" + (cam != null ? cam.clearFlags.ToString() : "?")
                 + " bg=" + (cam != null ? ColorUtility.ToHtmlStringRGB(cam.backgroundColor) : "?")
-                + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL"));
+                + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL")
+                + " look=" + hitInfo);
         }
 
         private static bool IsGameplayScene()
@@ -374,7 +405,7 @@ namespace UltrakillIOS
                 cam.useOcclusionCulling = false;
                 cam.targetTexture = null;
                 cam.clearFlags = CameraClearFlags.SolidColor;
-                cam.backgroundColor = new Color(0.35f, 0.4f, 0.48f, 1f);
+                cam.backgroundColor = DiagnosticBg;
                 cam.depth = 0f;
                 if (!cam.CompareTag("MainCamera"))
                 {
@@ -561,9 +592,9 @@ namespace UltrakillIOS
                 if (_mainCam.clearFlags != CameraClearFlags.SolidColor)
                 {
                     _mainCam.clearFlags = CameraClearFlags.SolidColor;
-                    _mainCam.backgroundColor = new Color(0.35f, 0.4f, 0.48f, 1f);
                 }
 
+                _mainCam.backgroundColor = DiagnosticBg;
                 EnsureSkyMaterial();
             }
         }
@@ -601,24 +632,45 @@ namespace UltrakillIOS
         }
 
         /// <summary>
-        /// Do NOT wipe materials to a single Unlit/Color (that was the slideshow).
-        /// SceneHelper already remapped → UltrakillIOS/UnlitTexture. Only fix clear/sky/fog.
+        /// Session 173712: UnlitTexture remap leaves black walls on device. Built-in Unlit/Color
+        /// is the only shader that previously drew visible Tutorial geo. One-shot only — do not
+        /// null skybox (that + Skybox clear = black). Do not thrash every frame (slideshow).
         /// </summary>
-        private static void EnsureVisibleWorld()
+        private static void ForceBrightWorldMats()
         {
             if (_worldDone)
             {
                 return;
             }
 
+            var sh = Shader.Find("Unlit/Color");
+            if (sh == null)
+            {
+                UltrakillLog.Warn(Area, "Unlit/Color missing — cannot force visible world");
+                _worldDone = true;
+                return;
+            }
+
+            if (_worldMat == null)
+            {
+                _worldMat = new Material(sh);
+                var col = new Color(0.78f, 0.72f, 0.62f, 1f);
+                _worldMat.color = col;
+                if (_worldMat.HasProperty("_Color"))
+                {
+                    _worldMat.SetColor("_Color", col);
+                }
+            }
+
             EnsureSkyMaterial();
             RenderSettings.fog = false;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.85f, 0.85f, 0.9f, 1f);
+            RenderSettings.ambientLight = Color.white;
             RenderSettings.ambientIntensity = 1.2f;
 
-            var enabledRenderers = 0;
-            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(false))
+            var n = 0;
+            var sample = "";
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
             {
                 if (r == null || r is ParticleSystemRenderer)
                 {
@@ -630,18 +682,36 @@ namespace UltrakillIOS
                     continue;
                 }
 
-                if (!r.gameObject.activeInHierarchy || !r.enabled)
+                if (!r.gameObject.activeInHierarchy)
                 {
                     continue;
                 }
 
-                enabledRenderers++;
+                // Only touch already-enabled renderers — enabling disabled fade planes blacks the view.
+                if (!r.enabled)
+                {
+                    continue;
+                }
+
+                var len = r.sharedMaterials != null ? Math.Max(1, r.sharedMaterials.Length) : 1;
+                var mats = new Material[len];
+                for (var i = 0; i < len; i++)
+                {
+                    mats[i] = _worldMat;
+                }
+
+                r.sharedMaterials = mats;
+                n++;
+                if (sample.Length < 80)
+                {
+                    sample += r.name + ";";
+                }
             }
 
-            _worldDone = true;
-            UltrakillLog.Info(Area, "Visible world ready renderers=" + enabledRenderers
-                + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL")
-                + " (no material wipe)");
+            _worldDone = n > 0;
+            UltrakillLog.Info(Area, "ONE-SHOT Unlit/Color on " + n + " renderers sky="
+                + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL")
+                + " sample=" + sample);
         }
     }
 }

@@ -81,6 +81,8 @@ StubMethodEmpty(module, "SkyboxEnabler", "Activate");
 StubMethodEmpty(module, "SkyboxEnabler", "OnEnable");
 // Tutorial PlayerActivator → YesWeapon with currentSlotIndex=0 throws IndexOutOfRange and aborts Activate().
 StubGunControlYesWeapon(module);
+// GunControl.Update NREs every frame when InputManager/Options null (session 173712 spam).
+StubMethodEmpty(module, "GunControl", "Update");
 // Null AudioMixer assets → UpdateSFXVolume / FixedUpdate spam every frame.
 StubMethodEmpty(module, "AudioMixerController", "Update");
 StubMethodEmpty(module, "AudioMixerController", "UpdateSFXVolume");
