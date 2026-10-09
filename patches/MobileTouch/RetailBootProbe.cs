@@ -54,6 +54,8 @@ namespace UltrakillIOS
             SetStatus("Initializing Addressables");
             var init = Addressables.InitializeAsync(false);
             yield return init;
+            ShadersBundleWarmup.TryWarmup();
+            UkMasterShaderBootstrap.EnsureReady();
             if (init.Status != AsyncOperationStatus.Succeeded)
             {
                 Fail("Addressables.InitializeAsync failed: " + init.OperationException);

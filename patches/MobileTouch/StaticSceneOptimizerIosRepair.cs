@@ -6,11 +6,6 @@ using UnityEngine.SceneManagement;
 
 namespace UltrakillIOS
 {
-    /// <summary>
-    /// Level meshes are batched by StaticSceneOptimizer (atlas _MainTex on batch materials).
-    /// SceneHelper/Visual mute lists disabled it on sceneLoaded — which runs BEFORE Start(), so
-    /// SetupMaterial/SetupMeshes never ran → white tutorial geometry (session 223222).
-    /// </summary>
     internal static class StaticSceneOptimizerIosRepair
     {
         private const string Area = "SceneOpt";
@@ -40,25 +35,24 @@ namespace UltrakillIOS
                 {
                     f.SetValue(null, true);
                     _computePrefApplied = true;
-                    UltrakillLog.Info(Area, "disabledComputeShaders=true (NO_COMPUTE static batch path for iOS)");
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                UltrakillLog.Warn(Area, "Could not set disabledComputeShaders: " + ex.Message);
+                /* ignore */
             }
         }
 
         internal static void KickAllInLoadedScenes()
         {
             ApplyNoComputePreference();
+            UkMasterShaderBootstrap.EnsureReady();
             var optType = Type.GetType("StaticSceneOptimizer, Assembly-CSharp");
             if (optType == null)
             {
                 return;
             }
 
-            var kicked = 0;
             foreach (var obj in UnityEngine.Object.FindObjectsOfType(optType, true))
             {
                 if (obj is Behaviour b)
@@ -66,61 +60,76 @@ namespace UltrakillIOS
                     b.enabled = true;
                 }
 
-                if (KickOne(obj, optType))
-                {
-                    kicked++;
-                }
-            }
-
-            if (kicked > 0)
-            {
-                UltrakillLog.Info(Area, "Kicked " + kicked + " StaticSceneOptimizer instance(s)");
+                KickOne(obj, optType);
             }
         }
 
-        private static bool KickOne(object optimizer, Type optType)
+        private static void KickOne(object optimizer, Type optType)
         {
+            var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             try
             {
-                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-                var usedField = optType.GetField("usedComputeShadersAtStart", flags);
-                usedField?.SetValue(optimizer, false);
+                optType.GetField("usedComputeShadersAtStart", flags)?.SetValue(optimizer, false);
+                EnsureBatchMaterials(optimizer, optType, flags);
 
                 optType.GetMethod("FixPosition", flags)?.Invoke(optimizer, null);
                 optType.GetMethod("SetupMaterial", flags)?.Invoke(optimizer, new object[] { false });
                 optType.GetMethod("SetupMeshes", flags)?.Invoke(optimizer, null);
 
-                var baked = optType.GetField("bakedDataAsset", flags)?.GetValue(optimizer);
-                var outdoors = optType.GetField("batchMaterialOutdoors", flags)?.GetValue(optimizer) as Material;
-                var env = optType.GetField("batchMaterialEnvironment", flags)?.GetValue(optimizer) as Material;
-                Texture outTex = null;
-                Texture envTex = null;
-                if (outdoors != null && outdoors.HasProperty("_MainTex"))
-                {
-                    outTex = outdoors.GetTexture("_MainTex");
-                }
-
-                if (env != null && env.HasProperty("_MainTex"))
-                {
-                    envTex = env.GetTexture("_MainTex");
-                }
-
-                var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as System.Collections.IList;
-                var rendCount = rends?.Count ?? 0;
-
-                UltrakillLog.Info(Area,
-                    "StaticSceneOptimizer OK bakedData=" + (baked != null ? "yes" : "NULL")
-                    + " staticMRends=" + rendCount
-                    + " outdoorMainTex=" + (outTex != null ? outTex.name : "null")
-                    + " envMainTex=" + (envTex != null ? envTex.name : "null"));
-
-                return rendCount > 0 || baked != null;
+                LogState(optimizer, optType, flags);
+            }
+            catch (TargetInvocationException tie)
+            {
+                var inner = tie.InnerException ?? tie;
+                UltrakillLog.Warn(Area, "Kick failed: " + inner.GetType().Name + ": " + inner.Message);
             }
             catch (Exception ex)
             {
                 UltrakillLog.Warn(Area, "Kick failed: " + ex.Message);
-                return false;
             }
+        }
+
+        private static void EnsureBatchMaterials(object optimizer, Type optType, BindingFlags flags)
+        {
+            var master = UkMasterShaderBootstrap.Master ?? UkMasterShaderBootstrap.Stationary;
+            if (master == null)
+            {
+                return;
+            }
+
+            var outF = optType.GetField("batchMaterialOutdoors", flags);
+            var envF = optType.GetField("batchMaterialEnvironment", flags);
+            var outdoors = outF?.GetValue(optimizer) as Material;
+            var env = envF?.GetValue(optimizer) as Material;
+
+            if (outdoors == null)
+            {
+                outdoors = new Material(master);
+                outF?.SetValue(optimizer, outdoors);
+            }
+
+            if (env == null)
+            {
+                env = new Material(master);
+                envF?.SetValue(optimizer, env);
+            }
+        }
+
+        private static void LogState(object optimizer, Type optType, BindingFlags flags)
+        {
+            var baked = optType.GetField("bakedDataAsset", flags)?.GetValue(optimizer);
+            var outdoors = optType.GetField("batchMaterialOutdoors", flags)?.GetValue(optimizer) as Material;
+            Texture outTex = null;
+            if (outdoors != null && outdoors.HasProperty("_MainTex"))
+            {
+                outTex = outdoors.GetTexture("_MainTex");
+            }
+
+            var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as System.Collections.IList;
+            UltrakillLog.Info(Area,
+                "optimizer bakedData=" + (baked != null ? "yes" : "NULL")
+                + " staticMRends=" + (rends?.Count ?? 0)
+                + " outdoorMainTex=" + (outTex != null ? outTex.name : "null"));
         }
 
         private sealed class Host : MonoBehaviour
@@ -142,11 +151,10 @@ namespace UltrakillIOS
 
             private System.Collections.IEnumerator KickAfterStart()
             {
-                // sceneLoaded fires before scene Start() — wait so we don't fight Unity lifecycle.
                 yield return null;
                 yield return null;
                 KickAllInLoadedScenes();
-                yield return new WaitForSecondsRealtime(0.25f);
+                yield return new WaitForSecondsRealtime(0.3f);
                 KickAllInLoadedScenes();
             }
         }

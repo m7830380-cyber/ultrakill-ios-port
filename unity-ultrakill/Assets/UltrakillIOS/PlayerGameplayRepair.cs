@@ -2,18 +2,14 @@
 using System;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Session 154618 proof:
-    /// - "Colour slideshow" = we reassigned 526 materials EVERY frame.
-    /// - ClimbStep×1008 = player collides with Tutorial geometry (world exists).
-    /// - NewMovement.Update NRE on null windStateParticle (Awake/Start stubbed).
-    /// - CameraController.LateUpdate NRE on null player/opm before look code.
-    /// Fix: one-shot world materials, hide StyleHUD, stub broken Update/LateUpdate in DLL,
-    /// drive move+look ourselves.
+    /// Movement/camera repair only. World materials use retail shaders from shaders.bundle;
+    /// RetailShaderRepair fixes only unsupported shaders (with albedo preserved).
     /// </summary>
     internal sealed class PlayerGameplayRepair : MonoBehaviour
     {
@@ -21,16 +17,21 @@ namespace UltrakillIOS
         private const float MoveSpeed = 12f;
         private const float LookSens = 0.12f;
 
-        private static Material _worldMat;
-        private static bool _worldDone;
+        private static Material _skyMat;
+        private static bool _lightingDone;
         private static bool _hudDone;
+        private static bool _preCullHooked;
         private static string _lastScene;
+        private static Camera _mainCam;
+        private static readonly Color WorldClear = new Color(0.35f, 0.4f, 0.48f, 1f);
 
         private Rigidbody _rb;
         private Transform _camTr;
+        private AudioSource _fallWhoosh;
         private float _yaw;
         private float _pitch;
         private bool _bound;
+        private float _nextDiag;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
@@ -48,6 +49,7 @@ namespace UltrakillIOS
         private void OnEnable()
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
+            EnsurePreCullHook();
         }
 
         private void OnDisable()
@@ -55,13 +57,79 @@ namespace UltrakillIOS
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
+        private void OnDestroy()
+        {
+            if (_preCullHooked)
+            {
+                Camera.onPreCull -= LockMainClearFlags;
+                _preCullHooked = false;
+            }
+        }
+
+        private static void EnsurePreCullHook()
+        {
+            if (_preCullHooked)
+            {
+                return;
+            }
+
+            Camera.onPreCull += LockMainClearFlags;
+            _preCullHooked = true;
+        }
+
+        /// <summary>
+        /// Skybox clear + missing/stub skybox = black. Lock Main to SolidColor every pre-cull.
+        /// </summary>
+        private static void LockMainClearFlags(Camera cam)
+        {
+            if (cam == null)
+            {
+                return;
+            }
+
+            var n = cam.gameObject.name;
+            if (n.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Preview", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Portal", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Shop", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                cam.enabled = false;
+                return;
+            }
+
+            if (_mainCam != null && cam != _mainCam)
+            {
+                return;
+            }
+
+            if (!cam.enabled)
+            {
+                return;
+            }
+
+            if (n.IndexOf("HUD", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return;
+            }
+
+            if (cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Nothing)
+            {
+                cam.clearFlags = CameraClearFlags.SolidColor;
+            }
+
+            if (cam.clearFlags == CameraClearFlags.SolidColor
+                && cam.backgroundColor.maxColorComponent < 0.15f)
+            {
+                cam.backgroundColor = new Color(0.35f, 0.4f, 0.48f, 1f);
+            }
+        }
+
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            _worldDone = false;
+            _lightingDone = false;
             _hudDone = false;
             _bound = false;
             _lastScene = scene.name;
-            // Defer one frame so addressable content finishes instantiating.
             StartCoroutine(DeferredRepair());
         }
 
@@ -73,9 +141,16 @@ namespace UltrakillIOS
             KillIntro();
             MuteClimbStep();
             BindPlayer();
-            ForceWorldOnce();
+            EnsureRetailLighting();
+            var fixedMats = RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: false);
             UltrakillLog.Info(Area, "Deferred repair done scene=" + _lastScene
-                + " bound=" + _bound + " worldDone=" + _worldDone);
+                + " bound=" + _bound + " brokenMatsFixed=" + fixedMats
+                + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL"));
+            yield return new WaitForSecondsRealtime(0.75f);
+            RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: true);
+            yield return new WaitForSecondsRealtime(0.5f);
+            RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: false);
+            LevelLookHorizon();
         }
 
         private void Update()
@@ -93,12 +168,59 @@ namespace UltrakillIOS
                 _hudDone = true;
             }
 
-            if (!_worldDone && IsGameplayScene())
+            if (!_lightingDone && IsGameplayScene())
             {
-                ForceWorldOnce();
+                EnsureRetailLighting();
             }
 
             DriveMoveLook();
+            MaybeDiag();
+        }
+
+        private void LevelLookHorizon()
+        {
+            if (!_bound || _camTr == null)
+            {
+                return;
+            }
+
+            _pitch = 0f;
+            _camTr.rotation = Quaternion.Euler(0f, _yaw, 0f);
+        }
+
+        private void MaybeDiag()
+        {
+            if (Time.unscaledTime < _nextDiag)
+            {
+                return;
+            }
+
+            _nextDiag = Time.unscaledTime + 2f;
+            if (!_bound || _rb == null || _camTr == null)
+            {
+                return;
+            }
+
+            var cam = _camTr.GetComponent<Camera>();
+            var hitInfo = "none";
+            if (Physics.Raycast(_camTr.position, _camTr.forward, out var hit, 80f))
+            {
+                hitInfo = hit.collider.name + "@" + hit.distance.ToString("F1")
+                    + " layer=" + hit.collider.gameObject.layer;
+                var r = hit.collider.GetComponent<Renderer>()
+                    ?? hit.collider.GetComponentInChildren<Renderer>();
+                if (r != null && r.sharedMaterial != null && r.sharedMaterial.shader != null)
+                {
+                    hitInfo += " sh=" + r.sharedMaterial.shader.name;
+                }
+            }
+
+            UltrakillLog.Info(Area, "DIAG pos=" + _rb.position.ToString("F1")
+                + " vy=" + _rb.velocity.y.ToString("F1")
+                + " clear=" + (cam != null ? cam.clearFlags.ToString() : "?")
+                + " bg=" + (cam != null ? ColorUtility.ToHtmlStringRGB(cam.backgroundColor) : "?")
+                + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL")
+                + " look=" + hitInfo);
         }
 
         private static bool IsGameplayScene()
@@ -222,9 +344,8 @@ namespace UltrakillIOS
             nmType.GetField("activated", flags)?.SetValue(nm, true);
             nmType.GetField("dead", flags)?.SetValue(nm, false);
 
-            // Disable broken Update path (DLL stub) — we drive movement.
-            nm.enabled = false;
-
+            // NM Update/FixedUpdate are DLL-stubbed (windStateParticle NRE). Keep component
+            // enabled for other messages, but we drive move. Fall whoosh is synthesised below.
             if (_rb != null)
             {
                 _rb.isKinematic = false;
@@ -241,51 +362,56 @@ namespace UltrakillIOS
                     _rb.useGravity = true;
                 }
 
-                // Freeze rotation — we rotate camera only.
                 _rb.constraints = RigidbodyConstraints.FreezeRotation;
             }
+
+            EnsureFallWhoosh(nm.transform);
 
             var ccType = Type.GetType("CameraController, Assembly-CSharp");
             var cc = ccType != null
                 ? nm.GetComponentInChildren(ccType, true) as MonoBehaviour
                 : null;
+            Camera cam = null;
             if (cc != null)
             {
-                // LateUpdate stubbed in DLL — disable leftover behaviour noise.
-                cc.enabled = false;
-                var cam = cc.GetComponent<Camera>() ?? cc.GetComponentInChildren<Camera>(true);
+                // LateUpdate stubbed — look is driven here. Leave enabled so PlayerActivator
+                // can set activated without fighting a disabled component.
+                cam = cc.GetComponent<Camera>() ?? cc.GetComponentInChildren<Camera>(true);
                 if (cam != null)
                 {
-                    _camTr = cam.transform;
-                    cam.enabled = true;
-                    cam.cullingMask = ~0;
-                    cam.useOcclusionCulling = false;
-                    cam.targetTexture = null;
-                    cam.clearFlags = CameraClearFlags.SolidColor;
-                    cam.backgroundColor = new Color(0.35f, 0.4f, 0.48f, 1f);
-                    cam.depth = 0f;
-                    if (!cam.CompareTag("MainCamera"))
-                    {
-                        cam.tag = "MainCamera";
-                    }
+                    ccType.GetField("cam", flags)?.SetValue(cc, cam);
+                    ccType.GetField("activated", flags)?.SetValue(cc, true);
+                    ccType.GetField("player", flags)?.SetValue(cc, nm.gameObject);
+                    ccType.GetField("nm", flags)?.SetValue(cc, nm);
+                }
+            }
+
+            if (cam == null)
+            {
+                cam = nm.GetComponentInChildren<Camera>(true);
+            }
+
+            if (cam != null)
+            {
+                _camTr = cam.transform;
+                _mainCam = cam;
+                cam.enabled = true;
+                cam.cullingMask = ~0;
+                cam.useOcclusionCulling = false;
+                cam.targetTexture = null;
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = WorldClear;
+                cam.depth = 0f;
+                if (!cam.CompareTag("MainCamera"))
+                {
+                    cam.tag = "MainCamera";
                 }
 
-                var e = _camTr != null ? _camTr.eulerAngles : nm.transform.eulerAngles;
+                var e = _camTr.eulerAngles;
                 _yaw = e.y;
                 _pitch = e.x > 180f ? e.x - 360f : e.x;
             }
-            else
-            {
-                var cam = nm.GetComponentInChildren<Camera>(true);
-                if (cam != null)
-                {
-                    _camTr = cam.transform;
-                    cam.enabled = true;
-                    cam.cullingMask = ~0;
-                }
-            }
 
-            // Only Main Camera for world; keep HUD Camera if present.
             foreach (var c in UnityEngine.Object.FindObjectsOfType<Camera>(true))
             {
                 if (c == null)
@@ -316,6 +442,39 @@ namespace UltrakillIOS
             {
                 UltrakillLog.Info(Area, "Bound player rb+cam for manual move/look");
             }
+        }
+
+        private void EnsureFallWhoosh(Transform player)
+        {
+            if (_fallWhoosh != null)
+            {
+                return;
+            }
+
+            // Retail fall whoosh lives on WallCheck; NM Awake (stubbed) never wired audWoosh.
+            var wall = player.GetComponentInChildren<AudioSource>(true);
+            foreach (var a in player.GetComponentsInChildren<AudioSource>(true))
+            {
+                if (a != null && a.gameObject.name.IndexOf("Wall", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    wall = a;
+                    break;
+                }
+            }
+
+            if (wall != null)
+            {
+                _fallWhoosh = wall;
+                return;
+            }
+
+            var go = new GameObject("UltrakillIOS.FallWhoosh");
+            go.transform.SetParent(player, false);
+            _fallWhoosh = go.AddComponent<AudioSource>();
+            _fallWhoosh.loop = true;
+            _fallWhoosh.playOnAwake = false;
+            _fallWhoosh.spatialBlend = 0f;
+            _fallWhoosh.volume = 0f;
         }
 
         private void DriveMoveLook()
@@ -390,8 +549,27 @@ namespace UltrakillIOS
             var v = _rb.velocity;
             v.x = wish.x;
             v.z = wish.z;
-            // Keep vertical velocity (gravity / fall).
             _rb.velocity = v;
+
+            // Synthesise fall whoosh — retail path is inside stubbed NewMovement.Update.
+            if (_fallWhoosh != null)
+            {
+                var downSpeed = Mathf.Max(0f, -_rb.velocity.y);
+                if (downSpeed > 8f)
+                {
+                    if (!_fallWhoosh.isPlaying && _fallWhoosh.clip != null)
+                    {
+                        _fallWhoosh.Play();
+                    }
+
+                    _fallWhoosh.volume = Mathf.Clamp01(downSpeed / 80f);
+                    _fallWhoosh.pitch = Mathf.Clamp(downSpeed / 120f, 0.1f, 2f);
+                }
+                else
+                {
+                    _fallWhoosh.volume = Mathf.MoveTowards(_fallWhoosh.volume, 0f, Time.deltaTime);
+                }
+            }
 
             if (Input.GetKeyDown(KeyCode.Space) || Input.GetButtonDown("Jump"))
             {
@@ -402,69 +580,65 @@ namespace UltrakillIOS
                     _rb.velocity = v;
                 }
             }
+
+            // Keep clear flags honest even if something re-enables Skybox mid-frame.
+            if (_mainCam != null)
+            {
+                if (_mainCam.clearFlags != CameraClearFlags.SolidColor)
+                {
+                    _mainCam.clearFlags = CameraClearFlags.SolidColor;
+                }
+
+                _mainCam.backgroundColor = WorldClear;
+                EnsureSkyMaterial();
+            }
         }
 
-        private static void ForceWorldOnce()
+        private static void EnsureSkyMaterial()
         {
-            if (_worldDone)
+            if (RenderSettings.skybox != null)
             {
                 return;
             }
 
-            var sh = Shader.Find("Unlit/Color") ?? Shader.Find("UltrakillIOS/UnlitTexture");
-            if (sh == null)
+            if (_skyMat == null)
             {
-                UltrakillLog.Warn(Area, "No Unlit shader");
+                var sh = Shader.Find("Skybox/Procedural")
+                    ?? Shader.Find("Unlit/Color")
+                    ?? Shader.Find("UltrakillIOS/UnlitTexture");
+                if (sh == null)
+                {
+                    return;
+                }
+
+                _skyMat = new Material(sh);
+                if (_skyMat.HasProperty("_SkyTint"))
+                {
+                    _skyMat.SetColor("_SkyTint", new Color(0.55f, 0.65f, 0.8f));
+                }
+
+                if (_skyMat.HasProperty("_Color"))
+                {
+                    _skyMat.SetColor("_Color", new Color(0.45f, 0.55f, 0.7f));
+                }
+            }
+
+            RenderSettings.skybox = _skyMat;
+        }
+
+        private static void EnsureRetailLighting()
+        {
+            if (_lightingDone)
+            {
                 return;
             }
 
-            if (_worldMat == null)
-            {
-                _worldMat = new Material(sh);
-                var col = new Color(0.65f, 0.62f, 0.58f, 1f);
-                _worldMat.color = col;
-                if (_worldMat.HasProperty("_Color"))
-                {
-                    _worldMat.SetColor("_Color", col);
-                }
-            }
-
-            var n = 0;
-            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
-            {
-                if (r == null || r is ParticleSystemRenderer)
-                {
-                    continue;
-                }
-
-                if (r.GetComponentInParent<Canvas>() != null)
-                {
-                    continue;
-                }
-
-                if (!r.gameObject.activeInHierarchy)
-                {
-                    continue;
-                }
-
-                r.enabled = true;
-                var len = r.sharedMaterials != null ? Math.Max(1, r.sharedMaterials.Length) : 1;
-                var mats = new Material[len];
-                for (var i = 0; i < len; i++)
-                {
-                    mats[i] = _worldMat;
-                }
-
-                r.sharedMaterials = mats;
-                n++;
-            }
-
+            EnsureSkyMaterial();
             RenderSettings.fog = false;
-            RenderSettings.ambientLight = Color.white;
-            RenderSettings.skybox = null;
-
-            _worldDone = n > 0;
-            UltrakillLog.Info(Area, "ONE-SHOT world Unlit/Color on " + n + " renderers");
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.75f, 0.75f, 0.8f, 1f);
+            RenderSettings.ambientIntensity = 1.1f;
+            _lightingDone = true;
         }
     }
 }

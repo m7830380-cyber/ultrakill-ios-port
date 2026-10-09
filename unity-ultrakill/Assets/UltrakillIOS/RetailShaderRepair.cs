@@ -31,11 +31,6 @@ namespace UltrakillIOS
         public static void RegisterShadersBundleSize(long bytes)
         {
             ShadersBundleIsStub = bytes > 0 && bytes < StubBundleMaxBytes;
-            if (ShadersBundleIsStub)
-            {
-                UltrakillLog.Warn("Shader",
-                    "shaders.bundle stub (" + bytes + " B). Rebind + hydrate textures; build real iOS shaders.bundle for full look.");
-            }
         }
 
         internal static Shader WarmupFallbackShader()
@@ -47,13 +42,7 @@ namespace UltrakillIOS
 
             _unlitFallback = Shader.Find("UltrakillIOS/UnlitTexture")
                 ?? Resources.Load<Shader>("Shaders/UltrakillIOS_UnlitTexture")
-                ?? Shader.Find("Unlit/Texture")
-                ?? Shader.Find("Unlit/Color");
-
-            if (_unlitFallback != null)
-            {
-                UltrakillLog.Info("Shader", "Broken-shader fallback ready: " + _unlitFallback.name);
-            }
+                ?? Shader.Find("Unlit/Texture");
 
             return _unlitFallback;
         }
@@ -73,56 +62,9 @@ namespace UltrakillIOS
                 && name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        /// <summary>Only null shader or InternalError — do NOT swap supported retail/stub-bundle shaders.</summary>
-        private static bool SlotNeedsRepair(Material instance)
+        internal static void HydrateMainTexPublic(Material mat, Renderer r, int submesh)
         {
-            if (instance == null)
-            {
-                return false;
-            }
-
-            var sh = instance.shader;
-            var name = sh != null ? sh.name : "";
-
-            if (name.IndexOf("HideVertices", StringComparison.OrdinalIgnoreCase) >= 0
-                || name.IndexOf("Wireframe", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return false;
-            }
-
-            if (IsUiOrSky(name))
-            {
-                return false;
-            }
-
-            return sh == null || IsInternalError(name);
-        }
-
-        private static bool TryRebindShaderFromBundle(Material mat)
-        {
-            if (mat == null || mat.shader == null)
-            {
-                return false;
-            }
-
-            var name = mat.shader.name;
-            if (string.IsNullOrEmpty(name) || IsInternalError(name))
-            {
-                return false;
-            }
-
-            var resolved = Shader.Find(name);
-            if (resolved == null || !resolved.isSupported)
-            {
-                return false;
-            }
-
-            if (resolved != mat.shader)
-            {
-                mat.shader = resolved;
-            }
-
-            return true;
+            HydrateMainTex(mat, r, submesh);
         }
 
         private static Texture ExtractAlbedo(Material m)
@@ -145,11 +87,6 @@ namespace UltrakillIOS
             {
                 foreach (var prop in m.GetTexturePropertyNames())
                 {
-                    if (string.IsNullOrEmpty(prop))
-                    {
-                        continue;
-                    }
-
                     var t = m.GetTexture(prop);
                     if (t != null)
                     {
@@ -174,7 +111,7 @@ namespace UltrakillIOS
 
             if (mat.GetTexture("_MainTex") != null)
             {
-                return true;
+                return false;
             }
 
             var albedo = ExtractAlbedo(mat);
@@ -194,45 +131,6 @@ namespace UltrakillIOS
             return true;
         }
 
-        private static Shader PickFallbackShader(Renderer r)
-        {
-            if (r != null && (r.lightmapIndex >= 0 || r.realtimeLightmapIndex >= 0))
-            {
-                var lm = Shader.Find("Mobile/Lightmap/Diffuse")
-                    ?? Shader.Find("Legacy Shaders/Lightmapped/Diffuse")
-                    ?? Shader.Find("Mobile/Diffuse");
-                if (lm != null && lm.isSupported)
-                {
-                    return lm;
-                }
-            }
-
-            return WarmupFallbackShader();
-        }
-
-        private static Material BuildReplacement(Renderer r, int submesh, Material shared, Shader fallback)
-        {
-            var src = shared;
-            var repl = new Material(fallback);
-
-            if (src != null)
-            {
-                try
-                {
-                    repl.CopyPropertiesFromMaterial(src);
-                }
-                catch
-                {
-                    /* ignore */
-                }
-            }
-
-            repl.shader = fallback;
-            HydrateMainTex(repl, r, submesh);
-            return repl;
-        }
-
-        /// <summary>Stub bundle: re-resolve shader names + copy any texture slot onto _MainTex.</summary>
         internal static int RebindAndHydrateStubMaterials(bool includeInactive)
         {
             if (!ShadersBundleIsStub)
@@ -260,13 +158,22 @@ namespace UltrakillIOS
                 for (var i = 0; i < shared.Length; i++)
                 {
                     var m = shared[i];
-                    if (m == null || IsUiOrSky(m.shader != null ? m.shader.name : ""))
+                    if (m == null || m.shader == null)
                     {
                         continue;
                     }
 
-                    if (TryRebindShaderFromBundle(m))
+                    var sn = m.shader.name;
+                    if (IsUiOrSky(sn) || IsInternalError(sn))
                     {
+                        continue;
+                    }
+
+                    var before = m.shader;
+                    var resolved = Shader.Find(sn);
+                    if (resolved != null && resolved != before && resolved.isSupported)
+                    {
+                        m.shader = resolved;
                         rebound++;
                         dirty = true;
                     }
@@ -294,12 +201,13 @@ namespace UltrakillIOS
 
         internal static int RemapBrokenMaterialsOnRenderers(bool includeInactive)
         {
+            ShadersBundleWarmup.TryWarmup();
+            UkMasterShaderBootstrap.EnsureReady();
+            var recovered = UkMasterShaderBootstrap.RecoverInternalErrorMaterials(includeInactive);
             RebindAndHydrateStubMaterials(includeInactive);
 
+            // Only null-shader slots left — do not touch InternalError (handled above).
             var remapped = 0;
-            var withTex = 0;
-            var noTex = 0;
-
             foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(includeInactive))
             {
                 if (r == null || r is ParticleSystemRenderer || r.GetComponentInParent<Canvas>() != null)
@@ -307,18 +215,12 @@ namespace UltrakillIOS
                     continue;
                 }
 
-                var shared = r.sharedMaterials;
                 var mats = r.materials;
-                if (mats == null || mats.Length == 0)
-                {
-                    continue;
-                }
-
                 var changed = false;
                 for (var i = 0; i < mats.Length; i++)
                 {
                     var m = mats[i];
-                    if (!SlotNeedsRepair(m))
+                    if (m == null || m.shader != null)
                     {
                         continue;
                     }
@@ -329,27 +231,17 @@ namespace UltrakillIOS
                         continue;
                     }
 
-                    Material sharedSrc = shared != null && i < shared.Length ? shared[i] : null;
-                    var fallback = PickFallbackShader(r);
-                    if (fallback == null)
+                    var fb = WarmupFallbackShader();
+                    if (fb == null)
                     {
                         continue;
                     }
 
-                    mats[i] = BuildReplacement(r, i, sharedSrc, fallback);
+                    mats[i] = new Material(fb);
+                    HydrateMainTex(mats[i], r, i);
                     FixedSlots.Add(slotKey);
                     remapped++;
                     changed = true;
-
-                    var t = mats[i].HasProperty("_MainTex") ? mats[i].GetTexture("_MainTex") : null;
-                    if (t != null)
-                    {
-                        withTex++;
-                    }
-                    else
-                    {
-                        noTex++;
-                    }
                 }
 
                 if (changed)
@@ -358,31 +250,12 @@ namespace UltrakillIOS
                 }
             }
 
-            foreach (var sr in UnityEngine.Object.FindObjectsOfType<SpriteRenderer>(includeInactive))
-            {
-                if (sr == null || sr.GetComponentInParent<Canvas>() != null)
-                {
-                    continue;
-                }
-
-                var sh = sr.sharedMaterial != null ? sr.sharedMaterial.shader : null;
-                if (sh != null && IsInternalError(sh.name) && sr.sprite != null)
-                {
-                    var def = Shader.Find("Sprites/Default");
-                    if (def != null)
-                    {
-                        sr.material = new Material(def) { mainTexture = sr.sprite.texture };
-                        remapped++;
-                    }
-                }
-            }
-
             if (remapped > 0)
             {
-                UltrakillLog.Info("Shader", "Fixed " + remapped + " InternalError slots (tex=" + withTex + " notex=" + noTex + ")");
+                UltrakillLog.Info("Shader", "Fixed " + remapped + " null-shader slots");
             }
 
-            return remapped;
+            return recovered + remapped;
         }
 
         private sealed class RetailShaderRepairHost : MonoBehaviour
@@ -405,17 +278,17 @@ namespace UltrakillIOS
 
             private IEnumerator RepairPipeline()
             {
-                for (var i = 0; i < 14; i++)
+                for (var i = 0; i < 8; i++)
                 {
                     StaticSceneOptimizerIosRepair.KickAllInLoadedScenes();
                     RemapBrokenMaterialsOnRenderers(includeInactive: true);
 
-                    if (i == 2 || i == 8 || i == 13)
+                    if (i == 2 || i == 7)
                     {
                         LogSceneMaterialStats();
                     }
 
-                    yield return i < 5 ? null : new WaitForSecondsRealtime(0.4f);
+                    yield return i < 4 ? null : new WaitForSecondsRealtime(0.35f);
                 }
             }
 
@@ -423,20 +296,14 @@ namespace UltrakillIOS
             {
                 var retail = 0;
                 var broken = 0;
-                var texturedRetail = 0;
-                var lightmapped = 0;
-                var ultrakillFallback = 0;
+                var textured = 0;
+                var iosFallback = 0;
 
                 foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
                 {
                     if (r == null || r.GetComponentInParent<Canvas>() != null)
                     {
                         continue;
-                    }
-
-                    if (r.lightmapIndex >= 0 || r.realtimeLightmapIndex >= 0)
-                    {
-                        lightmapped++;
                     }
 
                     foreach (var m in r.sharedMaterials)
@@ -460,21 +327,22 @@ namespace UltrakillIOS
 
                         if (sn.StartsWith("UltrakillIOS/", StringComparison.Ordinal))
                         {
-                            ultrakillFallback++;
+                            iosFallback++;
                         }
 
                         retail++;
                         if (m.HasProperty("_MainTex") && m.GetTexture("_MainTex") != null)
                         {
-                            texturedRetail++;
+                            textured++;
                         }
                     }
                 }
 
                 UltrakillLog.Info("Shader",
-                    "Shared: retailMats=" + retail + " withMainTex=" + texturedRetail
-                    + " iosFallback=" + ultrakillFallback + " internalError=" + broken
-                    + " lightmappedRenderers=" + lightmapped + " stubBundle=" + ShadersBundleIsStub);
+                    "Shared: retailMats=" + retail + " withMainTex=" + textured
+                    + " iosFallback=" + iosFallback + " internalError=" + broken
+                    + " stubBundle=" + ShadersBundleIsStub
+                    + " bundleShaders=" + ShadersBundleWarmup.LoadedShaderCount);
             }
         }
     }
