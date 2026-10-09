@@ -71,9 +71,10 @@ StubMethodEmpty(module, "NewMovement", "FixedUpdate");
 // LateUpdate NREs on null player/opm — UltrakillIOS drives look instead.
 StubMethodEmpty(module, "CameraController", "LateUpdate");
 StubMethodEmpty(module, "CameraController", "Update");
-// ClimbStep.OnCollisionStay NRE spam (1000+/session) while player scrapes geometry.
-StubMethodEmpty(module, "ClimbStep", "OnCollisionStay");
-StubMethodEmpty(module, "ClimbStep", "HandleCollision");
+	// ClimbStep.OnCollisionStay NRE spam (1000+/session) while player scrapes geometry.
+	// HandleCollision returns bool — must not use void-only empty ret (breaks IL2CPP).
+	StubMethodEmpty(module, "ClimbStep", "OnCollisionStay");
+	StubMethodReturnBool(module, "ClimbStep", "HandleCollision", false);
 // Null AudioMixer assets → UpdateSFXVolume / FixedUpdate spam every frame.
 StubMethodEmpty(module, "AudioMixerController", "Update");
 StubMethodEmpty(module, "AudioMixerController", "UpdateSFXVolume");
@@ -242,6 +243,13 @@ static void StubMethodEmpty(ModuleDefinition module, string typeName, string met
         return;
     }
 
+    // Non-void: bare Ret is invalid IL and kills IL2CPP (ClimbStep.HandleCollision).
+    if (method.ReturnType.FullName != "System.Void")
+    {
+        Console.WriteLine($"WARN: {typeName}.{methodName} returns {method.ReturnType.FullName}; use typed stub");
+        return;
+    }
+
     // Idempotent: already empty stub
     if (method.Body.Instructions.Count == 1 && method.Body.Instructions[0].OpCode == OpCodes.Ret)
     {
@@ -254,6 +262,34 @@ static void StubMethodEmpty(ModuleDefinition module, string typeName, string met
     method.Body.ExceptionHandlers.Clear();
     method.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ret));
     Console.WriteLine($"Stubbed {typeName}.{methodName} -> empty (iOS crash guard)");
+}
+
+static void StubMethodReturnBool(ModuleDefinition module, string typeName, string methodName, bool value)
+{
+    var type = module.GetType(typeName);
+    var method = type?.Methods.FirstOrDefault(m => m.Name == methodName && m.HasBody
+        && (m.ReturnType.FullName == "System.Boolean" || m.ReturnType.MetadataType == MetadataType.Boolean));
+    if (method == null)
+    {
+        Console.WriteLine($"WARN: {typeName}.{methodName} (bool) not found for stub");
+        return;
+    }
+
+    var insts = method.Body.Instructions;
+    if (insts.Count == 2 && insts[1].OpCode == OpCodes.Ret
+        && (insts[0].OpCode == OpCodes.Ldc_I4_0 || insts[0].OpCode == OpCodes.Ldc_I4_1))
+    {
+        Console.WriteLine($"{typeName}.{methodName} already stubbed; skip");
+        return;
+    }
+
+    method.Body.Instructions.Clear();
+    method.Body.Variables.Clear();
+    method.Body.ExceptionHandlers.Clear();
+    var il = method.Body.GetILProcessor();
+    il.Append(il.Create(value ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0));
+    il.Append(il.Create(OpCodes.Ret));
+    Console.WriteLine($"Stubbed {typeName}.{methodName} -> return {value} (iOS crash guard)");
 }
 
 static void PatchCameraControllerStart(ModuleDefinition module)
