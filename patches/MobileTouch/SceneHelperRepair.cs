@@ -47,6 +47,9 @@ namespace UltrakillIOS
             "GamepadObjectSelector",
             "WeaponWheel",
             "ULTRAKILL.Portal.PortalManagerV2",
+            "ULTRAKILL.Portal.PortalAwareRenderer",
+            "ULTRAKILL.Portal.PortalAwarePlayerCollider",
+            "ULTRAKILL.Portal.PortalAwareParticleSystem",
             "FireObjectPool",
             "SandboxHud",
             "GunColorController",
@@ -56,6 +59,9 @@ namespace UltrakillIOS
             "OptionsMenuToManager",
             "LucasMeshCombine.MeshCombineManager",
             "PooledWaterStore",
+            "Flicker",
+            "ZombieMelee",
+            "ElectricityLine",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -207,25 +213,20 @@ namespace UltrakillIOS
 
         private static void ClearStuckLoadState(Type shType)
         {
+            // Do NOT clear PendingScene while a load is in progress — that aborted Tutorial mid-load.
+            // Only unfreeze time if somehow stuck at 0 with no pending scene.
             try
             {
-                var pending = shType.GetProperty("PendingScene", BindingFlags.Public | BindingFlags.Static);
-                var pendingVal = pending?.GetValue(null) as string;
-                if (!string.IsNullOrEmpty(pendingVal))
+                var pending = GetStaticString(shType, "PendingScene");
+                if (string.IsNullOrEmpty(pending) && Time.timeScale <= 0f)
                 {
-                    // Private setter via backing field
-                    var backing = shType.GetField("<PendingScene>k__BackingField", BindingFlags.NonPublic | BindingFlags.Static)
-                        ?? shType.GetField("PendingScene", BindingFlags.NonPublic | BindingFlags.Static);
-                    if (backing != null)
-                    {
-                        backing.SetValue(null, null);
-                        UltrakillLog.Warn(Area, "Cleared stuck PendingScene='" + pendingVal + "'");
-                    }
+                    Time.timeScale = 1f;
+                    UltrakillLog.Warn(Area, "Restored timeScale=1 (no PendingScene)");
                 }
             }
             catch (Exception ex)
             {
-                UltrakillLog.Warn(Area, "PendingScene clear failed: " + ex.Message);
+                UltrakillLog.Warn(Area, "Load-state check failed: " + ex.Message);
             }
         }
 
@@ -305,7 +306,8 @@ namespace UltrakillIOS
             var disabled = 0;
             foreach (var name in AlwaysDisableWhenBroken)
             {
-                var t = Type.GetType(name + ", Assembly-CSharp");
+                var t = Type.GetType(name + ", Assembly-CSharp")
+                    ?? Type.GetType(name + ", Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
                 if (t == null || !typeof(Behaviour).IsAssignableFrom(t))
                 {
                     continue;
@@ -319,6 +321,40 @@ namespace UltrakillIOS
                         disabled++;
                     }
                 }
+            }
+
+            // Nuke entire portal namespace — any remaining Think/Update SIGSEGVs.
+            try
+            {
+                var asm = Type.GetType("SceneHelper, Assembly-CSharp")?.Assembly;
+                if (asm != null)
+                {
+                    foreach (var t in asm.GetTypes())
+                    {
+                        if (t == null || !typeof(Behaviour).IsAssignableFrom(t))
+                        {
+                            continue;
+                        }
+
+                        if (t.Namespace != "ULTRAKILL.Portal" && !t.Name.StartsWith("Portal", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        foreach (var obj in UnityEngine.Object.FindObjectsOfType(t, true))
+                        {
+                            if (obj is Behaviour b && b.enabled)
+                            {
+                                b.enabled = false;
+                                disabled++;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                UltrakillLog.Warn(Area, "Portal mute scan failed: " + ex.Message);
             }
 
             if (disabled > 0)

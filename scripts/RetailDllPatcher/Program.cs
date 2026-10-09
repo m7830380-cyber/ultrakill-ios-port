@@ -44,6 +44,12 @@ PatchSceneHelperIsSceneRankless(module);
 StubMethodEmpty(module, "BloodstainParent", "Start");
 StubMethodEmpty(module, "BloodsplatterManager", "Start");
 StubMethodReturnInt(module, "BloodsplatterManager", "CreateParent", 0);
+// Portal system uses uninitialized NativeLists → SIGSEGV in PortalAwareRenderer.Think.
+StubMethodEmpty(module, "ULTRAKILL.Portal.PortalAwareRenderer", "LateUpdate");
+StubMethodEmpty(module, "ULTRAKILL.Portal.PortalAwareRenderer", "Think");
+StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "Update");
+StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "FixedUpdate");
+StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "LateUpdate");
 
 var tempPath = dllPath + ".patched";
 asm.Write(tempPath);
@@ -189,7 +195,15 @@ static void PatchSceneHelperIsSceneRankless(ModuleDefinition module)
 static void StubMethodEmpty(ModuleDefinition module, string typeName, string methodName)
 {
     var type = module.GetType(typeName);
-    var method = type?.Methods.FirstOrDefault(m => m.Name == methodName && !m.HasParameters && m.HasBody);
+    // Think(bool) has an optional parameter — match by name only.
+    var method = type?.Methods.FirstOrDefault(m => m.Name == methodName && m.HasBody
+        && (methodName != "Think" || m.Parameters.Count <= 1)
+        && (methodName == "Think" || !m.HasParameters || m.Parameters.All(p => p.HasDefault)));
+    if (method == null)
+    {
+        method = type?.Methods.FirstOrDefault(m => m.Name == methodName && m.HasBody);
+    }
+
     if (method == null)
     {
         Console.WriteLine($"WARN: {typeName}.{methodName} not found for stub");
