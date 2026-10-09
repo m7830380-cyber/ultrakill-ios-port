@@ -156,6 +156,7 @@ namespace UltrakillIOS
             HideSpuriousScoreHud();
             ForceBrightSky();
             StripBlackUiOverlays();
+            FixPurpleUi();
             FixCameras(forceLog: true);
             if (Time.timeScale <= 0f)
             {

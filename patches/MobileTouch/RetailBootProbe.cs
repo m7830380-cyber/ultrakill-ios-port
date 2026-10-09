@@ -133,10 +133,11 @@ namespace UltrakillIOS
                 var len = new FileInfo(sb).Length;
                 var mb = Math.Round(len / (1024.0 * 1024.0), 2);
                 var rel = sb.Replace(aa, "").TrimStart('\\', '/');
+                RetailShaderRepair.RegisterShadersBundleSize(len);
                 if (len < 5_000_000)
                 {
                     UltrakillLog.Warn(Area, "shaders.bundle tiny (" + mb + " MB) at " + rel
-                        + " — expect black/magenta. PC retail is ~400MB; run scripts/Build-IosShaders.ps1 and copy to device.");
+                        + " — retail Metal stubs; world uses textured fallback. Rebuild: scripts/Build-IosShaders.ps1 then copy to ULTRAKILL-Content.");
                 }
                 else
                 {

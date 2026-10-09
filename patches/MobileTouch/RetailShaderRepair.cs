@@ -5,25 +5,43 @@ using UnityEngine;
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Only touch materials whose shader is missing or unsupported (pink/magenta).
-    /// Retail ULTRAKILL shaders come from addressables shaders.bundle — do not blanket-remap.
+    /// Retail materials reference shaders from addressables shaders.bundle. When that bundle is
+    /// the tiny iOS stub (~0.6MB), many shaders fail at runtime (magenta) or draw untextured white.
     /// </summary>
     internal static class RetailShaderRepair
     {
+        private const long StubBundleMaxBytes = 5_000_000;
+
+        /// <summary>True when phone content has stub shaders.bundle — remap world mats to textured fallback.</summary>
+        public static bool ShadersBundleIsStub { get; private set; }
+
         private static readonly string[] AlbedoTexAliases =
         {
             "_MainTex", "_BaseMap", "_BaseColorMap", "_Albedo", "_Diffuse",
             "_ColorMap", "_MainTexture", "_Texture", "_tex",
         };
 
+        public static void RegisterShadersBundleSize(long bytes)
+        {
+            ShadersBundleIsStub = bytes > 0 && bytes < StubBundleMaxBytes;
+            if (ShadersBundleIsStub)
+            {
+                UltrakillLog.Warn("Shader", "shaders.bundle is stub size (" + bytes + " bytes); using textured fallback for world materials");
+            }
+        }
+
+        private static bool IsUiOrSky(string name)
+        {
+            return name.StartsWith("UI/", StringComparison.Ordinal)
+                || name.StartsWith("TextMeshPro/", StringComparison.Ordinal)
+                || name.StartsWith("Sprites/", StringComparison.Ordinal)
+                || name.StartsWith("Skybox/", StringComparison.Ordinal)
+                || name.StartsWith("GUI/", StringComparison.Ordinal);
+        }
+
         internal static bool ShaderNeedsFallback(Shader sh)
         {
             if (sh == null)
-            {
-                return true;
-            }
-
-            if (!sh.isSupported)
             {
                 return true;
             }
@@ -39,26 +57,52 @@ namespace UltrakillIOS
                 return true;
             }
 
-            if (name.StartsWith("Hidden/InternalError", StringComparison.Ordinal))
-            {
-                return true;
-            }
-
-            // Already our textured fallback.
             if (name.StartsWith("UltrakillIOS/", StringComparison.Ordinal))
             {
                 return false;
             }
 
-            if (name.StartsWith("UI/", StringComparison.Ordinal)
-                || name.StartsWith("TextMeshPro/", StringComparison.Ordinal)
-                || name.StartsWith("Sprites/", StringComparison.Ordinal)
-                || name.StartsWith("Skybox/", StringComparison.Ordinal))
+            if (IsUiOrSky(name))
             {
                 return false;
             }
 
+            if (!sh.isSupported)
+            {
+                return true;
+            }
+
+            // Stub bundle: retail shader names compile but break or draw wrong — force textured unlit.
+            if (ShadersBundleIsStub)
+            {
+                return true;
+            }
+
             return false;
+        }
+
+        private static Texture ExtractAlbedo(Material m)
+        {
+            foreach (var prop in AlbedoTexAliases)
+            {
+                if (!m.HasProperty(prop))
+                {
+                    continue;
+                }
+
+                var t = m.GetTexture(prop);
+                if (t != null)
+                {
+                    return t;
+                }
+            }
+
+            if (m.mainTexture != null)
+            {
+                return m.mainTexture;
+            }
+
+            return null;
         }
 
         internal static int RemapBrokenMaterialsOnRenderers(bool includeInactive)
@@ -85,8 +129,8 @@ namespace UltrakillIOS
                     continue;
                 }
 
-                var mats = r.sharedMaterials;
-                if (mats == null)
+                var mats = r.materials;
+                if (mats == null || mats.Length == 0)
                 {
                     continue;
                 }
@@ -100,21 +144,9 @@ namespace UltrakillIOS
                         continue;
                     }
 
-                    Texture albedo = null;
-                    foreach (var prop in AlbedoTexAliases)
-                    {
-                        if (!m.HasProperty(prop))
-                        {
-                            continue;
-                        }
-
-                        var t = m.GetTexture(prop);
-                        if (t != null)
-                        {
-                            albedo = t;
-                            break;
-                        }
-                    }
+                    var albedo = ExtractAlbedo(m);
+                    var color = m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white;
+                    var colorize = m.HasProperty("_Colorize") ? m.GetColor("_Colorize") : Color.white;
 
                     m.shader = fallback;
                     if (m.HasProperty("_MainTex") && albedo != null)
@@ -124,16 +156,12 @@ namespace UltrakillIOS
 
                     if (m.HasProperty("_Color"))
                     {
-                        var c = m.GetColor("_Color");
-                        if (c.maxColorComponent < 0.01f)
-                        {
-                            m.SetColor("_Color", Color.white);
-                        }
+                        m.SetColor("_Color", color.maxColorComponent < 0.01f ? Color.white : color);
                     }
 
                     if (m.HasProperty("_Colorize"))
                     {
-                        m.SetColor("_Colorize", Color.white);
+                        m.SetColor("_Colorize", colorize.maxColorComponent < 0.01f ? Color.white : colorize);
                     }
 
                     remapped++;
@@ -142,8 +170,14 @@ namespace UltrakillIOS
 
                 if (changed)
                 {
-                    r.sharedMaterials = mats;
+                    r.materials = mats;
                 }
+            }
+
+            if (remapped > 0)
+            {
+                var mode = ShadersBundleIsStub ? "stub-bundle textured" : "broken-shader";
+                UltrakillLog.Info("Shader", "Remapped " + remapped + " world materials -> " + fallback.name + " (" + mode + ")");
             }
 
             return remapped;

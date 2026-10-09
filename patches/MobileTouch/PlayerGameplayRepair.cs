@@ -147,6 +147,8 @@ namespace UltrakillIOS
                 + " bound=" + _bound + " brokenMatsFixed=" + fixedMats
                 + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL"));
             yield return new WaitForSecondsRealtime(0.75f);
+            RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: true);
+            yield return new WaitForSecondsRealtime(0.5f);
             RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: false);
             LevelLookHorizon();
         }

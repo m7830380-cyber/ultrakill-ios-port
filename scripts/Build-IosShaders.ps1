@@ -104,11 +104,15 @@ Write-Host "Building shaders.bundle only (Unity batch)..."
     -onlyBundle "assets_assets_assets/shaders.bundle"
 if ($LASTEXITCODE -ne 0) { throw "Unity shader bundle build failed (exit $LASTEXITCODE); see $log" }
 
-$built = Get-ChildItem $shaderOut -Recurse -File | Where-Object { $_.Name -eq "shaders.bundle" } | Select-Object -First 1
+$built = Get-ChildItem $shaderOut -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq "shaders.bundle" } |
+    Sort-Object Length -Descending |
+    Select-Object -First 1
 if (-not $built) {
-    Write-Host "Output tree:"; Get-ChildItem $shaderOut -Recurse -File | ForEach-Object FullName
+    Write-Host "Output tree:"; Get-ChildItem $shaderOut -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object FullName
     throw "shaders.bundle was not produced; see $log"
 }
+Write-Host "Built shaders.bundle at $($built.FullName) ($([math]::Round($built.Length/1MB, 2)) MB)"
 
 $destDir = Join-Path $bundleOut "assets_assets_assets"
 New-Item -ItemType Directory -Force -Path $destDir | Out-Null

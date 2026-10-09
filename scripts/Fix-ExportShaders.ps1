@@ -15,19 +15,20 @@ $folderName = $shaderBundle.options.m_BundleName + "_bundle"
 $folder = Join-Path $ExportProject "Assets\Asset_Bundles\$folderName"
 if (-not (Test-Path $folder)) { throw "Shader export folder missing: $folder" }
 
+# Opaque textured unlit — retail ULTRAKILL world materials are mostly opaque; transparent
+# stubs caused white/purple garbage on iOS when paired with a tiny shaders.bundle.
 $stubTemplate = @'
 Shader "{0}" {{
 	Properties {{
-		[PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {{}}
-		_Color ("Tint", Color) = (1,1,1,1)
+		_MainTex ("Texture", 2D) = "white" {{}}
+		_Color ("Color", Color) = (1,1,1,1)
+		_Colorize ("Colorize", Color) = (1,1,1,1)
 		_Cutoff ("Alpha Cutoff", Range(0,1)) = 0.5
-		_OpacScale ("Transparency Scalar", Range(0,1)) = 1
 	}}
 	SubShader {{
-		Tags {{ "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" "PreviewType"="Plane" "CanUseSpriteAtlas"="True" }}
+		Tags {{ "RenderType"="Opaque" "Queue"="Geometry" }}
 		Cull Off
-		ZWrite Off
-		Blend SrcAlpha OneMinusSrcAlpha
+		ZWrite On
 		Pass {{
 			CGPROGRAM
 			#pragma vertex vert
@@ -36,34 +37,31 @@ Shader "{0}" {{
 			#include "UnityCG.cginc"
 			struct appdata {{
 				float4 vertex : POSITION;
-				float4 color : COLOR;
 				float2 uv : TEXCOORD0;
 			}};
 			struct v2f {{
 				float4 vertex : SV_POSITION;
-				fixed4 color : COLOR;
 				float2 uv : TEXCOORD0;
 			}};
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 			fixed4 _Color;
-			fixed _OpacScale;
+			fixed4 _Colorize;
 			v2f vert (appdata v) {{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-				o.color = v.color * _Color;
 				return o;
 			}}
 			fixed4 frag (v2f i) : SV_Target {{
-				fixed4 c = tex2D(_MainTex, i.uv) * i.color;
-				c.a *= _OpacScale;
-				return c;
+				fixed4 tex = tex2D(_MainTex, i.uv);
+				fixed3 tint = _Color.rgb * _Colorize.rgb;
+				return fixed4(tex.rgb * tint, tex.a * _Color.a);
 			}}
 			ENDCG
 		}}
 	}}
-	FallBack "UI/Default"
+	FallBack "Unlit/Texture"
 }}
 '@
 

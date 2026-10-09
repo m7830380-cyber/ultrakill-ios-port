@@ -379,7 +379,7 @@ namespace UltrakillIOS
             var remapped = RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: true);
             if (remapped > 0)
             {
-                UltrakillLog.Info(Area, "Remapped " + remapped + " broken (unsupported) materials -> textured fallback");
+                UltrakillLog.Info(Area, "Shader repair touched " + remapped + " material slots (see [Shader] log)");
             }
         }
 
