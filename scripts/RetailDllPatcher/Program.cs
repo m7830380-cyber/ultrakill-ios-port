@@ -65,6 +65,15 @@ StubMethodEmpty(module, "IntroTextController", "Update");
 // Runtime PlayerGameplayRepair wires refs + activated/gravity.
 StubMethodEmpty(module, "NewMovement", "Awake");
 StubMethodEmpty(module, "NewMovement", "Start");
+// Update NREs on null windStateParticle — UltrakillIOS drives move instead.
+StubMethodEmpty(module, "NewMovement", "Update");
+StubMethodEmpty(module, "NewMovement", "FixedUpdate");
+// LateUpdate NREs on null player/opm — UltrakillIOS drives look instead.
+StubMethodEmpty(module, "CameraController", "LateUpdate");
+StubMethodEmpty(module, "CameraController", "Update");
+// ClimbStep.OnCollisionStay NRE spam (1000+/session) while player scrapes geometry.
+StubMethodEmpty(module, "ClimbStep", "OnCollisionStay");
+StubMethodEmpty(module, "ClimbStep", "HandleCollision");
 // Null AudioMixer assets → UpdateSFXVolume / FixedUpdate spam every frame.
 StubMethodEmpty(module, "AudioMixerController", "Update");
 StubMethodEmpty(module, "AudioMixerController", "UpdateSFXVolume");

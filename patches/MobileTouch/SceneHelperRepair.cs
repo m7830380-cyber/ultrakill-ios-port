@@ -72,6 +72,7 @@ namespace UltrakillIOS
             "LevelStatsEnabler",
             "LevelStats",
             "StyleHUD",
+            "ClimbStep",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]

@@ -101,7 +101,7 @@ namespace UltrakillIOS
             _hookedPreCull = true;
         }
 
-        /// <summary>Last word before render — game scripts cannot leave Skybox+null = black.</summary>
+        /// <summary>Do NOT fight clear colour every frame — that was the colour slideshow.</summary>
         private static void OnAnyCameraPreCull(Camera cam)
         {
             if (cam == null)
@@ -109,30 +109,11 @@ namespace UltrakillIOS
                 return;
             }
 
-            if (_main != null && cam == _main)
-            {
-                cam.clearFlags = CameraClearFlags.SolidColor;
-                cam.backgroundColor = DiagnosticClear;
-                cam.useOcclusionCulling = false;
-                if (cam.cullingMask == 0)
-                {
-                    cam.cullingMask = ~0;
-                }
-
-                return;
-            }
-
             var n = cam.gameObject.name;
-            // HUD Camera is depth-only overlay — allow it.
-            if (n.IndexOf("HUD", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                cam.clearFlags = CameraClearFlags.Depth;
-                cam.enabled = true;
-                return;
-            }
-
-            // Everything else off.
-            if (cam.enabled && (_main == null || cam != _main))
+            if (n.IndexOf("Virtual", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Preview", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Portal", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Shop", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 cam.enabled = false;
             }
@@ -142,11 +123,8 @@ namespace UltrakillIOS
         {
             _loggedCamNames = false;
             MuteSpam();
-            StripBlackUiOverlays();
             HideSpuriousScoreHud();
-            FixPurpleUi();
             FixCameras(forceLog: true);
-            ForceBrightSky();
             if (Time.timeScale <= 0f)
             {
                 Time.timeScale = 1f;
@@ -157,14 +135,11 @@ namespace UltrakillIOS
 
         private void LateUpdate()
         {
-            EnsurePreCullHook();
-            MuteSpam();
-            FixCameras(forceLog: Time.frameCount % 60 == 0);
-            if (Time.frameCount % 30 == 0)
+            // Rare maintenance only — never recolour materials/clear every frame.
+            if (Time.frameCount % 120 == 0)
             {
-                StripBlackUiOverlays();
+                MuteSpam();
                 HideSpuriousScoreHud();
-                FixPurpleUi();
             }
         }
 
@@ -339,8 +314,9 @@ namespace UltrakillIOS
 
             RenderSettings.fog = false;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = Color.white;
-            RenderSettings.ambientIntensity = 1.5f;
+            RenderSettings.ambientLight = new Color(0.75f, 0.75f, 0.8f, 1f);
+            RenderSettings.ambientIntensity = 1.2f;
+            // Do not null skybox every call — leave whatever Playable set.
         }
 
         private static void TryEndStuckIntro()

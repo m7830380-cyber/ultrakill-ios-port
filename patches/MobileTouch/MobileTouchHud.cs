@@ -51,6 +51,7 @@ namespace UltrakillIOS
 
             PollTouches();
             LegacyInputSynthesizer.ApplyMovement(_moveVector);
+            PlayerGameplayRepair.TouchMove = _moveVector;
         }
 
         private static bool ShouldRun()
@@ -140,7 +141,9 @@ namespace UltrakillIOS
             {
                 var delta = touch.position - _lastLookPos;
                 _lastLookPos = touch.position;
-                LegacyInputSynthesizer.ApplyLookDelta(delta * LookSensitivity);
+                var scaled = delta * LookSensitivity;
+                LegacyInputSynthesizer.ApplyLookDelta(scaled);
+                PlayerGameplayRepair.TouchLook += scaled;
             }
         }
 
