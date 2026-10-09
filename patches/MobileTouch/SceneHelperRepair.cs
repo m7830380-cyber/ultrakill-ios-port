@@ -61,7 +61,7 @@ namespace UltrakillIOS
             "ZombieMelee",
             "ElectricityLine",
             "AnimatedTexture",
-            "GunControl",
+            // GunControl: YesWeapon DLL-patched; keep Behaviour enabled for PlayerActivator.
             "MenuEsc",
             "StaticSceneOptimizer",
             "TimeController",

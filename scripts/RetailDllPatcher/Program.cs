@@ -75,6 +75,12 @@ StubMethodEmpty(module, "CameraController", "Update");
 	// HandleCollision returns bool — must not use void-only empty ret (breaks IL2CPP).
 	StubMethodEmpty(module, "ClimbStep", "OnCollisionStay");
 	StubMethodReturnBool(module, "ClimbStep", "HandleCollision", false);
+// SkyboxEnabler.Activate sets clearFlags=Skybox. With stub shaders / null skybox that is pure black
+// (session 165503: brief geometry flash → black + wind). Never allow Skybox clear on iOS.
+StubMethodEmpty(module, "SkyboxEnabler", "Activate");
+StubMethodEmpty(module, "SkyboxEnabler", "OnEnable");
+// Tutorial PlayerActivator → YesWeapon with currentSlotIndex=0 throws IndexOutOfRange and aborts Activate().
+StubGunControlYesWeapon(module);
 // Null AudioMixer assets → UpdateSFXVolume / FixedUpdate spam every frame.
 StubMethodEmpty(module, "AudioMixerController", "Update");
 StubMethodEmpty(module, "AudioMixerController", "UpdateSFXVolume");
@@ -434,6 +440,44 @@ static void PatchNewMovementAwake(ModuleDefinition module)
     }
 
     Console.WriteLine("Patched NewMovement.Awake -> return if gc null");
+}
+
+/// <summary>
+/// Tutorial has no weapons; YesWeapon indexes slots[currentSlotIndex-1] and throws when slot is 0.
+/// Safe stub: noWeapons=true, activated=true, return (lets PlayerActivator finish ActivateObjects).
+/// </summary>
+static void StubGunControlYesWeapon(ModuleDefinition module)
+{
+    var type = module.GetType("GunControl");
+    var method = type?.Methods.FirstOrDefault(m => m.Name == "YesWeapon" && m.HasBody && !m.HasParameters);
+    if (method == null)
+    {
+        Console.WriteLine("WARN: GunControl.YesWeapon not found for stub");
+        return;
+    }
+
+    var noWeapons = type.Fields.FirstOrDefault(f => f.Name == "noWeapons");
+    var activated = type.Fields.FirstOrDefault(f => f.Name == "activated");
+    method.Body.Instructions.Clear();
+    method.Body.Variables.Clear();
+    method.Body.ExceptionHandlers.Clear();
+    var il = method.Body.GetILProcessor();
+    if (noWeapons != null)
+    {
+        il.Append(il.Create(OpCodes.Ldarg_0));
+        il.Append(il.Create(OpCodes.Ldc_I4_1));
+        il.Append(il.Create(OpCodes.Stfld, noWeapons));
+    }
+
+    if (activated != null)
+    {
+        il.Append(il.Create(OpCodes.Ldarg_0));
+        il.Append(il.Create(OpCodes.Ldc_I4_1));
+        il.Append(il.Create(OpCodes.Stfld, activated));
+    }
+
+    il.Append(il.Create(OpCodes.Ret));
+    Console.WriteLine("Stubbed GunControl.YesWeapon -> noWeapons+activated (Tutorial safe)");
 }
 
 static void StubMethodReturnInt(ModuleDefinition module, string typeName, string methodName, int value)

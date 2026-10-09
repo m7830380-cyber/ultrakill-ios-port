@@ -24,7 +24,8 @@ namespace UltrakillIOS
         private static readonly string[] AlwaysMute =
         {
             "AnimatedTexture",
-            "GunControl",
+            // GunControl stays enabled: PlayerActivator.YesWeapon is DLL-patched safe;
+            // muting the Behaviour was unrelated to the IndexOutOfRange but keep calls working.
             "MenuEsc",
             "StaticSceneOptimizer",
             "Flicker",
@@ -101,7 +102,10 @@ namespace UltrakillIOS
             _hookedPreCull = true;
         }
 
-        /// <summary>Do NOT fight clear colour every frame — that was the colour slideshow.</summary>
+        /// <summary>
+        /// Disable junk cams. Lock Main away from Skybox clear — null/stub skybox + Skybox
+        /// clearFlags = pure black (session 165503). Do NOT cycle background colour (slideshow).
+        /// </summary>
         private static void OnAnyCameraPreCull(Camera cam)
         {
             if (cam == null)
@@ -116,6 +120,28 @@ namespace UltrakillIOS
                 || n.IndexOf("Shop", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 cam.enabled = false;
+                return;
+            }
+
+            if (n.IndexOf("HUD", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return;
+            }
+
+            if (_main != null && cam != _main)
+            {
+                return;
+            }
+
+            if (!cam.enabled)
+            {
+                return;
+            }
+
+            if (cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Nothing)
+            {
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = DiagnosticClear;
             }
         }
 
@@ -124,6 +150,7 @@ namespace UltrakillIOS
             _loggedCamNames = false;
             MuteSpam();
             HideSpuriousScoreHud();
+            ForceBrightSky();
             FixCameras(forceLog: true);
             if (Time.timeScale <= 0f)
             {
