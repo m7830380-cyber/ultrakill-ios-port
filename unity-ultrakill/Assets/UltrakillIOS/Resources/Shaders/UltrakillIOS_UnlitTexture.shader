@@ -11,7 +11,7 @@ Shader "UltrakillIOS/UnlitTexture"
 	{
 		Tags { "RenderType"="Opaque" "Queue"="Geometry" }
 		LOD 100
-		Cull Back
+		Cull Off
 		ZWrite On
 
 		Pass
@@ -19,22 +19,18 @@ Shader "UltrakillIOS/UnlitTexture"
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
-			#pragma multi_compile_fog
 			#include "UnityCG.cginc"
 
 			struct appdata
 			{
 				float4 vertex : POSITION;
 				float2 uv : TEXCOORD0;
-				float4 color : COLOR;
 			};
 
 			struct v2f
 			{
 				float2 uv : TEXCOORD0;
 				float4 vertex : SV_POSITION;
-				fixed4 color : COLOR;
-				UNITY_FOG_COORDS(1)
 			};
 
 			sampler2D _MainTex;
@@ -47,19 +43,28 @@ Shader "UltrakillIOS/UnlitTexture"
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-				o.color = v.color * _Color * _Colorize;
-				UNITY_TRANSFER_FOG(o, o.vertex);
 				return o;
 			}
 
 			fixed4 frag (v2f i) : SV_Target
 			{
-				fixed4 col = tex2D(_MainTex, i.uv) * i.color;
-				UNITY_APPLY_FOG(i.fogCoord, col);
-				return col;
+				// Do NOT multiply mesh vertex colors — retail meshes often store
+				// baked lighting as black verts, which made the whole Tutorial black.
+				fixed4 tex = tex2D(_MainTex, i.uv);
+				fixed4 tint = _Color * _Colorize;
+				// Guard near-black tints / missing textures.
+				if (tint.r + tint.g + tint.b < 0.15)
+				{
+					tint = fixed4(1, 1, 1, 1);
+				}
+				if (tex.r + tex.g + tex.b < 0.02 && tex.a > 0.5)
+				{
+					tex = fixed4(0.75, 0.75, 0.8, 1);
+				}
+				return tex * tint;
 			}
 			ENDCG
 		}
 	}
-	FallBack "Unlit/Texture"
+	FallBack "Unlit/Color"
 }

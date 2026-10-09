@@ -64,7 +64,8 @@ namespace UltrakillIOS
             "GunControl",
             "MenuEsc",
             "StaticSceneOptimizer",
-            // Keep TimeController + AudioMixerController enabled — CameraController needs them.
+            "TimeController",
+            "AudioMixerController",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -404,11 +405,33 @@ namespace UltrakillIOS
                     }
 
                     var sh = m.shader;
-                    if (sh == null || !sh.isSupported
-                        || sh.name.Contains("InternalErrorShader")
-                        || sh.name.Contains("Hidden/InternalError"))
+                    var name = sh != null ? sh.name : "";
+                    var broken = sh == null || !sh.isSupported
+                        || name.Contains("InternalErrorShader")
+                        || name.Contains("Hidden/InternalError")
+                        || name.StartsWith("ULTRAKILL/", StringComparison.Ordinal)
+                        || name.StartsWith("uk_", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("psx")
+                        || name.Contains("PSX")
+                        || name.Contains("Custom/");
+                    // Keep our fallback + Unity built-ins; replace retail custom shaders.
+                    var keep = name.StartsWith("UltrakillIOS/", StringComparison.Ordinal)
+                        || name.StartsWith("Unlit/", StringComparison.Ordinal)
+                        || name.StartsWith("UI/", StringComparison.Ordinal)
+                        || name.StartsWith("Sprites/", StringComparison.Ordinal)
+                        || name.StartsWith("TextMeshPro/", StringComparison.Ordinal)
+                        || name == "Standard" || name == "Legacy Shaders/Diffuse";
+                    if (broken || (sh != null && !keep))
                     {
                         m.shader = fallback;
+                        if (m.HasProperty("_Color"))
+                        {
+                            m.SetColor("_Color", Color.white);
+                        }
+                        if (m.HasProperty("_Colorize"))
+                        {
+                            m.SetColor("_Colorize", Color.white);
+                        }
                         remapped++;
                         changed = true;
                     }

@@ -51,10 +51,16 @@ StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "Update");
 StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "FixedUpdate");
 StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "LateUpdate");
 // CameraController Awake/Start NREs on null Prefs/mixers → black screen.
-// Keep stubs empty (no custom IL) so IL2CPP stack analysis stays happy.
 StubMethodEmpty(module, "CameraController", "Awake");
 StubMethodEmpty(module, "CameraController", "Start");
-// Do NOT patch NewMovement.Awake — Cecil guard produced IL2CPP "Stack empty".
+// Null AudioMixer assets → UpdateSFXVolume / FixedUpdate spam every frame.
+StubMethodEmpty(module, "AudioMixerController", "Update");
+StubMethodEmpty(module, "AudioMixerController", "UpdateSFXVolume");
+StubMethodEmpty(module, "AudioMixerController", "Start");
+StubMethodEmpty(module, "TimeController", "FixedUpdate");
+StubMethodEmpty(module, "TimeController", "Update");
+StubMethodEmpty(module, "TimeController", "Awake");
+StubMethodEmpty(module, "TimeController", "InitializeValues");
 
 var tempPath = dllPath + ".patched";
 asm.Write(tempPath);
