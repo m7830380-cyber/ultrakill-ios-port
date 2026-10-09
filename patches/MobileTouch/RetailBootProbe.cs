@@ -137,7 +137,7 @@ namespace UltrakillIOS
                 if (len < 5_000_000)
                 {
                     UltrakillLog.Warn(Area, "shaders.bundle tiny (" + mb + " MB) at " + rel
-                        + " — retail Metal stubs; world uses textured fallback. Rebuild: scripts/Build-IosShaders.ps1 then copy to ULTRAKILL-Content.");
+                        + " — replace with a real iOS shaders.bundle build (scripts/Build-IosShaders.ps1). Runtime no longer swaps all materials (caused tex=0 white).");
                 }
                 else
                 {
