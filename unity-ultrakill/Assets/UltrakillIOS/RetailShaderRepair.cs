@@ -272,12 +272,29 @@ namespace UltrakillIOS
 
             private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
             {
+                if (!ShouldRepairScene(scene))
+                {
+                    return;
+                }
+
                 FixedSlots.Clear();
                 StartCoroutine(RepairPipeline());
             }
 
+            private static bool ShouldRepairScene(Scene scene)
+            {
+                if (!scene.IsValid())
+                {
+                    return false;
+                }
+
+                var n = scene.name;
+                return !string.Equals(n, "Bootstrap", StringComparison.OrdinalIgnoreCase);
+            }
+
             private IEnumerator RepairPipeline()
             {
+                yield return null;
                 for (var i = 0; i < 8; i++)
                 {
                     StaticSceneOptimizerIosRepair.KickAllInLoadedScenes();

@@ -146,6 +146,11 @@ namespace UltrakillIOS
 
             private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
             {
+                if (!scene.IsValid() || string.Equals(scene.name, "Bootstrap", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
                 StartCoroutine(KickAfterStart());
             }
 

@@ -2,13 +2,12 @@
 using System;
 using System.Reflection;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Master shaders (ULTRAKILL-Standard / Stationary) are often missing from stub shaders.bundle → InternalError on most level mats.
+    /// Master shaders missing from stub shaders.bundle → InternalError. Use IPA Resources stubs only —
+    /// never Addressables.WaitForCompletion (deadlocks boot; session 002321).
     /// </summary>
     internal static class UkMasterShaderBootstrap
     {
@@ -16,18 +15,11 @@ namespace UltrakillIOS
         private static Shader _master;
         private static Shader _stationary;
 
-        private static readonly string[] MasterAddressKeys =
-        {
-            "Assets/Shaders/MasterShader/ULTRAKILL-Standard.shader",
-            "Assets/Shaders/MasterShader/ULTRAKILL-Stationary.shader",
-        };
-
         private static readonly string[] MasterShaderFindNames =
         {
             "ULTRAKILL-Standard",
             "ULTRAKILL/Standard",
             "Custom/ULTRAKILL-Standard",
-            "Shader Forge/ULTRAKILL-Standard",
             "ULTRAKILL-Stationary",
             "ULTRAKILL/Stationary",
         };
@@ -43,32 +35,6 @@ namespace UltrakillIOS
             }
 
             ShadersBundleWarmup.TryWarmup();
-
-            foreach (var key in MasterAddressKeys)
-            {
-                try
-                {
-                    var h = Addressables.LoadAssetAsync<Shader>(key);
-                    var sh = h.WaitForCompletion();
-                    if (sh != null && sh.isSupported && !IsError(sh))
-                    {
-                        if (key.IndexOf("Stationary", StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            _stationary = sh;
-                        }
-                        else
-                        {
-                            _master = sh;
-                        }
-
-                        UltrakillLog.Info(Area, "Addressables shader OK: " + key + " -> " + sh.name);
-                    }
-                }
-                catch
-                {
-                    /* ignore */
-                }
-            }
 
             foreach (var name in MasterShaderFindNames)
             {
@@ -114,8 +80,7 @@ namespace UltrakillIOS
         {
             try
             {
-                var t = Type.GetType("DefaultReferenceManager, Assembly-CSharp");
-                var drmType = t;
+                var drmType = Type.GetType("DefaultReferenceManager, Assembly-CSharp");
                 if (drmType == null)
                 {
                     return;
@@ -150,7 +115,6 @@ namespace UltrakillIOS
             }
         }
 
-        /// <summary>Replace InternalError world materials with UK master stub (keeps _MainTex from material).</summary>
         internal static int RecoverInternalErrorMaterials(bool includeInactive)
         {
             EnsureReady();

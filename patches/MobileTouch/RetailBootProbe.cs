@@ -54,8 +54,6 @@ namespace UltrakillIOS
             SetStatus("Initializing Addressables");
             var init = Addressables.InitializeAsync(false);
             yield return init;
-            ShadersBundleWarmup.TryWarmup();
-            UkMasterShaderBootstrap.EnsureReady();
             if (init.Status != AsyncOperationStatus.Succeeded)
             {
                 Fail("Addressables.InitializeAsync failed: " + init.OperationException);
@@ -66,6 +64,8 @@ namespace UltrakillIOS
             var locator = init.Result;
             UltrakillLog.Info(Area, "Catalog loaded: locator '" + locator.LocatorId + "', keys=" + locator.Keys.Count());
             Addressables.Release(init);
+            ShadersBundleWarmup.TryWarmup();
+            UkMasterShaderBootstrap.EnsureReady();
 
             var sceneKey = BootSceneKeys.FirstOrDefault(k => locator.Locate(k, typeof(SceneInstance), out _));
             if (sceneKey == null)
