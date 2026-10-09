@@ -125,12 +125,8 @@ namespace UltrakillIOS
         {
             MuteBrokenBehaviours();
             RemapBrokenShaders();
-            for (var i = 0; i < 90; i++)
-            {
-                yield return i < 20 ? null : new WaitForSecondsRealtime(0.2f);
-                RemapBrokenShaders();
-            }
-
+            yield return null;
+            RemapBrokenShaders();
             TryRepair();
             MuteBrokenBehaviours();
         }

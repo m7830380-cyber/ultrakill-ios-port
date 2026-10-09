@@ -14,14 +14,7 @@ namespace UltrakillIOS
         public static bool ShadersBundleIsStub { get; private set; }
 
         private static Shader _fallbackShader;
-        private static readonly Dictionary<int, Texture> AlbedoByMaterialId = new Dictionary<int, Texture>(8192);
-
-        private static readonly string[] AlbedoTexAliases =
-        {
-            "_MainTex", "_BaseMap", "_BaseColorMap", "_Albedo", "_Diffuse",
-            "_ColorMap", "_MainTexture", "_Texture", "_tex", "_EmissiveTex",
-            "EmissiveTex", "_DetailAlbedoMap", "_ParallaxMap", "_MetallicGlossMap",
-        };
+        private static readonly HashSet<int> RepairedSlots = new HashSet<int>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void InstallHost()
@@ -48,24 +41,18 @@ namespace UltrakillIOS
                 return _fallbackShader;
             }
 
-            _fallbackShader = Shader.Find("UltrakillIOS/UnlitTexture");
-            if (_fallbackShader == null)
-            {
-                _fallbackShader = Resources.Load<Shader>("Shaders/UltrakillIOS_UnlitTexture");
-            }
+            _fallbackShader = Shader.Find("UltrakillIOS/UnlitTexture")
+                ?? Resources.Load<Shader>("Shaders/UltrakillIOS_UnlitTexture")
+                ?? Shader.Find("Unlit/Texture")
+                ?? Shader.Find("Unlit/Color");
 
-            if (_fallbackShader == null)
+            if (_fallbackShader != null)
             {
-                _fallbackShader = Shader.Find("Unlit/Texture") ?? Shader.Find("Unlit/Color");
-            }
-
-            if (_fallbackShader == null)
-            {
-                UltrakillLog.Warn("Shader", "Fallback shader missing — world will stay magenta");
+                UltrakillLog.Info("Shader", "Fallback ready: " + _fallbackShader.name);
             }
             else
             {
-                UltrakillLog.Info("Shader", "Fallback ready: " + _fallbackShader.name);
+                UltrakillLog.Warn("Shader", "Fallback shader missing");
             }
 
             return _fallbackShader;
@@ -80,15 +67,9 @@ namespace UltrakillIOS
                 || name.StartsWith("GUI/", StringComparison.Ordinal);
         }
 
-        /// <summary>Skip this material slot only (do not remap). Never treat InternalError as skippable.</summary>
         private static bool SkipMaterialSlot(string name)
         {
-            if (string.IsNullOrEmpty(name))
-            {
-                return false;
-            }
-
-            if (name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (string.IsNullOrEmpty(name) || name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return false;
             }
@@ -97,55 +78,39 @@ namespace UltrakillIOS
                 || name.IndexOf("Wireframe", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        internal static bool ShaderNeedsFallback(Shader sh)
+        private static bool SlotNeedsRepair(Material instance, Material shared, Shader fallback)
         {
-            if (sh == null)
-            {
-                return true;
-            }
-
-            var name = sh.name ?? "";
-            if (name.Length == 0)
-            {
-                return true;
-            }
-
-            if (name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return true;
-            }
-
-            if (name.StartsWith("UltrakillIOS/", StringComparison.Ordinal))
+            if (instance == null)
             {
                 return false;
             }
 
-            if (IsUiOrSky(name) || SkipMaterialSlot(name))
+            var sh = instance.shader;
+            var name = sh != null ? sh.name : "";
+
+            if (SkipMaterialSlot(name))
             {
                 return false;
             }
 
-            if (!sh.isSupported || ShadersBundleIsStub)
+            if (sh == null || name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return true;
             }
 
-            return false;
-        }
-
-        private static bool NeedsTextureBackfill(Material m)
-        {
-            if (m == null || _fallbackShader == null || m.shader != _fallbackShader)
+            if (IsUiOrSky(name))
             {
                 return false;
             }
 
-            if (!m.HasProperty("_MainTex"))
+            if (sh != fallback)
             {
-                return false;
+                return !sh.isSupported || ShadersBundleIsStub;
             }
 
-            return m.GetTexture("_MainTex") == null;
+            // Already on fallback — still broken if no albedo (white walls).
+            return ShadersBundleIsStub && fallback != null && instance.HasProperty("_MainTex")
+                && instance.GetTexture("_MainTex") == null && ExtractAlbedo(shared ?? instance) != null;
         }
 
         private static Texture SafeGetTexture(Material m, string prop)
@@ -172,7 +137,13 @@ namespace UltrakillIOS
                 return null;
             }
 
-            foreach (var prop in AlbedoTexAliases)
+            string[] props =
+            {
+                "_MainTex", "_BaseMap", "_BaseColorMap", "_Albedo", "_Diffuse",
+                "_ColorMap", "_MainTexture", "_Texture", "_EmissiveTex", "_DetailAlbedoMap",
+            };
+
+            foreach (var prop in props)
             {
                 var t = SafeGetTexture(m, prop);
                 if (t != null)
@@ -200,83 +171,50 @@ namespace UltrakillIOS
             return null;
         }
 
-        private static void RememberAlbedo(Material m, Texture tex)
+        private static Material BuildFallbackMaterial(Material instance, Material shared, Shader fallback)
         {
-            if (m != null && tex != null)
-            {
-                AlbedoByMaterialId[m.GetInstanceID()] = tex;
-            }
-        }
+            var src = shared ?? instance;
+            var repl = new Material(fallback);
 
-        private static Texture RecallAlbedo(Material m, Material sharedSource)
-        {
-            if (m != null && AlbedoByMaterialId.TryGetValue(m.GetInstanceID(), out var cached) && cached != null)
+            if (src != null)
             {
-                return cached;
-            }
-
-            if (sharedSource != null)
-            {
-                var fromShared = ExtractAlbedo(sharedSource);
-                if (fromShared != null)
+                try
                 {
-                    return fromShared;
+                    repl.CopyPropertiesFromMaterial(src);
+                }
+                catch
+                {
+                    /* broken shader materials can throw */
                 }
             }
 
-            return ExtractAlbedo(m);
-        }
+            repl.shader = fallback;
 
-        private static bool ApplyFallbackMaterial(Material m, Material sharedSource, Shader fallback)
-        {
-            if (m == null)
+            var albedo = ExtractAlbedo(src) ?? ExtractAlbedo(repl);
+            if (albedo != null && repl.HasProperty("_MainTex"))
             {
-                return false;
+                repl.SetTexture("_MainTex", albedo);
             }
 
-            var sn = m.shader != null ? m.shader.name : "";
-            if (SkipMaterialSlot(sn))
+            if (repl.HasProperty("_Color"))
             {
-                return false;
+                var c = repl.GetColor("_Color");
+                if (c.maxColorComponent < 0.01f)
+                {
+                    repl.SetColor("_Color", Color.white);
+                }
             }
 
-            var needsShader = ShaderNeedsFallback(m.shader);
-            var needsTex = NeedsTextureBackfill(m);
-            if (!needsShader && !needsTex)
+            if (repl.HasProperty("_Colorize"))
             {
-                return false;
+                var cz = repl.GetColor("_Colorize");
+                if (cz.maxColorComponent < 0.01f)
+                {
+                    repl.SetColor("_Colorize", Color.white);
+                }
             }
 
-            var albedo = RecallAlbedo(m, sharedSource);
-            if (albedo != null)
-            {
-                RememberAlbedo(m, albedo);
-            }
-
-            var color = m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white;
-            var colorize = m.HasProperty("_Colorize") ? m.GetColor("_Colorize") : Color.white;
-
-            if (needsShader)
-            {
-                m.shader = fallback;
-            }
-
-            if (m.HasProperty("_MainTex") && albedo != null)
-            {
-                m.SetTexture("_MainTex", albedo);
-            }
-
-            if (m.HasProperty("_Color"))
-            {
-                m.SetColor("_Color", color.maxColorComponent < 0.01f ? Color.white : color);
-            }
-
-            if (m.HasProperty("_Colorize"))
-            {
-                m.SetColor("_Colorize", colorize.maxColorComponent < 0.01f ? Color.white : colorize);
-            }
-
-            return true;
+            return repl;
         }
 
         internal static int RemapBrokenMaterialsOnRenderers(bool includeInactive)
@@ -288,16 +226,12 @@ namespace UltrakillIOS
             }
 
             var remapped = 0;
-            var internalErrorLeft = 0;
+            var withTex = 0;
+            var noTex = 0;
 
             foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(includeInactive))
             {
-                if (r == null || r is ParticleSystemRenderer)
-                {
-                    continue;
-                }
-
-                if (r.GetComponentInParent<Canvas>() != null)
+                if (r == null || r is ParticleSystemRenderer || r.GetComponentInParent<Canvas>() != null)
                 {
                     continue;
                 }
@@ -313,26 +247,27 @@ namespace UltrakillIOS
                 for (var i = 0; i < mats.Length; i++)
                 {
                     var m = mats[i];
-                    if (m == null)
-                    {
-                        continue;
-                    }
-
-                    var sn = m.shader != null ? m.shader.name : "";
-                    if (SkipMaterialSlot(sn))
-                    {
-                        continue;
-                    }
-
                     Material sharedSrc = shared != null && i < shared.Length ? shared[i] : null;
-                    if (ApplyFallbackMaterial(m, sharedSrc, fallback))
+
+                    if (!SlotNeedsRepair(m, sharedSrc, fallback))
                     {
-                        remapped++;
-                        changed = true;
+                        continue;
                     }
-                    else if (sn.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+
+                    var slotKey = (r.GetInstanceID() << 4) ^ (i & 0xF);
+                    mats[i] = BuildFallbackMaterial(m, sharedSrc, fallback);
+                    RepairedSlots.Add(slotKey);
+                    remapped++;
+                    changed = true;
+
+                    var t = mats[i].HasProperty("_MainTex") ? mats[i].GetTexture("_MainTex") : null;
+                    if (t != null)
                     {
-                        internalErrorLeft++;
+                        withTex++;
+                    }
+                    else
+                    {
+                        noTex++;
                     }
                 }
 
@@ -342,15 +277,29 @@ namespace UltrakillIOS
                 }
             }
 
-            if (remapped > 0)
+            foreach (var sr in UnityEngine.Object.FindObjectsOfType<SpriteRenderer>(includeInactive))
             {
-                var mode = ShadersBundleIsStub ? "stub-bundle textured" : "broken-shader";
-                UltrakillLog.Info("Shader", "Remapped " + remapped + " world material slots -> " + fallback.name + " (" + mode + ")");
+                if (sr == null || sr.GetComponentInParent<Canvas>() != null)
+                {
+                    continue;
+                }
+
+                var sh = sr.sharedMaterial != null ? sr.sharedMaterial.shader : null;
+                if (sh != null && sh.name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    var def = Shader.Find("Sprites/Default");
+                    if (def != null && sr.sprite != null)
+                    {
+                        sr.material = new Material(def) { mainTexture = sr.sprite.texture };
+                        remapped++;
+                    }
+                }
             }
 
-            if (internalErrorLeft > 0)
+            if (remapped > 0)
             {
-                UltrakillLog.Warn("Shader", internalErrorLeft + " material slots still on InternalErrorShader after pass");
+                UltrakillLog.Info("Shader", "Replaced " + remapped + " material slots -> " + fallback.name
+                    + " (tex=" + withTex + " notex=" + noTex + ")");
             }
 
             return remapped;
@@ -358,8 +307,6 @@ namespace UltrakillIOS
 
         private sealed class RetailShaderRepairHost : MonoBehaviour
         {
-            private int _pass;
-
             private void OnEnable()
             {
                 SceneManager.sceneLoaded += OnSceneLoaded;
@@ -372,28 +319,47 @@ namespace UltrakillIOS
 
             private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
             {
-                _pass = 0;
+                RepairedSlots.Clear();
                 StartCoroutine(RemapBurst());
             }
 
             private IEnumerator RemapBurst()
             {
-                for (var i = 0; i < 300; i++)
+                int lastRemap = -1;
+                for (var i = 0; i < 80; i++)
                 {
-                    RemapBrokenMaterialsOnRenderers(includeInactive: true);
-                    _pass++;
-                    if (_pass == 1 || _pass == 20 || _pass == 120)
+                    var n = RemapBrokenMaterialsOnRenderers(includeInactive: true);
+                    if (n > 0)
                     {
-                        LogInternalErrorRenderers();
+                        lastRemap = n;
                     }
 
-                    yield return i < 40 ? null : new WaitForSecondsRealtime(0.2f);
+                    if (i == 5 || i == 25 || i == 79)
+                    {
+                        LogSceneMaterialStats();
+                    }
+
+                    yield return i < 15 ? null : new WaitForSecondsRealtime(0.35f);
+                }
+
+                if (lastRemap >= 0)
+                {
+                    UltrakillLog.Info("Shader", "Remap burst finished; last pass replaced " + lastRemap + " slots");
                 }
             }
 
-            private static void LogInternalErrorRenderers()
+            private static void LogSceneMaterialStats()
             {
-                var n = 0;
+                var fallback = WarmupFallbackShader();
+                if (fallback == null)
+                {
+                    return;
+                }
+
+                var onFallback = 0;
+                var textured = 0;
+                var internalErr = 0;
+
                 foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
                 {
                     if (r == null || r.GetComponentInParent<Canvas>() != null)
@@ -403,18 +369,31 @@ namespace UltrakillIOS
 
                     foreach (var m in r.sharedMaterials)
                     {
-                        if (m?.shader != null && m.shader.name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (m == null)
                         {
-                            n++;
-                            break;
+                            continue;
+                        }
+
+                        var sn = m.shader != null ? m.shader.name : "";
+                        if (sn.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            internalErr++;
+                            continue;
+                        }
+
+                        if (m.shader == fallback)
+                        {
+                            onFallback++;
+                            if (m.HasProperty("_MainTex") && m.GetTexture("_MainTex") != null)
+                            {
+                                textured++;
+                            }
                         }
                     }
                 }
 
-                if (n > 0)
-                {
-                    UltrakillLog.Warn("Shader", "Renderers still using InternalErrorShader: " + n);
-                }
+                UltrakillLog.Info("Shader", "Scene mats: fallback=" + onFallback + " textured=" + textured
+                    + " internalError=" + internalErr);
             }
         }
     }
