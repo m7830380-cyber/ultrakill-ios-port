@@ -53,15 +53,18 @@ namespace UltrakillIOS
             "FireObjectPool",
             "SandboxHud",
             "GunColorController",
-            "TimeController",
             "MusicManager",
-            "AudioMixerController",
             "OptionsMenuToManager",
             "LucasMeshCombine.MeshCombineManager",
             "PooledWaterStore",
             "Flicker",
             "ZombieMelee",
             "ElectricityLine",
+            "AnimatedTexture",
+            "GunControl",
+            "MenuEsc",
+            "StaticSceneOptimizer",
+            // Keep TimeController + AudioMixerController enabled — CameraController needs them.
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -365,8 +368,9 @@ namespace UltrakillIOS
 
         private static void RemapBrokenShaders()
         {
+            // Prefer a lit-looking unlit that still shows geometry when MainTex is missing.
             var fallback = Shader.Find("UltrakillIOS/UnlitTexture")
-                ?? Shader.Find("Unlit/Texture")
+                ?? Shader.Find("Unlit/Color")
                 ?? Shader.Find("Sprites/Default")
                 ?? Shader.Find("UI/Default")
                 ?? Shader.Find("Standard");

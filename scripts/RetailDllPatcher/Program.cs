@@ -50,6 +50,10 @@ StubMethodEmpty(module, "ULTRAKILL.Portal.PortalAwareRenderer", "Think");
 StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "Update");
 StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "FixedUpdate");
 StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "LateUpdate");
+// CameraController Awake/Start NREs on null Prefs/mixers → black screen.
+StubMethodEmpty(module, "CameraController", "Awake");
+PatchCameraControllerStart(module);
+PatchNewMovementAwake(module);
 
 var tempPath = dllPath + ".patched";
 asm.Write(tempPath);
@@ -222,6 +226,150 @@ static void StubMethodEmpty(ModuleDefinition module, string typeName, string met
     method.Body.ExceptionHandlers.Clear();
     method.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ret));
     Console.WriteLine($"Stubbed {typeName}.{methodName} -> empty (iOS crash guard)");
+}
+
+static void PatchCameraControllerStart(ModuleDefinition module)
+{
+    var type = module.GetType("CameraController");
+    var method = type?.Methods.FirstOrDefault(m => m.Name == "Start" && m.HasBody && !m.HasParameters);
+    if (method == null)
+    {
+        Console.WriteLine("WARN: CameraController.Start not found");
+        return;
+    }
+
+    if (method.Body.Instructions.Count <= 8)
+    {
+        Console.WriteLine("CameraController.Start already patched; skip");
+        return;
+    }
+
+    var coreRef = module.AssemblyReferences.FirstOrDefault(r => r.Name == "UnityEngine.CoreModule");
+    if (coreRef == null)
+    {
+        return;
+    }
+
+    var cameraType = new TypeReference("UnityEngine", "Camera", module, coreRef);
+    var componentType = new TypeReference("UnityEngine", "Component", module, coreRef);
+    var getComponent = new MethodReference("GetComponent", cameraType, componentType)
+    {
+        HasThis = true,
+        ExplicitThis = false,
+        CallingConvention = MethodCallingConvention.Generic,
+    };
+    getComponent.GenericParameters.Add(new GenericParameter("T", getComponent));
+    var getComponentInst = new GenericInstanceMethod(getComponent);
+    getComponentInst.GenericArguments.Add(cameraType);
+
+    var camField = type.Fields.FirstOrDefault(f => f.Name == "cam");
+    var defaultFov = type.Fields.FirstOrDefault(f => f.Name == "defaultFov");
+    var activated = type.Fields.FirstOrDefault(f => f.Name == "activated");
+    if (camField == null)
+    {
+        return;
+    }
+
+    var setFov = new MethodReference("set_fieldOfView", module.TypeSystem.Void, cameraType)
+    {
+        HasThis = true,
+    };
+    setFov.Parameters.Add(new ParameterDefinition(module.TypeSystem.Single));
+
+    method.Body.Instructions.Clear();
+    method.Body.Variables.Clear();
+    method.Body.ExceptionHandlers.Clear();
+    var il = method.Body.GetILProcessor();
+    // cam = GetComponent<Camera>();
+    il.Append(il.Create(OpCodes.Ldarg_0));
+    il.Append(il.Create(OpCodes.Ldarg_0));
+    il.Append(il.Create(OpCodes.Call, getComponentInst));
+    il.Append(il.Create(OpCodes.Stfld, camField));
+    // if (cam != null) { cam.fieldOfView = 90f; defaultFov = 90f; }
+    il.Append(il.Create(OpCodes.Ldarg_0));
+    il.Append(il.Create(OpCodes.Ldfld, camField));
+    var ret = il.Create(OpCodes.Ret);
+    var afterNull = il.Create(OpCodes.Nop);
+    il.Append(il.Create(OpCodes.Brfalse, afterNull));
+    il.Append(il.Create(OpCodes.Ldarg_0));
+    il.Append(il.Create(OpCodes.Ldfld, camField));
+    il.Append(il.Create(OpCodes.Ldc_R4, 90f));
+    il.Append(il.Create(OpCodes.Callvirt, setFov));
+    if (defaultFov != null)
+    {
+        il.Append(il.Create(OpCodes.Ldarg_0));
+        il.Append(il.Create(OpCodes.Ldc_R4, 90f));
+        il.Append(il.Create(OpCodes.Stfld, defaultFov));
+    }
+
+    il.Append(afterNull);
+    if (activated != null)
+    {
+        il.Append(il.Create(OpCodes.Ldarg_0));
+        il.Append(il.Create(OpCodes.Ldc_I4_1));
+        il.Append(il.Create(OpCodes.Stfld, activated));
+    }
+
+    il.Append(ret);
+    Console.WriteLine("Patched CameraController.Start -> safe FOV/activated only");
+}
+
+static void PatchNewMovementAwake(ModuleDefinition module)
+{
+    var type = module.GetType("NewMovement");
+    var method = type?.Methods.FirstOrDefault(m => m.Name == "Awake" && m.HasBody);
+    var gcField = type?.Fields.FirstOrDefault(f => f.Name == "gc");
+    if (method == null || gcField == null)
+    {
+        return;
+    }
+
+    // Prepend: if (gc == null) return;
+    var body = method.Body;
+    var il = body.GetILProcessor();
+    var first = body.Instructions[0];
+    if (first.OpCode == OpCodes.Ldarg_0
+        && body.Instructions.Count > 2
+        && body.Instructions[1].OpCode == OpCodes.Ldfld
+        && body.Instructions[1].Operand is FieldReference fr
+        && fr.Name == "gc")
+    {
+        Console.WriteLine("NewMovement.Awake already guarded; skip");
+        return;
+    }
+
+    var ret = il.Create(OpCodes.Ret);
+    // Insert at end temporarily then move? InsertBefore first:
+    var ldarg = il.Create(OpCodes.Ldarg_0);
+    var ldfld = il.Create(OpCodes.Ldfld, gcField);
+    var brtrue = il.Create(OpCodes.Brtrue, first);
+    il.InsertBefore(first, ldarg);
+    il.InsertBefore(first, ldfld);
+    il.InsertBefore(first, brtrue);
+    il.InsertBefore(first, ret);
+    // Wait - order of InsertBefore reverses. Want: ldarg, ldfld, brtrue first, else ret.
+    // InsertBefore(first, X) pushes X immediately before first, so last InsertBefore is first in method.
+    // So we inserted: ret, brtrue, ldfld, ldarg, first — WRONG.
+
+    // Redo cleanly:
+    body.Instructions.Remove(ldarg);
+    body.Instructions.Remove(ldfld);
+    body.Instructions.Remove(brtrue);
+    body.Instructions.Remove(ret);
+
+    var instrs = new[]
+    {
+        il.Create(OpCodes.Ldarg_0),
+        il.Create(OpCodes.Ldfld, gcField),
+        il.Create(OpCodes.Brtrue, first),
+        il.Create(OpCodes.Ret),
+    };
+    for (var i = instrs.Length - 1; i >= 0; i--)
+    {
+        il.InsertBefore(first, instrs[i]);
+    }
+
+    Console.WriteLine("Patched NewMovement.Awake -> return if gc null");
 }
 
 static void StubMethodReturnInt(ModuleDefinition module, string typeName, string methodName, int value)
