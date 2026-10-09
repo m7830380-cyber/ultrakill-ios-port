@@ -28,7 +28,7 @@ namespace UltrakillIOS
         {
             WarmupFallbackShader();
             var go = new GameObject("UltrakillIOS.ShaderRepair");
-            DontDestroyOnLoad(go);
+            UnityEngine.Object.DontDestroyOnLoad(go);
             go.AddComponent<RetailShaderRepairHost>();
         }
 
@@ -325,19 +325,6 @@ namespace UltrakillIOS
                 if (changed)
                 {
                     r.materials = mats;
-                }
-            }
-
-            foreach (var terrain in Terrain.activeTerrains)
-            {
-                if (terrain?.materialTemplate == null)
-                {
-                    continue;
-                }
-
-                if (ApplyFallbackMaterial(terrain.materialTemplate, terrain.materialTemplate, fallback))
-                {
-                    remapped++;
                 }
             }
 
