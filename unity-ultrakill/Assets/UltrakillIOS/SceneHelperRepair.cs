@@ -63,7 +63,6 @@ namespace UltrakillIOS
             "AnimatedTexture",
             // GunControl: YesWeapon DLL-patched; keep Behaviour enabled for PlayerActivator.
             "MenuEsc",
-            "StaticSceneOptimizer",
             "TimeController",
             "AudioMixerController",
             "SkyboxEnabler",
@@ -124,8 +123,10 @@ namespace UltrakillIOS
         private IEnumerator RepairAfterLoad()
         {
             MuteBrokenBehaviours();
+            StaticSceneOptimizerIosRepair.KickAllInLoadedScenes();
             RemapBrokenShaders();
             yield return null;
+            StaticSceneOptimizerIosRepair.KickAllInLoadedScenes();
             RemapBrokenShaders();
             TryRepair();
             MuteBrokenBehaviours();

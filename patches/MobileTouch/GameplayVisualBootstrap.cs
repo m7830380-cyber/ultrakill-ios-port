@@ -27,7 +27,6 @@ namespace UltrakillIOS
             // GunControl stays enabled: PlayerActivator.YesWeapon is DLL-patched safe;
             // muting the Behaviour was unrelated to the IndexOutOfRange but keep calls working.
             "MenuEsc",
-            "StaticSceneOptimizer",
             "Flicker",
             "ZombieMelee",
             "ElectricityLine",
