@@ -13,6 +13,7 @@ Shader "UltrakillIOS/UnlitTexture"
 		LOD 100
 		Cull Off
 		ZWrite On
+		ZTest LEqual
 
 		Pass
 		{
@@ -48,22 +49,17 @@ Shader "UltrakillIOS/UnlitTexture"
 
 			fixed4 frag (v2f i) : SV_Target
 			{
-				// No vertex colors (retail meshes bake lighting as black verts).
-				// No real lights on remapped mats — lift dark tunnel textures so
-				// shafts aren't pure black while outdoors stay readable.
 				fixed4 tex = tex2D(_MainTex, i.uv);
-				fixed4 tint = _Color * _Colorize;
-				if (tint.r + tint.g + tint.b < 0.15)
-				{
-					tint = fixed4(1, 1, 1, 1);
-				}
+				fixed3 tint = _Color.rgb * _Colorize.rgb;
+				if (dot(tint, 1) < 0.2) tint = fixed3(1, 1, 1);
 
-				fixed3 rgb = tex.rgb * tint.rgb;
-				fixed lum = max(rgb.r, max(rgb.g, rgb.b));
-				// Strong lift for dark texels (Tutorial shaft walls).
-				fixed lift = saturate(1.0 - lum * 1.8);
-				rgb = saturate(rgb * (1.0 + 2.5 * lift) + 0.18 * lift);
-				return fixed4(rgb, 1);
+				fixed3 rgb = tex.rgb * tint;
+				// Hard floor — black textures / missing Metal samples still show geometry.
+				rgb = max(rgb, fixed3(0.28, 0.28, 0.32));
+				rgb = saturate(rgb * 1.8 + 0.12);
+				// UV tint so shaft walls are never a flat void even with broken tex.
+				rgb += fixed3(frac(i.uv.x * 4.0), frac(i.uv.y * 4.0), 0.15) * 0.12;
+				return fixed4(saturate(rgb), 1);
 			}
 			ENDCG
 		}
