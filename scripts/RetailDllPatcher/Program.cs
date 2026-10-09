@@ -51,9 +51,10 @@ StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "Update");
 StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "FixedUpdate");
 StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "LateUpdate");
 // CameraController Awake/Start NREs on null Prefs/mixers → black screen.
+// Keep stubs empty (no custom IL) so IL2CPP stack analysis stays happy.
 StubMethodEmpty(module, "CameraController", "Awake");
-PatchCameraControllerStart(module);
-PatchNewMovementAwake(module);
+StubMethodEmpty(module, "CameraController", "Start");
+// Do NOT patch NewMovement.Awake — Cecil guard produced IL2CPP "Stack empty".
 
 var tempPath = dllPath + ".patched";
 asm.Write(tempPath);
