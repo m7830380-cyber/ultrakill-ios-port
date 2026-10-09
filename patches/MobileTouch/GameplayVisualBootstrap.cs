@@ -44,9 +44,13 @@ namespace UltrakillIOS
             "SkyboxEnabler",
             "IntroTextController",
             "IntroViolenceScreen",
+            "LevelStatsEnabler",
+            "LevelStats",
+            "DifficultyTitle",
         };
 
-        private static readonly Color DiagnosticClear = new Color(0.35f, 0.75f, 0.95f, 1f); // cyan — if you see this, camera clears
+        // Soft sky — cyan was only for proving clear worked.
+        private static readonly Color DiagnosticClear = new Color(0.55f, 0.62f, 0.72f, 1f);
 
         private static Camera _main;
         private static bool _loggedCamNames;
@@ -139,6 +143,8 @@ namespace UltrakillIOS
             _loggedCamNames = false;
             MuteSpam();
             StripBlackUiOverlays();
+            HideSpuriousScoreHud();
+            FixPurpleUi();
             FixCameras(forceLog: true);
             ForceBrightSky();
             if (Time.timeScale <= 0f)
@@ -157,6 +163,117 @@ namespace UltrakillIOS
             if (Time.frameCount % 30 == 0)
             {
                 StripBlackUiOverlays();
+                HideSpuriousScoreHud();
+                FixPurpleUi();
+            }
+        }
+
+        /// <summary>
+        /// Debug builds auto-open LevelStats (looks like end-of-level scoreboard) with
+        /// GetMissionName→"Main Menu" + DifficultyTitle→"STANDARD". Hide until real rank.
+        /// </summary>
+        private static void HideSpuriousScoreHud()
+        {
+            PlayerPrefs.SetInt("LevStaOpe", 0);
+
+            var infoSent = false;
+            try
+            {
+                var smType = Type.GetType("StatsManager, Assembly-CSharp");
+                var sm = smType != null ? UnityEngine.Object.FindObjectOfType(smType) : null;
+                if (sm != null)
+                {
+                    var f = smType.GetField("infoSent", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (f != null && f.FieldType == typeof(bool))
+                    {
+                        infoSent = (bool)f.GetValue(sm);
+                    }
+                }
+            }
+            catch
+            {
+                /* ignore */
+            }
+
+            HideTypeObjects("LevelStatsEnabler, Assembly-CSharp", disableBehaviour: true, deactivateGo: true);
+            HideTypeObjects("LevelStats, Assembly-CSharp", disableBehaviour: true, deactivateGo: true);
+
+            // FinalRank only valid after StatsManager.SendInfo (level complete).
+            if (!infoSent)
+            {
+                HideTypeObjects("FinalRank, Assembly-CSharp", disableBehaviour: false, deactivateGo: true);
+            }
+        }
+
+        private static void HideTypeObjects(string typeName, bool disableBehaviour, bool deactivateGo)
+        {
+            var t = Type.GetType(typeName);
+            if (t == null)
+            {
+                return;
+            }
+
+            foreach (var obj in UnityEngine.Object.FindObjectsOfType(t, true))
+            {
+                if (obj == null)
+                {
+                    continue;
+                }
+
+                if (disableBehaviour && obj is Behaviour b && b.enabled)
+                {
+                    b.enabled = false;
+                }
+
+                if (deactivateGo && obj is Component c && c.gameObject.activeSelf)
+                {
+                    c.gameObject.SetActive(false);
+                }
+            }
+        }
+
+        /// <summary>Purple UI panels = missing/error shaders or UltrakillIOS/Unlit wrongly on Graphics.</summary>
+        private static void FixPurpleUi()
+        {
+            var uiShader = Shader.Find("UI/Default") ?? Shader.Find("Sprites/Default");
+            var fixedN = 0;
+            foreach (var g in UnityEngine.Object.FindObjectsOfType<MaskableGraphic>(true))
+            {
+                if (g == null || g is Text || g is TMPro.TMP_Text)
+                {
+                    continue;
+                }
+
+                var sh = g.material != null ? g.material.shader : null;
+                var sn = sh != null ? sh.name : "";
+                var bad = sh == null
+                    || !sh.isSupported
+                    || sn.Contains("InternalError")
+                    || sn.StartsWith("UltrakillIOS/", StringComparison.Ordinal)
+                    || sn.StartsWith("Hidden/", StringComparison.Ordinal);
+                if (bad && uiShader != null)
+                {
+                    g.material = null; // Graphic default UI material
+                    if (g.material != null && g.material.shader != uiShader)
+                    {
+                        g.material = new Material(uiShader);
+                    }
+
+                    fixedN++;
+                }
+
+                // Classic missing-sprite magenta → dark translucent panel.
+                var c = g.color;
+                if (c.a > 0.2f && c.r > 0.85f && c.g < 0.25f && c.b > 0.85f)
+                {
+                    g.color = new Color(0.12f, 0.12f, 0.14f, Mathf.Min(c.a, 0.85f));
+                    fixedN++;
+                }
+            }
+
+            if (fixedN > 0)
+            {
+                UltrakillLog.Info(Area, "Fixed " + fixedN + " purple/broken UI graphics");
             }
         }
 

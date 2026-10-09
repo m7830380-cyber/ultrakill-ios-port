@@ -69,6 +69,8 @@ namespace UltrakillIOS
             "SkyboxEnabler",
             "IntroTextController",
             "IntroViolenceScreen",
+            "LevelStatsEnabler",
+            "LevelStats",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
