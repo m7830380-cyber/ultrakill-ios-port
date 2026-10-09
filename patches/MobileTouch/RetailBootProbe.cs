@@ -127,6 +127,23 @@ namespace UltrakillIOS
                 }
             }
 
+            var shaderBundle = Directory.GetFiles(aa, "shaders.bundle", SearchOption.AllDirectories);
+            foreach (var sb in shaderBundle)
+            {
+                var len = new FileInfo(sb).Length;
+                var mb = Math.Round(len / (1024.0 * 1024.0), 2);
+                var rel = sb.Replace(aa, "").TrimStart('\\', '/');
+                if (len < 5_000_000)
+                {
+                    UltrakillLog.Warn(Area, "shaders.bundle tiny (" + mb + " MB) at " + rel
+                        + " — expect black/magenta. PC retail is ~400MB; run scripts/Build-IosShaders.ps1 and copy to device.");
+                }
+                else
+                {
+                    UltrakillLog.Info(Area, "shaders.bundle " + mb + " MB at " + rel);
+                }
+            }
+
             return true;
         }
 

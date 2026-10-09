@@ -8,12 +8,8 @@ using UnityEngine.SceneManagement;
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Session 173712 proof (after skybox fix):
-    /// - clearFlags stays SolidColor bg=59667A the whole time → NOT the skybox-black bug.
-    /// - Player falls 105→-0.5 at z=-67 and stands — physics OK, wind OK.
-    /// - UnlitTexture remap alone = black walls (shader/bundle stubs fail on Metal).
-    /// - Session 165503 Unlit/Color wipe briefly showed geometry then skybox clear killed it.
-    /// Fix: one-shot bright Unlit/Color on world renderers + keep SolidColor clear + keep sky.
+    /// Movement/camera repair only. World materials use retail shaders from shaders.bundle;
+    /// RetailShaderRepair fixes only unsupported shaders (with albedo preserved).
     /// </summary>
     internal sealed class PlayerGameplayRepair : MonoBehaviour
     {
@@ -22,14 +18,12 @@ namespace UltrakillIOS
         private const float LookSens = 0.12f;
 
         private static Material _skyMat;
-        private static Material _worldMat;
-        private static bool _worldDone;
+        private static bool _lightingDone;
         private static bool _hudDone;
         private static bool _preCullHooked;
         private static string _lastScene;
         private static Camera _mainCam;
-        // Loud clear so "black" vs "clear showing / no geo" is unambiguous on device.
-        private static readonly Color DiagnosticBg = new Color(0.2f, 0.75f, 0.85f, 1f);
+        private static readonly Color WorldClear = new Color(0.35f, 0.4f, 0.48f, 1f);
 
         private Rigidbody _rb;
         private Transform _camTr;
@@ -132,7 +126,7 @@ namespace UltrakillIOS
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            _worldDone = false;
+            _lightingDone = false;
             _hudDone = false;
             _bound = false;
             _lastScene = scene.name;
@@ -147,14 +141,13 @@ namespace UltrakillIOS
             KillIntro();
             MuteClimbStep();
             BindPlayer();
-            ForceBrightWorldMats();
+            EnsureRetailLighting();
+            var fixedMats = RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: false);
             UltrakillLog.Info(Area, "Deferred repair done scene=" + _lastScene
-                + " bound=" + _bound + " worldDone=" + _worldDone
+                + " bound=" + _bound + " brokenMatsFixed=" + fixedMats
                 + " sky=" + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL"));
-            // Late-spawned addressable meshes — second pass without clearing sky/clearFlags.
             yield return new WaitForSecondsRealtime(0.75f);
-            _worldDone = false;
-            ForceBrightWorldMats();
+            RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: false);
             LevelLookHorizon();
         }
 
@@ -173,9 +166,9 @@ namespace UltrakillIOS
                 _hudDone = true;
             }
 
-            if (!_worldDone && IsGameplayScene())
+            if (!_lightingDone && IsGameplayScene())
             {
-                ForceBrightWorldMats();
+                EnsureRetailLighting();
             }
 
             DriveMoveLook();
@@ -405,7 +398,7 @@ namespace UltrakillIOS
                 cam.useOcclusionCulling = false;
                 cam.targetTexture = null;
                 cam.clearFlags = CameraClearFlags.SolidColor;
-                cam.backgroundColor = DiagnosticBg;
+                cam.backgroundColor = WorldClear;
                 cam.depth = 0f;
                 if (!cam.CompareTag("MainCamera"))
                 {
@@ -594,7 +587,7 @@ namespace UltrakillIOS
                     _mainCam.clearFlags = CameraClearFlags.SolidColor;
                 }
 
-                _mainCam.backgroundColor = DiagnosticBg;
+                _mainCam.backgroundColor = WorldClear;
                 EnsureSkyMaterial();
             }
         }
@@ -631,87 +624,19 @@ namespace UltrakillIOS
             RenderSettings.skybox = _skyMat;
         }
 
-        /// <summary>
-        /// Session 173712: UnlitTexture remap leaves black walls on device. Built-in Unlit/Color
-        /// is the only shader that previously drew visible Tutorial geo. One-shot only — do not
-        /// null skybox (that + Skybox clear = black). Do not thrash every frame (slideshow).
-        /// </summary>
-        private static void ForceBrightWorldMats()
+        private static void EnsureRetailLighting()
         {
-            if (_worldDone)
+            if (_lightingDone)
             {
                 return;
-            }
-
-            var sh = Shader.Find("Unlit/Color");
-            if (sh == null)
-            {
-                UltrakillLog.Warn(Area, "Unlit/Color missing — cannot force visible world");
-                _worldDone = true;
-                return;
-            }
-
-            if (_worldMat == null)
-            {
-                _worldMat = new Material(sh);
-                var col = new Color(0.78f, 0.72f, 0.62f, 1f);
-                _worldMat.color = col;
-                if (_worldMat.HasProperty("_Color"))
-                {
-                    _worldMat.SetColor("_Color", col);
-                }
             }
 
             EnsureSkyMaterial();
             RenderSettings.fog = false;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = Color.white;
-            RenderSettings.ambientIntensity = 1.2f;
-
-            var n = 0;
-            var sample = "";
-            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
-            {
-                if (r == null || r is ParticleSystemRenderer)
-                {
-                    continue;
-                }
-
-                if (r.GetComponentInParent<Canvas>() != null)
-                {
-                    continue;
-                }
-
-                if (!r.gameObject.activeInHierarchy)
-                {
-                    continue;
-                }
-
-                // Only touch already-enabled renderers — enabling disabled fade planes blacks the view.
-                if (!r.enabled)
-                {
-                    continue;
-                }
-
-                var len = r.sharedMaterials != null ? Math.Max(1, r.sharedMaterials.Length) : 1;
-                var mats = new Material[len];
-                for (var i = 0; i < len; i++)
-                {
-                    mats[i] = _worldMat;
-                }
-
-                r.sharedMaterials = mats;
-                n++;
-                if (sample.Length < 80)
-                {
-                    sample += r.name + ";";
-                }
-            }
-
-            _worldDone = n > 0;
-            UltrakillLog.Info(Area, "ONE-SHOT Unlit/Color on " + n + " renderers sky="
-                + (RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "NULL")
-                + " sample=" + sample);
+            RenderSettings.ambientLight = new Color(0.75f, 0.75f, 0.8f, 1f);
+            RenderSettings.ambientIntensity = 1.1f;
+            _lightingDone = true;
         }
     }
 }

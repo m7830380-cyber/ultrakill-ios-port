@@ -51,14 +51,8 @@ Shader "UltrakillIOS/UnlitTexture"
 			{
 				fixed4 tex = tex2D(_MainTex, i.uv);
 				fixed3 tint = _Color.rgb * _Colorize.rgb;
-				if (dot(tint, 1) < 0.2) tint = fixed3(1, 1, 1);
-
-				fixed3 rgb = tex.rgb * tint;
-				// Hard visibility floor + warm tint so shafts are never ink-black.
-				rgb = max(rgb, fixed3(0.45, 0.42, 0.38));
-				rgb = saturate(rgb * 1.6 + 0.15);
-				rgb += fixed3(frac(i.uv.x * 3.0), frac(i.uv.y * 3.0), 0.1) * 0.1;
-				return fixed4(saturate(rgb), 1);
+				if (dot(tint, 1) < 0.01) tint = fixed3(1, 1, 1);
+				return fixed4(tex.rgb * tint, tex.a * _Color.a);
 			}
 			ENDCG
 		}

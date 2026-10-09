@@ -50,8 +50,7 @@ namespace UltrakillIOS
             "StyleHUD",
         };
 
-        // Loud cyan: if the phone shows this, clear works and world geo is not drawing.
-        private static readonly Color DiagnosticClear = new Color(0.2f, 0.75f, 0.85f, 1f);
+        private static readonly Color DiagnosticClear = new Color(0.55f, 0.62f, 0.72f, 1f);
 
         private static Camera _main;
         private static bool _loggedCamNames;
@@ -631,71 +630,10 @@ namespace UltrakillIOS
                 UltrakillLog.Warn(Area, "CameraController wire failed: " + ex.Message);
             }
 
-            // Remap mats only periodically — NEVER re-enable disabled renderers (that covered the view).
             var matsFixed = 0;
             if (forceLog)
             {
-                // Prefer built-in Unlit/Color — UnlitTexture draws black on device (173712).
-                var fallback = Shader.Find("Unlit/Color") ?? Shader.Find("UltrakillIOS/UnlitTexture");
-                if (fallback != null)
-                {
-                    foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(false))
-                    {
-                        if (r == null || !r.enabled || !r.gameObject.activeInHierarchy)
-                        {
-                            continue;
-                        }
-
-                        var mats = r.sharedMaterials;
-                        if (mats == null)
-                        {
-                            continue;
-                        }
-
-                        var changed = false;
-                        for (var i = 0; i < mats.Length; i++)
-                        {
-                            var m = mats[i];
-                            if (m == null)
-                            {
-                                continue;
-                            }
-
-                            var sn = m.shader != null ? m.shader.name : "";
-                            if (!sn.StartsWith("UltrakillIOS/", StringComparison.Ordinal)
-                                && !sn.StartsWith("UI/", StringComparison.Ordinal)
-                                && !sn.StartsWith("TextMeshPro/", StringComparison.Ordinal)
-                                && !sn.StartsWith("Sprites/", StringComparison.Ordinal)
-                                && !sn.StartsWith("Skybox/", StringComparison.Ordinal)
-                                && !sn.StartsWith("Unlit/", StringComparison.Ordinal))
-                            {
-                                m.shader = fallback;
-                                if (m.HasProperty("_Color"))
-                                {
-                                    m.SetColor("_Color", new Color(0.78f, 0.72f, 0.62f, 1f));
-                                }
-
-                                matsFixed++;
-                                changed = true;
-                            }
-
-                            if (m.HasProperty("_Color"))
-                            {
-                                m.SetColor("_Color", Color.white);
-                            }
-
-                            if (m.HasProperty("_Colorize"))
-                            {
-                                m.SetColor("_Colorize", Color.white);
-                            }
-                        }
-
-                        if (changed)
-                        {
-                            r.sharedMaterials = mats;
-                        }
-                    }
-                }
+                matsFixed = RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: false);
             }
 
             if (forceLog)

@@ -374,110 +374,12 @@ namespace UltrakillIOS
             }
         }
 
-        private static readonly string[] AlbedoTexAliases =
-        {
-            "_MainTex", "_BaseMap", "_BaseColorMap", "_Albedo", "_Diffuse",
-            "_ColorMap", "_MainTexture", "_Texture", "_tex",
-        };
-
         private static void RemapBrokenShaders()
         {
-            // iOS shaders.bundle is stubs. UnlitTexture draws black on device (session 173712);
-            // built-in Unlit/Color is the only proven-visible fallback.
-            var fallback = Shader.Find("Unlit/Color")
-                ?? Shader.Find("UltrakillIOS/UnlitTexture")
-                ?? Shader.Find("Sprites/Default")
-                ?? Shader.Find("UI/Default");
-            if (fallback == null)
-            {
-                UltrakillLog.Warn(Area, "No fallback shader for magenta remap");
-                return;
-            }
-
-            var remapped = 0;
-            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
-            {
-                if (r == null)
-                {
-                    continue;
-                }
-
-                var mats = r.sharedMaterials;
-                if (mats == null)
-                {
-                    continue;
-                }
-
-                var changed = false;
-                for (var i = 0; i < mats.Length; i++)
-                {
-                    var m = mats[i];
-                    if (m == null)
-                    {
-                        continue;
-                    }
-
-                    var sh = m.shader;
-                    var name = sh != null ? sh.name : "";
-                    // Keep overlay + UI + built-in Unlit/Color (Playable forces this for visible geo).
-                    // Remapping Unlit/Color → UnlitTexture was undoing the only shader that drew
-                    // on device (session 173712 black walls / 165503 flash-then-black).
-                    var keep = name.StartsWith("UltrakillIOS/", StringComparison.Ordinal)
-                        || name.StartsWith("UI/", StringComparison.Ordinal)
-                        || name.StartsWith("TextMeshPro/", StringComparison.Ordinal)
-                        || name.StartsWith("Sprites/", StringComparison.Ordinal)
-                        || name.StartsWith("Unlit/", StringComparison.Ordinal)
-                        || name.StartsWith("Skybox/", StringComparison.Ordinal);
-                    if (sh != null && keep)
-                    {
-                        continue;
-                    }
-
-                    Texture albedo = null;
-                    foreach (var prop in AlbedoTexAliases)
-                    {
-                        if (!m.HasProperty(prop))
-                        {
-                            continue;
-                        }
-
-                        var t = m.GetTexture(prop);
-                        if (t != null)
-                        {
-                            albedo = t;
-                            break;
-                        }
-                    }
-
-                    m.shader = fallback;
-                    if (m.HasProperty("_MainTex") && albedo != null)
-                    {
-                        m.SetTexture("_MainTex", albedo);
-                    }
-
-                    if (m.HasProperty("_Color"))
-                    {
-                        m.SetColor("_Color", Color.white);
-                    }
-
-                    if (m.HasProperty("_Colorize"))
-                    {
-                        m.SetColor("_Colorize", Color.white);
-                    }
-
-                    remapped++;
-                    changed = true;
-                }
-
-                if (changed)
-                {
-                    r.sharedMaterials = mats;
-                }
-            }
-
+            var remapped = RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: true);
             if (remapped > 0)
             {
-                UltrakillLog.Info(Area, "Remapped " + remapped + " world shaders -> " + fallback.name);
+                UltrakillLog.Info(Area, "Remapped " + remapped + " broken (unsupported) materials -> textured fallback");
             }
         }
 
