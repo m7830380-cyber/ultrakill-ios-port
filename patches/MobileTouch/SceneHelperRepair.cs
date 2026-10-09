@@ -367,14 +367,19 @@ namespace UltrakillIOS
             }
         }
 
+        private static readonly string[] AlbedoTexAliases =
+        {
+            "_MainTex", "_BaseMap", "_BaseColorMap", "_Albedo", "_Diffuse",
+            "_ColorMap", "_MainTexture", "_Texture", "_tex",
+        };
+
         private static void RemapBrokenShaders()
         {
-            // Prefer a lit-looking unlit that still shows geometry when MainTex is missing.
+            // iOS shaders.bundle is stubs — anything not our fallback draws black in shafts.
             var fallback = Shader.Find("UltrakillIOS/UnlitTexture")
                 ?? Shader.Find("Unlit/Color")
                 ?? Shader.Find("Sprites/Default")
-                ?? Shader.Find("UI/Default")
-                ?? Shader.Find("Standard");
+                ?? Shader.Find("UI/Default");
             if (fallback == null)
             {
                 UltrakillLog.Warn(Area, "No fallback shader for magenta remap");
@@ -406,35 +411,58 @@ namespace UltrakillIOS
 
                     var sh = m.shader;
                     var name = sh != null ? sh.name : "";
-                    var broken = sh == null || !sh.isSupported
-                        || name.Contains("InternalErrorShader")
-                        || name.Contains("Hidden/InternalError")
-                        || name.StartsWith("ULTRAKILL/", StringComparison.Ordinal)
-                        || name.StartsWith("uk_", StringComparison.OrdinalIgnoreCase)
-                        || name.Contains("psx")
-                        || name.Contains("PSX")
-                        || name.Contains("Custom/");
-                    // Keep our fallback + Unity built-ins; replace retail custom shaders.
+                    // Keep only our fallback + UI/text. Force everything else through UnlitTexture.
                     var keep = name.StartsWith("UltrakillIOS/", StringComparison.Ordinal)
-                        || name.StartsWith("Unlit/", StringComparison.Ordinal)
                         || name.StartsWith("UI/", StringComparison.Ordinal)
-                        || name.StartsWith("Sprites/", StringComparison.Ordinal)
                         || name.StartsWith("TextMeshPro/", StringComparison.Ordinal)
-                        || name == "Standard" || name == "Legacy Shaders/Diffuse";
-                    if (broken || (sh != null && !keep))
+                        || name.StartsWith("Sprites/", StringComparison.Ordinal);
+                    if (sh != null && keep)
                     {
-                        m.shader = fallback;
-                        if (m.HasProperty("_Color"))
-                        {
-                            m.SetColor("_Color", Color.white);
-                        }
-                        if (m.HasProperty("_Colorize"))
-                        {
-                            m.SetColor("_Colorize", Color.white);
-                        }
-                        remapped++;
-                        changed = true;
+                        continue;
                     }
+
+                    Texture albedo = null;
+                    foreach (var prop in AlbedoTexAliases)
+                    {
+                        if (!m.HasProperty(prop))
+                        {
+                            continue;
+                        }
+
+                        var t = m.GetTexture(prop);
+                        if (t != null)
+                        {
+                            // Prefer real albedo over bump if both exist.
+                            if (prop != "_BumpMap" || albedo == null)
+                            {
+                                albedo = t;
+                            }
+
+                            if (prop != "_BumpMap")
+                            {
+                                break;
+                            }
+                        }
+                    }
+
+                    m.shader = fallback;
+                    if (m.HasProperty("_MainTex") && albedo != null)
+                    {
+                        m.SetTexture("_MainTex", albedo);
+                    }
+
+                    if (m.HasProperty("_Color"))
+                    {
+                        m.SetColor("_Color", Color.white);
+                    }
+
+                    if (m.HasProperty("_Colorize"))
+                    {
+                        m.SetColor("_Colorize", Color.white);
+                    }
+
+                    remapped++;
+                    changed = true;
                 }
 
                 if (changed)
@@ -443,23 +471,9 @@ namespace UltrakillIOS
                 }
             }
 
-            // Also fix TMP / UI graphic materials
-            foreach (var g in UnityEngine.Object.FindObjectsOfType<UnityEngine.UI.Graphic>(true))
-            {
-                if (g != null && g.material != null)
-                {
-                    var sh = g.material.shader;
-                    if (sh == null || sh.name.Contains("InternalErrorShader"))
-                    {
-                        g.material.shader = fallback;
-                        remapped++;
-                    }
-                }
-            }
-
             if (remapped > 0)
             {
-                UltrakillLog.Info(Area, "Remapped " + remapped + " magenta/missing shaders -> " + fallback.name);
+                UltrakillLog.Info(Area, "Remapped " + remapped + " world shaders -> " + fallback.name);
             }
         }
 

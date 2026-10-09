@@ -239,9 +239,28 @@ namespace UltrakillIOS
                 }
             }
 
+            RenderSettings.fog = false;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.55f, 0.55f, 0.6f, 1f);
-            RenderSettings.ambientIntensity = 1f;
+            RenderSettings.ambientLight = new Color(0.85f, 0.85f, 0.9f, 1f);
+            RenderSettings.ambientIntensity = 1.4f;
+
+            // Flashlight on Main Camera so any leftover lit materials aren't black in shafts.
+            if (main != null && main.GetComponent<Light>() == null)
+            {
+                var flash = main.gameObject.AddComponent<Light>();
+                flash.type = LightType.Point;
+                flash.range = 55f;
+                flash.intensity = 3.2f;
+                flash.color = new Color(1f, 0.95f, 0.9f, 1f);
+                flash.shadows = LightShadows.None;
+                UltrakillLog.Info(Area, "Attached camera flashlight");
+            }
+
+            if (main != null)
+            {
+                main.clearFlags = CameraClearFlags.SolidColor;
+                main.backgroundColor = new Color(0.55f, 0.55f, 0.6f, 1f);
+            }
 
             // Brighten remapped materials that ended up near-black.
             var matsFixed = 0;

@@ -48,20 +48,22 @@ Shader "UltrakillIOS/UnlitTexture"
 
 			fixed4 frag (v2f i) : SV_Target
 			{
-				// Do NOT multiply mesh vertex colors — retail meshes often store
-				// baked lighting as black verts, which made the whole Tutorial black.
+				// No vertex colors (retail meshes bake lighting as black verts).
+				// No real lights on remapped mats — lift dark tunnel textures so
+				// shafts aren't pure black while outdoors stay readable.
 				fixed4 tex = tex2D(_MainTex, i.uv);
 				fixed4 tint = _Color * _Colorize;
-				// Guard near-black tints / missing textures.
 				if (tint.r + tint.g + tint.b < 0.15)
 				{
 					tint = fixed4(1, 1, 1, 1);
 				}
-				if (tex.r + tex.g + tex.b < 0.02 && tex.a > 0.5)
-				{
-					tex = fixed4(0.75, 0.75, 0.8, 1);
-				}
-				return tex * tint;
+
+				fixed3 rgb = tex.rgb * tint.rgb;
+				fixed lum = max(rgb.r, max(rgb.g, rgb.b));
+				// Strong lift for dark texels (Tutorial shaft walls).
+				fixed lift = saturate(1.0 - lum * 1.8);
+				rgb = saturate(rgb * (1.0 + 2.5 * lift) + 0.18 * lift);
+				return fixed4(rgb, 1);
 			}
 			ENDCG
 		}
