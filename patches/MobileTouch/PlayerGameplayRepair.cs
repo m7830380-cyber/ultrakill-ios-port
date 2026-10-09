@@ -26,12 +26,6 @@ namespace UltrakillIOS
         private static bool _hudDone;
         private static string _lastScene;
 
-        /// <summary>Written by MobileTouchHud each frame.</summary>
-        public static Vector2 TouchMove;
-
-        /// <summary>Written by MobileTouchHud each frame (pixels).</summary>
-        public static Vector2 TouchLook;
-
         private Rigidbody _rb;
         private Transform _camTr;
         private float _yaw;
@@ -331,8 +325,8 @@ namespace UltrakillIOS
                 return;
             }
 
-            var look = TouchLook;
-            TouchLook = Vector2.zero;
+            var look = TouchGameplayBridge.Look;
+            TouchGameplayBridge.Look = Vector2.zero;
             if (look.sqrMagnitude < 0.0001f)
             {
                 try
@@ -359,7 +353,7 @@ namespace UltrakillIOS
             _rb.transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
             _camTr.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
 
-            var move = TouchMove;
+            var move = TouchGameplayBridge.Move;
             if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
             {
                 move.y += 1f;
