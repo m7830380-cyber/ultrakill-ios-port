@@ -39,6 +39,11 @@ var module = asm.MainModule;
 PatchPrefsPath(module);
 PatchSceneHelperOnSceneLoaded(module);
 PatchSceneHelperIsSceneRankless(module);
+// BloodsplatterManager.Start throws on null bloodCompositeShader, leaving NativeArrays
+// unallocated; BloodstainParent.Start then SIGSEGVs in CreateParent (white screen crash).
+StubMethodEmpty(module, "BloodstainParent", "Start");
+StubMethodEmpty(module, "BloodsplatterManager", "Start");
+StubMethodReturnInt(module, "BloodsplatterManager", "CreateParent", 0);
 
 var tempPath = dllPath + ".patched";
 asm.Write(tempPath);
@@ -108,6 +113,18 @@ static void PatchSceneHelperOnSceneLoaded(ModuleDefinition module)
     var il = body.GetILProcessor();
     var insts = body.Instructions.ToList();
 
+    // Idempotent: already patched if method starts with ldarg.0; ldfld eventSystem; brfalse
+    if (insts.Count >= 3
+        && insts[0].OpCode == OpCodes.Ldarg_0
+        && insts[1].OpCode == OpCodes.Ldfld
+        && insts[1].Operand is FieldReference alreadyFr
+        && alreadyFr.Name == "eventSystem"
+        && insts[2].OpCode == OpCodes.Brfalse)
+    {
+        Console.WriteLine("SceneHelper.OnSceneLoaded already patched; skip");
+        return;
+    }
+
     // Guard Instantiate(this.eventSystem): insert null check that branches past the call.
     for (var i = 0; i < insts.Count - 2; i++)
     {
@@ -167,4 +184,55 @@ static void PatchSceneHelperIsSceneRankless(ModuleDefinition module)
     il.Append(il.Create(OpCodes.Ldc_I4_0));
     il.Append(il.Create(OpCodes.Ret));
     Console.WriteLine("Patched SceneHelper.IsSceneRankless -> always false (null-safe)");
+}
+
+static void StubMethodEmpty(ModuleDefinition module, string typeName, string methodName)
+{
+    var type = module.GetType(typeName);
+    var method = type?.Methods.FirstOrDefault(m => m.Name == methodName && !m.HasParameters && m.HasBody);
+    if (method == null)
+    {
+        Console.WriteLine($"WARN: {typeName}.{methodName} not found for stub");
+        return;
+    }
+
+    // Idempotent: already empty stub
+    if (method.Body.Instructions.Count == 1 && method.Body.Instructions[0].OpCode == OpCodes.Ret)
+    {
+        Console.WriteLine($"{typeName}.{methodName} already stubbed; skip");
+        return;
+    }
+
+    method.Body.Instructions.Clear();
+    method.Body.Variables.Clear();
+    method.Body.ExceptionHandlers.Clear();
+    method.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ret));
+    Console.WriteLine($"Stubbed {typeName}.{methodName} -> empty (iOS crash guard)");
+}
+
+static void StubMethodReturnInt(ModuleDefinition module, string typeName, string methodName, int value)
+{
+    var type = module.GetType(typeName);
+    var method = type?.Methods.FirstOrDefault(m => m.Name == methodName && m.HasBody && m.ReturnType.FullName == "System.Int32");
+    if (method == null)
+    {
+        Console.WriteLine($"WARN: {typeName}.{methodName} (int) not found for stub");
+        return;
+    }
+
+    var insts = method.Body.Instructions;
+    if (insts.Count == 2 && insts[1].OpCode == OpCodes.Ret
+        && (insts[0].OpCode == OpCodes.Ldc_I4_0 || insts[0].OpCode == OpCodes.Ldc_I4))
+    {
+        Console.WriteLine($"{typeName}.{methodName} already stubbed; skip");
+        return;
+    }
+
+    method.Body.Instructions.Clear();
+    method.Body.Variables.Clear();
+    method.Body.ExceptionHandlers.Clear();
+    var il = method.Body.GetILProcessor();
+    il.Append(value == 0 ? il.Create(OpCodes.Ldc_I4_0) : il.Create(OpCodes.Ldc_I4, value));
+    il.Append(il.Create(OpCodes.Ret));
+    Console.WriteLine($"Stubbed {typeName}.{methodName} -> return {value} (iOS crash guard)");
 }

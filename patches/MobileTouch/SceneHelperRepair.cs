@@ -28,6 +28,8 @@ namespace UltrakillIOS
         private static readonly string[] AlwaysDisableWhenBroken =
         {
             "BloodsplatterManager",
+            "BloodstainParent",
+            "Bloodstain",
             "StainVoxelManager",
             "FistControl",
             "HookArm",
@@ -52,6 +54,8 @@ namespace UltrakillIOS
             "MusicManager",
             "AudioMixerController",
             "OptionsMenuToManager",
+            "LucasMeshCombine.MeshCombineManager",
+            "PooledWaterStore",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -79,6 +83,10 @@ namespace UltrakillIOS
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            // Must mute BEFORE Unity DelayedStartCall — a yield lets BloodstainParent.Start
+            // SIGSEGV into BloodsplatterManager.CreateParent (null NativeArray after failed Start).
+            MuteBrokenBehaviours();
+            TryRepair();
             StartCoroutine(RepairAfterLoad());
         }
 
@@ -98,11 +106,12 @@ namespace UltrakillIOS
 
         private IEnumerator RepairAfterLoad()
         {
+            MuteBrokenBehaviours();
+            RemapBrokenShaders();
             yield return null;
             TryRepair();
             MuteBrokenBehaviours();
             RemapBrokenShaders();
-            TmpBootstrapForceApply();
         }
 
         private static void TmpBootstrapForceApply()
