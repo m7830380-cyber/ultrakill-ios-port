@@ -157,6 +157,7 @@ namespace UltrakillIOS
             ForceBrightSky();
             StripBlackUiOverlays();
             FixPurpleUi();
+            RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: true);
             FixCameras(forceLog: true);
             if (Time.timeScale <= 0f)
             {

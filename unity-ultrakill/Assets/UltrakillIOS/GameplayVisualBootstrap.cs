@@ -24,7 +24,8 @@ namespace UltrakillIOS
         private static readonly string[] AlwaysMute =
         {
             "AnimatedTexture",
-            "GunControl",
+            // GunControl stays enabled: PlayerActivator.YesWeapon is DLL-patched safe;
+            // muting the Behaviour was unrelated to the IndexOutOfRange but keep calls working.
             "MenuEsc",
             "StaticSceneOptimizer",
             "Flicker",
@@ -49,7 +50,6 @@ namespace UltrakillIOS
             "StyleHUD",
         };
 
-        // Soft sky — cyan was only for proving clear worked.
         private static readonly Color DiagnosticClear = new Color(0.55f, 0.62f, 0.72f, 1f);
 
         private static Camera _main;
@@ -101,7 +101,10 @@ namespace UltrakillIOS
             _hookedPreCull = true;
         }
 
-        /// <summary>Do NOT fight clear colour every frame — that was the colour slideshow.</summary>
+        /// <summary>
+        /// Disable junk cams. Lock Main away from Skybox clear — null/stub skybox + Skybox
+        /// clearFlags = pure black (session 165503). Do NOT cycle background colour (slideshow).
+        /// </summary>
         private static void OnAnyCameraPreCull(Camera cam)
         {
             if (cam == null)
@@ -116,6 +119,33 @@ namespace UltrakillIOS
                 || n.IndexOf("Shop", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 cam.enabled = false;
+                return;
+            }
+
+            if (n.IndexOf("HUD", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return;
+            }
+
+            if (_main != null && cam != _main)
+            {
+                return;
+            }
+
+            if (!cam.enabled)
+            {
+                return;
+            }
+
+            if (cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Nothing)
+            {
+                cam.clearFlags = CameraClearFlags.SolidColor;
+            }
+
+            // Match Playable diagnostic cyan — if user sees this, clear works and geo is missing.
+            if (cam.clearFlags == CameraClearFlags.SolidColor)
+            {
+                cam.backgroundColor = DiagnosticClear;
             }
         }
 
@@ -124,6 +154,10 @@ namespace UltrakillIOS
             _loggedCamNames = false;
             MuteSpam();
             HideSpuriousScoreHud();
+            ForceBrightSky();
+            StripBlackUiOverlays();
+            FixPurpleUi();
+            RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: true);
             FixCameras(forceLog: true);
             if (Time.timeScale <= 0f)
             {
@@ -598,64 +632,10 @@ namespace UltrakillIOS
                 UltrakillLog.Warn(Area, "CameraController wire failed: " + ex.Message);
             }
 
-            // Remap mats only periodically — NEVER re-enable disabled renderers (that covered the view).
             var matsFixed = 0;
             if (forceLog)
             {
-                var fallback = Shader.Find("UltrakillIOS/UnlitTexture") ?? Shader.Find("Unlit/Color");
-                if (fallback != null)
-                {
-                    foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(false))
-                    {
-                        if (r == null || !r.enabled || !r.gameObject.activeInHierarchy)
-                        {
-                            continue;
-                        }
-
-                        var mats = r.sharedMaterials;
-                        if (mats == null)
-                        {
-                            continue;
-                        }
-
-                        var changed = false;
-                        for (var i = 0; i < mats.Length; i++)
-                        {
-                            var m = mats[i];
-                            if (m == null)
-                            {
-                                continue;
-                            }
-
-                            var sn = m.shader != null ? m.shader.name : "";
-                            if (!sn.StartsWith("UltrakillIOS/", StringComparison.Ordinal)
-                                && !sn.StartsWith("UI/", StringComparison.Ordinal)
-                                && !sn.StartsWith("TextMeshPro/", StringComparison.Ordinal)
-                                && !sn.StartsWith("Sprites/", StringComparison.Ordinal)
-                                && !sn.StartsWith("Skybox/", StringComparison.Ordinal))
-                            {
-                                m.shader = fallback;
-                                matsFixed++;
-                                changed = true;
-                            }
-
-                            if (m.HasProperty("_Color"))
-                            {
-                                m.SetColor("_Color", Color.white);
-                            }
-
-                            if (m.HasProperty("_Colorize"))
-                            {
-                                m.SetColor("_Colorize", Color.white);
-                            }
-                        }
-
-                        if (changed)
-                        {
-                            r.sharedMaterials = mats;
-                        }
-                    }
-                }
+                matsFixed = RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: false);
             }
 
             if (forceLog)
