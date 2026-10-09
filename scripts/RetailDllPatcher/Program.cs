@@ -3,7 +3,7 @@ using Mono.Cecil.Cil;
 
 if (args.Length < 1)
 {
-    Console.Error.WriteLine("Usage: RetailDllPatcher <Assembly-CSharp.dll>");
+    Console.Error.WriteLine("Usage: RetailDllPatcher <Assembly-CSharp.dll> [extra-search-dirs...]");
     return 1;
 }
 
@@ -35,60 +35,136 @@ var readerParams = new ReaderParameters
 
 using var asm = AssemblyDefinition.ReadAssembly(dllPath, readerParams);
 var module = asm.MainModule;
-var prefsType = module.GetType("PrefsManager");
-if (prefsType == null)
-{
-    Console.Error.WriteLine("PrefsManager type not found.");
-    return 1;
-}
 
-var getter = prefsType.Properties.FirstOrDefault(p => p.Name == "PrefsPath")?.GetMethod;
-if (getter == null || !getter.IsStatic)
-{
-    Console.Error.WriteLine("PrefsManager.PrefsPath getter not found.");
-    return 1;
-}
-
-var coreRef = module.AssemblyReferences.FirstOrDefault(r => r.Name == "UnityEngine.CoreModule");
-if (coreRef == null)
-{
-    Console.Error.WriteLine("UnityEngine.CoreModule reference missing from Assembly-CSharp.");
-    return 1;
-}
-
-var appType = new TypeReference("UnityEngine", "Application", module, coreRef);
-var persistentGetter = new MethodReference("get_persistentDataPath", module.TypeSystem.String, appType)
-{
-    HasThis = false,
-};
-var systemRef = module.AssemblyReferences.FirstOrDefault(r =>
-    r.Name is "mscorlib" or "netstandard" or "System.Runtime");
-if (systemRef == null)
-{
-    Console.Error.WriteLine("No mscorlib/netstandard reference in Assembly-CSharp.");
-    return 1;
-}
-
-var pathType = new TypeReference("System.IO", "Path", module, systemRef);
-var pathCombine = new MethodReference("Combine", module.TypeSystem.String, pathType)
-{
-    HasThis = false,
-};
-pathCombine.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
-pathCombine.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
-
-getter.Body.Instructions.Clear();
-getter.Body.Variables.Clear();
-getter.Body.ExceptionHandlers.Clear();
-var il = getter.Body.GetILProcessor();
-il.Append(il.Create(OpCodes.Call, persistentGetter));
-il.Append(il.Create(OpCodes.Ldstr, "Preferences"));
-il.Append(il.Create(OpCodes.Call, pathCombine));
-il.Append(il.Create(OpCodes.Ret));
+PatchPrefsPath(module);
+PatchSceneHelperOnSceneLoaded(module);
+PatchSceneHelperIsSceneRankless(module);
 
 var tempPath = dllPath + ".patched";
 asm.Write(tempPath);
 File.Copy(tempPath, dllPath, true);
 File.Delete(tempPath);
-Console.WriteLine("Patched PrefsManager.PrefsPath -> persistentDataPath/Preferences");
+Console.WriteLine("RetailDllPatcher: done");
 return 0;
+
+static void PatchPrefsPath(ModuleDefinition module)
+{
+    var prefsType = module.GetType("PrefsManager")
+        ?? throw new Exception("PrefsManager type not found.");
+
+    var getter = prefsType.Properties.FirstOrDefault(p => p.Name == "PrefsPath")?.GetMethod;
+    if (getter == null || !getter.IsStatic)
+    {
+        throw new Exception("PrefsManager.PrefsPath getter not found.");
+    }
+
+    var coreRef = module.AssemblyReferences.FirstOrDefault(r => r.Name == "UnityEngine.CoreModule")
+        ?? throw new Exception("UnityEngine.CoreModule reference missing.");
+
+    var appType = new TypeReference("UnityEngine", "Application", module, coreRef);
+    var persistentGetter = new MethodReference("get_persistentDataPath", module.TypeSystem.String, appType)
+    {
+        HasThis = false,
+    };
+
+    var mscorlib = module.TypeSystem.String.Scope;
+    var pathType = new TypeReference("System.IO", "Path", module, mscorlib);
+    var pathCombine = new MethodReference("Combine", module.TypeSystem.String, pathType)
+    {
+        HasThis = false,
+    };
+    pathCombine.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
+    pathCombine.Parameters.Add(new ParameterDefinition(module.TypeSystem.String));
+
+    getter.Body.Instructions.Clear();
+    getter.Body.Variables.Clear();
+    getter.Body.ExceptionHandlers.Clear();
+    var il = getter.Body.GetILProcessor();
+    il.Append(il.Create(OpCodes.Call, persistentGetter));
+    il.Append(il.Create(OpCodes.Ldstr, "Preferences"));
+    il.Append(il.Create(OpCodes.Call, pathCombine));
+    il.Append(il.Create(OpCodes.Ret));
+    Console.WriteLine("Patched PrefsManager.PrefsPath -> persistentDataPath/Preferences");
+}
+
+static void PatchSceneHelperOnSceneLoaded(ModuleDefinition module)
+{
+    var sh = module.GetType("SceneHelper");
+    if (sh == null)
+    {
+        Console.WriteLine("WARN: SceneHelper not found");
+        return;
+    }
+
+    var method = sh.Methods.FirstOrDefault(m => m.Name == "OnSceneLoaded" && m.HasBody);
+    var eventSystemField = sh.Fields.FirstOrDefault(f => f.Name == "eventSystem");
+    if (method == null || eventSystemField == null)
+    {
+        Console.WriteLine("WARN: OnSceneLoaded/eventSystem missing");
+        return;
+    }
+
+    var body = method.Body;
+    var il = body.GetILProcessor();
+    var insts = body.Instructions.ToList();
+
+    // Guard Instantiate(this.eventSystem): insert null check that branches past the call.
+    for (var i = 0; i < insts.Count - 2; i++)
+    {
+        var a = insts[i];
+        var b = insts[i + 1];
+        var c = insts[i + 2];
+        if (a.OpCode != OpCodes.Ldarg_0)
+        {
+            continue;
+        }
+
+        if (b.OpCode != OpCodes.Ldfld || b.Operand is not FieldReference fr || fr.Name != "eventSystem")
+        {
+            continue;
+        }
+
+        if ((c.OpCode != OpCodes.Call && c.OpCode != OpCodes.Callvirt)
+            || c.Operand is not MethodReference mr
+            || mr.Name != "Instantiate")
+        {
+            continue;
+        }
+
+        var after = c.Next ?? throw new Exception("Instantiate has no next instruction");
+
+        // Also skip the Find/Destroy EventSystem block when prefab is null:
+        // jump from method start to after Instantiate when eventSystem == null.
+        var start = body.Instructions[0];
+        var skipAllEs = il.Create(OpCodes.Ldarg_0);
+        var skipLdfld = il.Create(OpCodes.Ldfld, eventSystemField);
+        var skipBr = il.Create(OpCodes.Brfalse, after);
+        il.InsertBefore(start, skipAllEs);
+        il.InsertBefore(start, skipLdfld);
+        il.InsertBefore(start, skipBr);
+
+        Console.WriteLine("Patched SceneHelper.OnSceneLoaded: skip EventSystem Destroy/Instantiate when prefab null");
+        return;
+    }
+
+    Console.WriteLine("WARN: Instantiate(eventSystem) pattern not found");
+}
+
+static void PatchSceneHelperIsSceneRankless(ModuleDefinition module)
+{
+    var sh = module.GetType("SceneHelper");
+    var getter = sh?.Properties.FirstOrDefault(p => p.Name == "IsSceneRankless")?.GetMethod;
+    if (getter == null || !getter.HasBody)
+    {
+        return;
+    }
+
+    // Always return false — avoids NRE when embeddedSceneInfo is null.
+    getter.Body.Instructions.Clear();
+    getter.Body.Variables.Clear();
+    getter.Body.ExceptionHandlers.Clear();
+    var il = getter.Body.GetILProcessor();
+    il.Append(il.Create(OpCodes.Ldc_I4_0));
+    il.Append(il.Create(OpCodes.Ret));
+    Console.WriteLine("Patched SceneHelper.IsSceneRankless -> always false (null-safe)");
+}

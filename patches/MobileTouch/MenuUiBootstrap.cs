@@ -85,16 +85,13 @@ namespace UltrakillIOS
             yield return null;
             yield return null;
 
+            SceneHelperRepair.TryRepair();
             _menuMode = DetectMenuMode();
             UltrakillLog.Info(Area, "Scene='" + SceneManager.GetActiveScene().name
                 + "' SceneHelper.CurrentScene='" + GetSceneHelperCurrent()
                 + "' menuMode=" + _menuMode);
 
             EnsureEventSystem();
-            if (_menuMode)
-            {
-                DisableBrokenGameplayBehaviours();
-            }
         }
 
         private void Update()
@@ -111,6 +108,11 @@ namespace UltrakillIOS
                 {
                     return;
                 }
+            }
+
+            if (Time.frameCount % 60 == 0)
+            {
+                SceneHelperRepair.TryRepair();
             }
 
             EnsureEventSystem();
