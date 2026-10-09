@@ -32,7 +32,6 @@ namespace UltrakillIOS
             "ElectricityLine",
             "CheatsManager",
             "LevelNamePopup",
-            "GroundCheck",
             "ColorBlindActivator",
             "TimeController",
             "AudioMixerController",
@@ -47,6 +46,7 @@ namespace UltrakillIOS
             "LevelStatsEnabler",
             "LevelStats",
             "DifficultyTitle",
+            "StyleHUD",
         };
 
         // Soft sky — cyan was only for proving clear worked.
@@ -197,6 +197,27 @@ namespace UltrakillIOS
 
             HideTypeObjects("LevelStatsEnabler, Assembly-CSharp", disableBehaviour: true, deactivateGo: true);
             HideTypeObjects("LevelStats, Assembly-CSharp", disableBehaviour: true, deactivateGo: true);
+
+            // StyleHUD = killstreak / style meter (DOUBLE KILL etc). Hide meter children.
+            var styleType = Type.GetType("StyleHUD, Assembly-CSharp");
+            if (styleType != null)
+            {
+                foreach (var obj in UnityEngine.Object.FindObjectsOfType(styleType, true))
+                {
+                    if (obj is not MonoBehaviour mb)
+                    {
+                        continue;
+                    }
+
+                    styleType.GetField("forceMeterOn", BindingFlags.Instance | BindingFlags.Public)
+                        ?.SetValue(mb, false);
+                    mb.enabled = false;
+                    for (var i = 0; i < mb.transform.childCount; i++)
+                    {
+                        mb.transform.GetChild(i).gameObject.SetActive(false);
+                    }
+                }
+            }
 
             // FinalRank only valid after StatsManager.SendInfo (level complete).
             if (!infoSent)

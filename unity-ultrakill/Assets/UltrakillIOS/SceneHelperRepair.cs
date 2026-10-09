@@ -71,6 +71,7 @@ namespace UltrakillIOS
             "IntroViolenceScreen",
             "LevelStatsEnabler",
             "LevelStats",
+            "StyleHUD",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]

@@ -53,6 +53,18 @@ StubMethodEmpty(module, "ULTRAKILL.Portal.PortalManagerV2", "LateUpdate");
 // CameraController Awake/Start NREs on null Prefs/mixers → black screen.
 StubMethodEmpty(module, "CameraController", "Awake");
 StubMethodEmpty(module, "CameraController", "Start");
+// StyleHUD.Awake NREs on rankImage → meter child never ComboOver()'d, stays on screen.
+StubMethodEmpty(module, "StyleHUD", "Awake");
+StubMethodEmpty(module, "StyleHUD", "Start"); // ComboOver + gc.allWeapons — Start NREs after Awake stub
+StubMethodEmpty(module, "StyleHUD", "Update");
+// IntroTextController.Start freezes Rigidbody gravity → white void + stuck mid-air.
+StubMethodEmpty(module, "IntroTextController", "Awake");
+StubMethodEmpty(module, "IntroTextController", "Start");
+StubMethodEmpty(module, "IntroTextController", "Update");
+// NewMovement.Awake/Start NRE on null gc / TimeController / hud refs.
+// Runtime PlayerGameplayRepair wires refs + activated/gravity.
+StubMethodEmpty(module, "NewMovement", "Awake");
+StubMethodEmpty(module, "NewMovement", "Start");
 // Null AudioMixer assets → UpdateSFXVolume / FixedUpdate spam every frame.
 StubMethodEmpty(module, "AudioMixerController", "Update");
 StubMethodEmpty(module, "AudioMixerController", "UpdateSFXVolume");
