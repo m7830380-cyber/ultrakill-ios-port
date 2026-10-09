@@ -14,13 +14,13 @@ namespace UltrakillIOS
         public static bool ShadersBundleIsStub { get; private set; }
 
         private static Shader _fallbackShader;
-        private static readonly Dictionary<int, Texture> AlbedoByMaterialId = new Dictionary<int, Texture>(4096);
+        private static readonly Dictionary<int, Texture> AlbedoByMaterialId = new Dictionary<int, Texture>(8192);
 
         private static readonly string[] AlbedoTexAliases =
         {
             "_MainTex", "_BaseMap", "_BaseColorMap", "_Albedo", "_Diffuse",
             "_ColorMap", "_MainTexture", "_Texture", "_tex", "_EmissiveTex",
-            "EmissiveTex", "_DetailAlbedoMap", "_ParallaxMap",
+            "EmissiveTex", "_DetailAlbedoMap", "_ParallaxMap", "_MetallicGlossMap",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -63,10 +63,6 @@ namespace UltrakillIOS
             {
                 UltrakillLog.Warn("Shader", "Fallback shader missing — world will stay magenta");
             }
-            else if (!_fallbackShader.isSupported)
-            {
-                UltrakillLog.Warn("Shader", "Fallback shader not supported: " + _fallbackShader.name);
-            }
             else
             {
                 UltrakillLog.Info("Shader", "Fallback ready: " + _fallbackShader.name);
@@ -84,10 +80,21 @@ namespace UltrakillIOS
                 || name.StartsWith("GUI/", StringComparison.Ordinal);
         }
 
-        private static bool IsHiddenUtility(string name)
+        /// <summary>Skip this material slot only (do not remap). Never treat InternalError as skippable.</summary>
+        private static bool SkipMaterialSlot(string name)
         {
-            return name.StartsWith("Hidden/", StringComparison.Ordinal)
-                || name.StartsWith("Legacy Shaders/", StringComparison.Ordinal);
+            if (string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+
+            if (name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return false;
+            }
+
+            return name.IndexOf("HideVertices", StringComparison.OrdinalIgnoreCase) >= 0
+                || name.IndexOf("Wireframe", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         internal static bool ShaderNeedsFallback(Shader sh)
@@ -98,7 +105,12 @@ namespace UltrakillIOS
             }
 
             var name = sh.name ?? "";
-            if (name.Length == 0 || name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (name.Length == 0)
+            {
+                return true;
+            }
+
+            if (name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return true;
             }
@@ -108,7 +120,7 @@ namespace UltrakillIOS
                 return false;
             }
 
-            if (IsUiOrSky(name) || IsHiddenUtility(name))
+            if (IsUiOrSky(name) || SkipMaterialSlot(name))
             {
                 return false;
             }
@@ -133,7 +145,7 @@ namespace UltrakillIOS
                 return false;
             }
 
-            return m.GetTexture("_MainTex") == null && AlbedoByMaterialId.ContainsKey(m.GetInstanceID());
+            return m.GetTexture("_MainTex") == null;
         }
 
         private static Texture SafeGetTexture(Material m, string prop)
@@ -203,23 +215,27 @@ namespace UltrakillIOS
                 return cached;
             }
 
-            var fromInstance = ExtractAlbedo(m);
-            if (fromInstance != null)
+            if (sharedSource != null)
             {
-                return fromInstance;
+                var fromShared = ExtractAlbedo(sharedSource);
+                if (fromShared != null)
+                {
+                    return fromShared;
+                }
             }
 
-            if (sharedSource != null && sharedSource != m)
-            {
-                return ExtractAlbedo(sharedSource);
-            }
-
-            return null;
+            return ExtractAlbedo(m);
         }
 
         private static bool ApplyFallbackMaterial(Material m, Material sharedSource, Shader fallback)
         {
             if (m == null)
+            {
+                return false;
+            }
+
+            var sn = m.shader != null ? m.shader.name : "";
+            if (SkipMaterialSlot(sn))
             {
                 return false;
             }
@@ -272,7 +288,7 @@ namespace UltrakillIOS
             }
 
             var remapped = 0;
-            var hiddenDisabled = 0;
+            var internalErrorLeft = 0;
 
             foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(includeInactive))
             {
@@ -303,14 +319,8 @@ namespace UltrakillIOS
                     }
 
                     var sn = m.shader != null ? m.shader.name : "";
-                    if (IsHiddenUtility(sn))
+                    if (SkipMaterialSlot(sn))
                     {
-                        if (r.enabled)
-                        {
-                            r.enabled = false;
-                            hiddenDisabled++;
-                        }
-
                         continue;
                     }
 
@@ -319,6 +329,10 @@ namespace UltrakillIOS
                     {
                         remapped++;
                         changed = true;
+                    }
+                    else if (sn.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        internalErrorLeft++;
                     }
                 }
 
@@ -334,9 +348,9 @@ namespace UltrakillIOS
                 UltrakillLog.Info("Shader", "Remapped " + remapped + " world material slots -> " + fallback.name + " (" + mode + ")");
             }
 
-            if (hiddenDisabled > 0)
+            if (internalErrorLeft > 0)
             {
-                UltrakillLog.Info("Shader", "Disabled " + hiddenDisabled + " Hidden/utility renderers");
+                UltrakillLog.Warn("Shader", internalErrorLeft + " material slots still on InternalErrorShader after pass");
             }
 
             return remapped;
@@ -344,6 +358,8 @@ namespace UltrakillIOS
 
         private sealed class RetailShaderRepairHost : MonoBehaviour
         {
+            private int _pass;
+
             private void OnEnable()
             {
                 SceneManager.sceneLoaded += OnSceneLoaded;
@@ -356,15 +372,48 @@ namespace UltrakillIOS
 
             private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
             {
+                _pass = 0;
                 StartCoroutine(RemapBurst());
             }
 
             private IEnumerator RemapBurst()
             {
-                for (var i = 0; i < 240; i++)
+                for (var i = 0; i < 300; i++)
                 {
                     RemapBrokenMaterialsOnRenderers(includeInactive: true);
-                    yield return i < 30 ? null : new WaitForSecondsRealtime(0.25f);
+                    _pass++;
+                    if (_pass == 1 || _pass == 20 || _pass == 120)
+                    {
+                        LogInternalErrorRenderers();
+                    }
+
+                    yield return i < 40 ? null : new WaitForSecondsRealtime(0.2f);
+                }
+            }
+
+            private static void LogInternalErrorRenderers()
+            {
+                var n = 0;
+                foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
+                {
+                    if (r == null || r.GetComponentInParent<Canvas>() != null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var m in r.sharedMaterials)
+                    {
+                        if (m?.shader != null && m.shader.name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            n++;
+                            break;
+                        }
+                    }
+                }
+
+                if (n > 0)
+                {
+                    UltrakillLog.Warn("Shader", "Renderers still using InternalErrorShader: " + n);
                 }
             }
         }
