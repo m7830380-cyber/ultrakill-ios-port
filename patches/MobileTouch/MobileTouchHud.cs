@@ -5,7 +5,7 @@ namespace UltrakillIOS
     internal sealed class MobileTouchHud : MonoBehaviour
     {
         private const float MoveStickRadius = 120f;
-        private const float LookSensitivity = 2.2f;
+        private const float LookSensitivity = 3.6f;
 
         private Vector2 _moveStickCenter;
         private Vector2 _moveVector;
@@ -137,19 +137,25 @@ namespace UltrakillIOS
                 return;
             }
 
-            if (touch.phase == TouchPhase.Moved)
+            if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
             {
                 var delta = touch.position - _lastLookPos;
                 _lastLookPos = touch.position;
+                if (delta.sqrMagnitude < 0.01f)
+                {
+                    return;
+                }
+
                 var scaled = delta * LookSensitivity;
                 LegacyInputSynthesizer.ApplyLookDelta(scaled);
                 TouchGameplayBridge.Look += scaled;
             }
         }
 
-        private static bool IsMoveZone(Vector2 pos) => pos.x < Screen.width * 0.45f && pos.y < Screen.height * 0.55f;
+        private static bool IsMoveZone(Vector2 pos) => pos.x < Screen.width * 0.42f && pos.y < Screen.height * 0.58f;
 
-        private static bool IsLookZone(Vector2 pos) => pos.x > Screen.width * 0.55f && pos.y < Screen.height * 0.7f;
+        // Entire right half — action buttons still work via OnGUI; look drag uses the open area.
+        private static bool IsLookZone(Vector2 pos) => pos.x >= Screen.width * 0.42f;
 
         private void OnGUI()
         {

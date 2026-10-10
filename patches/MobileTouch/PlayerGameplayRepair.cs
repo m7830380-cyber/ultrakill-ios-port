@@ -15,7 +15,7 @@ namespace UltrakillIOS
     {
         private const string Area = "Playable";
         private const float MoveSpeed = 12f;
-        private const float LookSens = 0.12f;
+        private const float LookSens = 0.22f;
 
         private static Material _skyMat;
         private static bool _lightingDone;
@@ -190,8 +190,14 @@ namespace UltrakillIOS
                 EnsureRetailLighting();
             }
 
-            DriveMoveLook();
+            DriveMove();
             MaybeDiag();
+        }
+
+        private void LateUpdate()
+        {
+            // Look after touch HUD Update so right-side drag isn't a frame late / overwritten.
+            DriveLook();
         }
 
         private void LevelLookHorizon()
@@ -201,8 +207,13 @@ namespace UltrakillIOS
                 return;
             }
 
-            _pitch = 0f;
-            _camTr.rotation = Quaternion.Euler(0f, _yaw, 0f);
+            // Only level pitch once — do not fight touch look every deferral.
+            if (Mathf.Abs(_pitch) > 35f)
+            {
+                _pitch = 0f;
+            }
+
+            ApplyCameraRotation();
         }
 
         private void MaybeDiag()
@@ -502,7 +513,35 @@ namespace UltrakillIOS
             _fallWhoosh.volume = 0f;
         }
 
-        private void DriveMoveLook()
+        private void ApplyCameraRotation()
+        {
+            if (_rb == null || _camTr == null)
+            {
+                return;
+            }
+
+            _rb.transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
+            // localRotation so parent player yaw doesn't double-apply world euler
+            _camTr.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
+
+            try
+            {
+                var ccType = Type.GetType("CameraController, Assembly-CSharp");
+                var cc = ccType != null ? _camTr.GetComponent(ccType) : null;
+                if (cc != null)
+                {
+                    var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+                    ccType.GetField("rotationY", flags)?.SetValue(cc, _yaw);
+                    ccType.GetField("rotationX", flags)?.SetValue(cc, _pitch);
+                }
+            }
+            catch
+            {
+                /* ignore */
+            }
+        }
+
+        private void DriveLook()
         {
             if (!_bound || _rb == null || _camTr == null)
             {
@@ -534,8 +573,15 @@ namespace UltrakillIOS
                 _pitch = Mathf.Clamp(_pitch, -89f, 89f);
             }
 
-            _rb.transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
-            _camTr.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
+            ApplyCameraRotation();
+        }
+
+        private void DriveMove()
+        {
+            if (!_bound || _rb == null || _camTr == null)
+            {
+                return;
+            }
 
             var move = TouchGameplayBridge.Move;
             if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))

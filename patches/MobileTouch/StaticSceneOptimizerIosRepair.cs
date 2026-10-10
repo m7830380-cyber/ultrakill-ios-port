@@ -56,9 +56,10 @@ namespace UltrakillIOS
 
             foreach (var obj in UnityEngine.Object.FindObjectsOfType(optType, true))
             {
+                // Keep disabled until KickOne aligns counts — Start() SetupMeshes OOBs otherwise.
                 if (obj is Behaviour b)
                 {
-                    b.enabled = true;
+                    b.enabled = false;
                 }
 
                 KickOne(obj, optType);
@@ -561,9 +562,11 @@ namespace UltrakillIOS
         }
 
         /// <summary>
-        /// Scene staticMRends refs are often empty after rip; spawn one MeshRenderer per firstSubMesh entry.
+        /// SetupMeshes indexes firstSubMesh/mrMeshIndices by staticMRends[i].
+        /// Scene enviro MR count (345) != bake slots (218) → ArgumentOutOfRange + purple geo.
+        /// Always spawn exactly firstSubMesh.Count identity renderers for the Combined Mesh.
         /// </summary>
-        private static void TrySpawnBakedRenderersIfEmpty(
+        private static bool AlignStaticMRendsToBake(
             object optimizer,
             Type optType,
             object baked,
@@ -572,27 +575,58 @@ namespace UltrakillIOS
         {
             var listField = optType.GetField("staticMRends", flags);
             var list = listField?.GetValue(optimizer) as IList;
-            if (list == null || list.Count > 0)
+            if (list == null)
             {
-                return;
+                return false;
             }
 
             var firstSubs = dataType.GetField("firstSubMesh", flags)?.GetValue(baked) as IList;
             var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(baked) as IList;
-            if (firstSubs == null || firstSubs.Count == 0 || meshes == null || meshes.Count == 0)
+            var indices = dataType.GetField("mrMeshIndices", flags)?.GetValue(baked) as IList;
+            if (firstSubs == null || firstSubs.Count == 0 || meshes == null || meshes.Count == 0
+                || indices == null || indices.Count < firstSubs.Count)
             {
-                return;
+                return false;
             }
 
+            var needed = firstSubs.Count;
+            if (list.Count == needed && list.Count > 0)
+            {
+                var allOurs = true;
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var mr = list[i] as MeshRenderer;
+                    if (mr == null || mr.gameObject.name.IndexOf("BakedSub_", StringComparison.Ordinal) < 0)
+                    {
+                        allOurs = false;
+                        break;
+                    }
+                }
+
+                if (allOurs)
+                {
+                    return true;
+                }
+            }
+
+            list.Clear();
             var mesh = meshes[0] as Mesh;
             if (mesh == null)
             {
-                return;
+                return false;
             }
 
-            var root = new GameObject("UltrakillIOS.BakedStaticGeo");
+            var root = GameObject.Find("UltrakillIOS.BakedStaticGeo");
+            if (root != null)
+            {
+                UnityEngine.Object.Destroy(root);
+            }
+
+            root = new GameObject("UltrakillIOS.BakedStaticGeo");
+            root.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            root.transform.localScale = Vector3.one;
             const int enviroLayer = 8;
-            for (var i = 0; i < firstSubs.Count; i++)
+            for (var i = 0; i < needed; i++)
             {
                 var go = new GameObject("BakedSub_" + i);
                 go.transform.SetParent(root.transform, false);
@@ -601,42 +635,29 @@ namespace UltrakillIOS
                 list.Add(go.AddComponent<MeshRenderer>());
             }
 
-            UltrakillLog.Info(Area, "Spawned staticMRends=" + list.Count + " for bake submeshes (scene list was empty)");
+            DisableConflictingSceneStaticGeo(list);
+            UltrakillLog.Info(Area, "Aligned staticMRends=" + list.Count + " to bake firstSubMesh=" + needed);
+            return list.Count == needed;
         }
 
-        private static void TryPopulateStaticMRends(object optimizer, Type optType, BindingFlags flags)
+        /// <summary>Hide ripped enviro MRs so they don't z-fight / show InternalError purple over bake.</summary>
+        private static void DisableConflictingSceneStaticGeo(IList keep)
         {
-            var listField = optType.GetField("staticMRends", flags);
-            if (listField == null)
+            var keepSet = new System.Collections.Generic.HashSet<int>();
+            for (var i = 0; i < keep.Count; i++)
             {
-                return;
-            }
-
-            var list = listField.GetValue(optimizer);
-            if (list is not IList ilist || ilist.Count > 0)
-            {
-                return;
-            }
-
-            var baked = optType.GetField("bakedDataAsset", flags)?.GetValue(optimizer);
-            var dataType = Type.GetType("StaticSceneData, Assembly-CSharp");
-            if (baked == null || dataType == null || !IsBakeDataUsable(baked, dataType, flags))
-            {
-                return;
-            }
-
-            var indices = dataType.GetField("mrMeshIndices", flags)?.GetValue(baked) as IList;
-            if (indices == null || indices.Count == 0)
-            {
-                return;
+                if (keep[i] is MeshRenderer mr && mr != null)
+                {
+                    keepSet.Add(mr.GetInstanceID());
+                }
             }
 
             const int enviroLayer = 8;
             const int outdoorLayer = 24;
-            var added = 0;
+            var disabled = 0;
             foreach (var r in UnityEngine.Object.FindObjectsOfType<MeshRenderer>(true))
             {
-                if (r == null)
+                if (r == null || keepSet.Contains(r.GetInstanceID()))
                 {
                     continue;
                 }
@@ -647,13 +668,36 @@ namespace UltrakillIOS
                     continue;
                 }
 
-                ilist.Add(r);
-                added++;
+                var n = r.gameObject.name;
+                if (n.IndexOf("BakedSub_", StringComparison.Ordinal) >= 0)
+                {
+                    continue;
+                }
+
+                r.enabled = false;
+                disabled++;
             }
 
-            if (added > 0)
+            if (disabled > 0)
             {
-                UltrakillLog.Info(Area, "Populated staticMRends=" + added + " from enviro/outdoor layers");
+                UltrakillLog.Info(Area, "Disabled conflicting scene static MRs=" + disabled);
+            }
+        }
+
+        private static void DisableOptimizersUntilKick()
+        {
+            var optType = Type.GetType("StaticSceneOptimizer, Assembly-CSharp");
+            if (optType == null)
+            {
+                return;
+            }
+
+            foreach (var obj in UnityEngine.Object.FindObjectsOfType(optType, true))
+            {
+                if (obj is Behaviour b && b.enabled)
+                {
+                    b.enabled = false;
+                }
             }
         }
 
@@ -678,16 +722,31 @@ namespace UltrakillIOS
                 var canKickMeshes = baked != null && dataType != null && IsBakeDataUsable(baked, dataType, flags);
                 if (canKickMeshes)
                 {
-                    TryPopulateStaticMRends(optimizer, optType, flags);
-                    TrySpawnBakedRenderersIfEmpty(optimizer, optType, baked, dataType, flags);
+                    if (!AlignStaticMRendsToBake(optimizer, optType, baked, dataType, flags))
+                    {
+                        UltrakillLog.Warn(Area, "Align staticMRends failed — skipping SetupMeshes");
+                        canKickMeshes = false;
+                    }
+
                     var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as IList;
                     var idx = dataType.GetField("firstSubMesh", flags)?.GetValue(baked) as IList;
                     UltrakillLog.Info(Area, "pre-SetupMeshes staticMRends=" + (rends?.Count ?? 0)
                         + " firstSubMesh=" + (idx?.Count ?? 0)
                         + " bakedMeshes=" + ((dataType.GetField("bakedMeshes", flags)?.GetValue(baked) as IList)?.Count ?? 0));
+
+                    if (rends == null || idx == null || rends.Count != idx.Count)
+                    {
+                        UltrakillLog.Warn(Area, "staticMRends/firstSubMesh mismatch — skip SetupMeshes");
+                        canKickMeshes = false;
+                    }
                 }
 
                 EnsureBatchMaterials(optimizer, optType, flags);
+
+                if (optimizer is Behaviour beh)
+                {
+                    beh.enabled = true;
+                }
 
                 optType.GetMethod("FixPosition", flags)?.Invoke(optimizer, null);
                 if (_kickPasses < 2 && canKickMeshes)
@@ -695,6 +754,7 @@ namespace UltrakillIOS
                     optType.GetMethod("SetupMaterial", flags)?.Invoke(optimizer, new object[] { false });
                     optType.GetMethod("SetupMeshes", flags)?.Invoke(optimizer, null);
                     _kickPasses++;
+                    UltrakillLog.Info(Area, "SetupMeshes OK pass=" + _kickPasses);
                 }
 
                 LogState(optimizer, optType, flags);
@@ -712,6 +772,7 @@ namespace UltrakillIOS
 
         private static void EnsureBatchMaterials(object optimizer, Type optType, BindingFlags flags)
         {
+            UkMasterShaderBootstrap.EnsureReady();
             var master = UkMasterShaderBootstrap.Master ?? UkMasterShaderBootstrap.Stationary;
             if (master == null)
             {
@@ -723,13 +784,25 @@ namespace UltrakillIOS
             var outdoors = outF?.GetValue(optimizer) as Material;
             var env = envF?.GetValue(optimizer) as Material;
 
-            if (outdoors == null)
+            static bool Bad(Material m)
+            {
+                if (m == null || m.shader == null)
+                {
+                    return true;
+                }
+
+                var n = m.shader.name ?? "";
+                return n.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0
+                    || !m.shader.isSupported;
+            }
+
+            if (Bad(outdoors))
             {
                 outdoors = new Material(master);
                 outF?.SetValue(optimizer, outdoors);
             }
 
-            if (env == null)
+            if (Bad(env))
             {
                 env = new Material(master);
                 envF?.SetValue(optimizer, env);
@@ -770,6 +843,7 @@ namespace UltrakillIOS
             }
         }
 
+        [DefaultExecutionOrder(-32000)]
         private sealed class Host : MonoBehaviour
         {
             private void OnEnable()
@@ -793,12 +867,21 @@ namespace UltrakillIOS
                 _lastStateLog = null;
                 _sceneRebuildOnly = false;
                 _warnedStaticData = false;
+                DisableOptimizersUntilKick();
                 StartCoroutine(KickAfterStart());
+            }
+
+            private void Start()
+            {
+                // Runs before StaticSceneOptimizer.Start (that type uses int.MaxValue execution order).
+                DisableOptimizersUntilKick();
             }
 
             private System.Collections.IEnumerator KickAfterStart()
             {
+                DisableOptimizersUntilKick();
                 yield return null;
+                DisableOptimizersUntilKick();
                 yield return null;
                 KickAllInLoadedScenes();
                 yield return new WaitForSecondsRealtime(0.3f);

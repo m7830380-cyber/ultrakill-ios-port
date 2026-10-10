@@ -37,6 +37,12 @@ namespace UltrakillIOS
             ShadersBundleWarmup.TryWarmup();
             RetailShaderRegistry.RefreshFromMemory();
 
+            // Prefer IPA Resources stubs — stub shaders.bundle registers names that look fine
+            // but draw magenta/purple (InternalError under the hood / broken Metal).
+            _master = Resources.Load<Shader>("Shaders/UK_MasterStandard")
+                ?? Resources.Load<Shader>("Shaders/UltrakillIOS_UnlitTexture");
+            _stationary = Resources.Load<Shader>("Shaders/UK_MasterStationary");
+
             foreach (var name in MasterShaderFindNames)
             {
                 var sh = RetailShaderRegistry.Resolve(name) ?? Shader.Find(name);
@@ -45,6 +51,7 @@ namespace UltrakillIOS
                     continue;
                 }
 
+                // Skip stub-bundle hits when we already have Resources masters.
                 if (name.IndexOf("Stationary", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     _stationary ??= sh;
@@ -55,10 +62,7 @@ namespace UltrakillIOS
                 }
             }
 
-            _master ??= Resources.Load<Shader>("Shaders/UK_MasterStandard")
-                ?? Resources.Load<Shader>("Shaders/UltrakillIOS_UnlitTexture");
-
-            _stationary ??= Resources.Load<Shader>("Shaders/UK_MasterStationary") ?? _master;
+            _stationary ??= _master;
 
             if (_master != null)
             {
