@@ -36,7 +36,7 @@ namespace UltrakillIOS
                 keys.Add(key);
             }
 
-            var locHandle = Addressables.LoadResourceLocationsAsync(keys, typeof(Shader), Addressables.MergeMode.Union);
+            var locHandle = Addressables.LoadResourceLocationsAsync(keys, Addressables.MergeMode.Union, typeof(Shader));
             yield return locHandle;
             if (locHandle.Status != AsyncOperationStatus.Succeeded || locHandle.Result == null || locHandle.Result.Count == 0)
             {
