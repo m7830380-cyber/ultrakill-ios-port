@@ -81,20 +81,65 @@ namespace UltrakillIOS
                 return null;
             }
 
+            var stem = StripInstance(materialName);
             if (MaterialsByName.TryGetValue(materialName, out var m))
+            {
+                return m;
+            }
+
+            if (MaterialsByName.TryGetValue(stem, out m))
             {
                 return m;
             }
 
             foreach (var kv in MaterialsByName)
             {
-                if (string.Equals(kv.Key, materialName, System.StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(kv.Key, materialName, System.StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(kv.Key, stem, System.StringComparison.OrdinalIgnoreCase))
                 {
                     return kv.Value;
                 }
             }
 
             return null;
+        }
+
+        private static Material TryGetBundleMaterialFuzzy(string materialName)
+        {
+            var stem = StripInstance(materialName);
+            if (string.IsNullOrEmpty(stem) || stem.Length < 4)
+            {
+                return null;
+            }
+
+            Material best = null;
+            var bestScore = 0;
+            foreach (var kv in MaterialsByName)
+            {
+                if (kv.Key.IndexOf(stem, System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || stem.IndexOf(kv.Key, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    var score = MaterialQuality(kv.Value);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        best = kv.Value;
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        private static string StripInstance(string name)
+        {
+            const string suffix = " (Instance)";
+            if (name != null && name.EndsWith(suffix, System.StringComparison.Ordinal))
+            {
+                return name.Substring(0, name.Length - suffix.Length);
+            }
+
+            return name;
         }
 
         internal static int RelinkSceneMaterials(bool includeInactive)
@@ -133,7 +178,7 @@ namespace UltrakillIOS
                         continue;
                     }
 
-                    var src = TryGetBundleMaterial(m.name);
+                    var src = TryGetBundleMaterial(m.name) ?? TryGetBundleMaterialFuzzy(m.name);
                     if (src == null || RetailMaterialVisuals.IsBrokenShader(src.shader) || !MaterialHasAnyTexture(src))
                     {
                         continue;

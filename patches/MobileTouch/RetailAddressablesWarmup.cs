@@ -9,84 +9,18 @@ using UnityEngine.ResourceManagement.ResourceLocations;
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Load shaders through Addressables when possible. No yield inside try/catch (CS1626). Never abort boot.
+    /// Scene dependency warmup only. Shader catalog keys use Windows GUIDs — LoadAssetAsync fails on stub
+    /// iOS shaders.bundle (session 172516: Unable to load Shader from location …).
+    /// Shaders load via ShadersBundleWarmup.LoadShadersBundleFromDisk after Addressables init.
     /// </summary>
     internal static class RetailAddressablesWarmup
     {
         private const string Area = "AddrWarmup";
-        private static bool _shaderDepsDone;
-
-        private static readonly string[] ShaderCatalogKeys =
-        {
-            "Assets/Shaders/MasterShader/ULTRAKILL-Standard.shader",
-            "Assets/Shaders/MasterShader/ULTRAKILL-Stationary.shader",
-        };
 
         internal static IEnumerator EnsureShaderBundlesLoaded()
         {
-            if (_shaderDepsDone)
-            {
-                yield break;
-            }
-
-            _shaderDepsDone = true;
-
-            foreach (var key in ShaderCatalogKeys)
-            {
-                yield return DownloadAndRegisterShader(key);
-            }
-
-            RetailShaderRegistry.RefreshFromMemory();
-            UltrakillLog.Info(Area, "Shader registry count=" + RetailShaderRegistry.Count);
-
-            if (RetailShaderRegistry.Count < 16)
-            {
-                ShadersBundleWarmup.LoadShadersBundleFromDisk();
-            }
-        }
-
-        private static IEnumerator DownloadAndRegisterShader(string key)
-        {
-            AsyncOperationHandle dep = default;
-            AsyncOperationHandle<Shader> load = default;
-            try
-            {
-                dep = Addressables.DownloadDependenciesAsync(key, true);
-                if (dep.IsValid())
-                {
-                    yield return dep;
-                    if (dep.IsValid() && dep.Status != AsyncOperationStatus.Succeeded)
-                    {
-                        UltrakillLog.Warn(Area, "DownloadDependencies failed for " + key + ": " + dep.OperationException);
-                    }
-                }
-
-                load = Addressables.LoadAssetAsync<Shader>(key);
-                if (!load.IsValid())
-                {
-                    yield break;
-                }
-
-                yield return load;
-                if (load.IsValid()
-                    && load.Status == AsyncOperationStatus.Succeeded
-                    && load.Result != null)
-                {
-                    RetailShaderRegistry.Register(load.Result);
-                }
-            }
-            finally
-            {
-                if (load.IsValid())
-                {
-                    Addressables.Release(load);
-                }
-
-                if (dep.IsValid())
-                {
-                    Addressables.Release(dep);
-                }
-            }
+            ShadersBundleWarmup.LoadShadersBundleFromDisk();
+            yield break;
         }
 
         internal static IEnumerator EnsureSceneDependencies(string sceneKey)

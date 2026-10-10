@@ -68,6 +68,7 @@ namespace UltrakillIOS
         private static string _lastStateLog;
         private static int _kickPasses;
         private static bool _warnedBakeMissing;
+        private static bool _warnedStaticData;
 
         private static void TryBindBakedData(object optimizer, Type optType, BindingFlags flags)
         {
@@ -115,9 +116,14 @@ namespace UltrakillIOS
                     meshN = Math.Max(meshN, meshes?.Count ?? 0);
                 }
 
-                UltrakillLog.Warn(Area,
-                    "StaticSceneData not usable on device (need bakedMeshes>0 + scene atlases). maxBakedMeshes=" + meshN
-                    + " — overlay cannot fake geo; fix iOS content bundles + shaders.bundle");
+                if (!_warnedStaticData)
+                {
+                    _warnedStaticData = true;
+                    UltrakillLog.Warn(Area,
+                        "StaticSceneData unusable: maxBakedMeshes=" + meshN
+                        + " (Tutorial bundle missing bake lists on device — rebuild scene bundle / fix StaticSceneData refs)");
+                }
+
                 return;
             }
 
