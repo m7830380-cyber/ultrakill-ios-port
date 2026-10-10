@@ -454,7 +454,15 @@ namespace UltrakillIOS
                     _pitch = e.x > 180f ? e.x - 360f : e.x;
                     _lookVel = Vector2.zero;
                 }
+
+                // CameraController.Awake stubbed → defaultPos never captured; cam often sits inside V1 mesh.
+                if (_camTr.localPosition.sqrMagnitude < 0.0001f)
+                {
+                    _camTr.localPosition = new Vector3(0f, 0.85f, 0f);
+                }
             }
+
+            HideFirstPersonBody(nm.transform);
 
             foreach (var c in UnityEngine.Object.FindObjectsOfType<Camera>(true))
             {
@@ -485,6 +493,74 @@ namespace UltrakillIOS
             if (_bound)
             {
                 UltrakillLog.Info(Area, "Bound player rb+cam for manual move/look");
+            }
+        }
+
+        /// <summary>
+        /// Retail hides the third-person V1 mesh in FPS; with stubbed CameraController it stays visible
+        /// and the camera sits inside a B&amp;W body.
+        /// </summary>
+        private void HideFirstPersonBody(Transform player)
+        {
+            if (player == null)
+            {
+                return;
+            }
+
+            var hidden = 0;
+            foreach (var r in player.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || !r.enabled)
+                {
+                    continue;
+                }
+
+                if (r is ParticleSystemRenderer)
+                {
+                    continue;
+                }
+
+                // Keep anything under the FPS camera (viewmodel / guns parented to cam).
+                if (_camTr != null && (r.transform == _camTr || r.transform.IsChildOf(_camTr)))
+                {
+                    continue;
+                }
+
+                var n = r.gameObject.name;
+                if (n.IndexOf("Gun", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Weapon", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Revolver", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Shotgun", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Nailgun", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Railcannon", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Rocket", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Arm", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Hand", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Fist", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("HUD", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Canvas", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    continue;
+                }
+
+                // Body / head / skinned V1 mesh
+                if (r is SkinnedMeshRenderer
+                    || n.IndexOf("Body", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Head", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("V1", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Mesh", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Model", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Capsule", StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Cylinder", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    r.enabled = false;
+                    hidden++;
+                }
+            }
+
+            if (hidden > 0)
+            {
+                UltrakillLog.Info(Area, "Hidden first-person body renderers=" + hidden);
             }
         }
 

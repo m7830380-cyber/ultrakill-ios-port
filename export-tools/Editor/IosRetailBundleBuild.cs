@@ -222,6 +222,29 @@ public static class IosRetailBundleBuild
 
         Debug.Log("[IosBundles] Tutorial bake companion (no SO) assets=" + string.Join(", ", paths));
 
+        // Allow runtime GetTriangles extract if multi-material path is unavailable.
+        try
+        {
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(bakeMesh);
+            if (mesh != null && !mesh.isReadable)
+            {
+                var so = new SerializedObject(mesh);
+                var p = so.FindProperty("m_IsReadable");
+                if (p != null)
+                {
+                    p.boolValue = true;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(mesh);
+                    AssetDatabase.SaveAssets();
+                    Debug.Log("[IosBundles] Marked bake Combined Mesh isReadable=true");
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning("[IosBundles] Could not mark bake mesh readable: " + ex.Message);
+        }
+
         var abb = new AssetBundleBuild
         {
             assetBundleName = "specialscenes_scenes_tutorial_bakedata.bundle",

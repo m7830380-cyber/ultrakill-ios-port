@@ -722,26 +722,6 @@ namespace UltrakillIOS
                 var baked = optType.GetField("bakedDataAsset", flags)?.GetValue(optimizer);
                 var dataType = Type.GetType("StaticSceneData, Assembly-CSharp");
                 var canKickMeshes = baked != null && dataType != null && IsBakeDataUsable(baked, dataType, flags);
-                if (canKickMeshes)
-                {
-                    if (!AlignStaticMRendsToBake(optimizer, optType, baked, dataType, flags))
-                    {
-                        UltrakillLog.Warn(Area, "Align staticMRends failed — skipping SetupMeshes");
-                        canKickMeshes = false;
-                    }
-
-                    var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as IList;
-                    var idx = dataType.GetField("firstSubMesh", flags)?.GetValue(baked) as IList;
-                    UltrakillLog.Info(Area, "pre-SetupMeshes staticMRends=" + (rends?.Count ?? 0)
-                        + " firstSubMesh=" + (idx?.Count ?? 0)
-                        + " bakedMeshes=" + ((dataType.GetField("bakedMeshes", flags)?.GetValue(baked) as IList)?.Count ?? 0));
-
-                    if (rends == null || idx == null || rends.Count != idx.Count)
-                    {
-                        UltrakillLog.Warn(Area, "staticMRends/firstSubMesh mismatch — skip SetupMeshes");
-                        canKickMeshes = false;
-                    }
-                }
 
                 EnsureBatchMaterials(optimizer, optType, flags);
 
@@ -754,11 +734,25 @@ namespace UltrakillIOS
                 if (_kickPasses < 2 && canKickMeshes)
                 {
                     optType.GetMethod("SetupMaterial", flags)?.Invoke(optimizer, new object[] { false });
-                    optType.GetMethod("SetupMeshes", flags)?.Invoke(optimizer, null);
-                    _kickPasses++;
-                    UltrakillLog.Info(Area, "SetupMeshes OK pass=" + _kickPasses);
-                    // SetStaticBatchInfo is unreliable on iOS IL2CPP — every MR drew the same atlas tile.
-                    ExpandToStandaloneSubmeshes(optimizer, optType, baked, dataType, flags);
+
+                    // Combined Mesh is non-readable on device → GetTriangles extract fails (session 000552).
+                    // SetStaticBatchInfo also fails on iOS → same atlas tile on every wall.
+                    // One MeshRenderer + N materials maps material[i] → submesh[i] with correct UVs.
+                    if (InstallCombinedMultiMaterial(optimizer, optType, baked, dataType, flags))
+                    {
+                        _kickPasses = 2;
+                    }
+                    else if (AlignStaticMRendsToBake(optimizer, optType, baked, dataType, flags))
+                    {
+                        optType.GetMethod("SetupMeshes", flags)?.Invoke(optimizer, null);
+                        _kickPasses++;
+                        UltrakillLog.Info(Area, "SetupMeshes OK pass=" + _kickPasses);
+                        ExpandToStandaloneSubmeshes(optimizer, optType, baked, dataType, flags);
+                    }
+                    else
+                    {
+                        UltrakillLog.Warn(Area, "No usable bake install path");
+                    }
                 }
 
                 LogState(optimizer, optType, flags);
@@ -775,7 +769,96 @@ namespace UltrakillIOS
         }
 
         /// <summary>
-        /// Replace Combined Mesh + SetStaticBatchInfo with one real Mesh per bake slot so atlas UVs differ.
+        /// Draw Combined Mesh via multi-material slots (no CPU mesh read, no SetStaticBatchInfo).
+        /// </summary>
+        private static bool InstallCombinedMultiMaterial(
+            object optimizer,
+            Type optType,
+            object baked,
+            Type dataType,
+            BindingFlags flags)
+        {
+            if (_expandedSubmeshes)
+            {
+                return true;
+            }
+
+            var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(baked) as IList;
+            if (meshes == null || meshes.Count == 0)
+            {
+                return false;
+            }
+
+            var mesh = meshes[0] as Mesh;
+            if (mesh == null || mesh.subMeshCount < 1)
+            {
+                return false;
+            }
+
+            var env = optType.GetField("batchMaterialEnvironment", flags)?.GetValue(optimizer) as Material;
+            var outdoors = optType.GetField("batchMaterialOutdoors", flags)?.GetValue(optimizer) as Material;
+            if (env == null)
+            {
+                return false;
+            }
+
+            var atlas = dataType.GetField("mainTexAtlas", flags)?.GetValue(baked) as Texture;
+            if (atlas != null)
+            {
+                if (env.HasProperty("_MainTex"))
+                {
+                    env.SetTexture("_MainTex", atlas);
+                }
+
+                if (outdoors != null && outdoors.HasProperty("_MainTex"))
+                {
+                    outdoors.SetTexture("_MainTex", atlas);
+                }
+            }
+
+            var listField = optType.GetField("staticMRends", flags);
+            var list = listField?.GetValue(optimizer) as IList;
+            if (list == null)
+            {
+                return false;
+            }
+
+            list.Clear();
+            var old = GameObject.Find("UltrakillIOS.BakedStaticGeo");
+            if (old != null)
+            {
+                UnityEngine.Object.Destroy(old);
+            }
+
+            var root = new GameObject("UltrakillIOS.BakedStaticGeo");
+            root.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            root.transform.localScale = Vector3.one;
+            var go = new GameObject("BakedCombined");
+            go.transform.SetParent(root.transform, false);
+            go.layer = 8;
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+
+            var n = mesh.subMeshCount;
+            var mats = new Material[n];
+            for (var i = 0; i < n; i++)
+            {
+                mats[i] = env;
+            }
+
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterials = mats;
+            list.Add(mr);
+            DisableConflictingSceneStaticGeo(list);
+
+            _expandedSubmeshes = true;
+            UltrakillLog.Info(Area, "Installed combined multi-material bake submeshes=" + n
+                + " atlas=" + (atlas != null ? atlas.name : "null")
+                + " readable=" + mesh.isReadable);
+            return true;
+        }
+
+        /// <summary>
+        /// Fallback when multi-material install fails: extract submeshes (needs readable mesh).
         /// </summary>
         private static void ExpandToStandaloneSubmeshes(
             object optimizer,

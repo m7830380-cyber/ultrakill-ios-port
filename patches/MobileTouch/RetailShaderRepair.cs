@@ -105,6 +105,7 @@ namespace UltrakillIOS
                 // Keep IPA bake batch mats on Resources ULTRAKILL-Standard — stub rebind → purple/same-tile.
                 var goName = r.gameObject.name;
                 if (goName.IndexOf("BakedSub_", StringComparison.Ordinal) >= 0
+                    || goName.IndexOf("BakedCombined", StringComparison.Ordinal) >= 0
                     || goName.IndexOf("BakedStaticGeo", StringComparison.Ordinal) >= 0)
                 {
                     continue;
