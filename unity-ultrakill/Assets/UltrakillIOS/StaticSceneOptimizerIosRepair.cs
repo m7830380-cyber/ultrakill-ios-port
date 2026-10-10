@@ -328,33 +328,52 @@ namespace UltrakillIOS
             return score;
         }
 
-        private static bool IsSceneAtlasTexture(Texture t)
+        private static bool IsRejectedUiFontTexture(Texture t)
         {
             if (t == null)
             {
-                return false;
+                return true;
             }
 
             var n = t.name.ToLowerInvariant();
-            if (n.Contains("sdf") || n.Contains("liberation") || n.Contains("font") || n.Contains("tmp")
+            return n.Contains("sdf") || n.Contains("liberation") || n.Contains("font") || n.Contains("tmp")
                 || n.Contains("vcr") || n.Contains("osd") || n.Contains("mono_") || n.Contains("ui/")
-                || n.Contains("hud") || n.Contains("icon"))
+                || n.Contains("hud") || n.Contains("icon") || n.Contains("tahoma") || n.Contains("fs-")
+                || n.Contains("8px") || n.Contains("arial") || n.Contains("glyph") || n.Contains("emoji");
+        }
+
+        private static bool IsSceneAtlasTexture(Texture t)
+        {
+            if (t is not Texture2D tex || IsRejectedUiFontTexture(tex))
             {
                 return false;
             }
 
-            return n.Contains("atlas") || n.Contains("static") || n.Contains("baked") || n.Contains("blend")
-                || n.Contains("level") || n.Contains("scene") || n.Contains("enviro") || n.Contains("outdoor");
+            var pixels = (long)tex.width * tex.height;
+            if (pixels < 256 * 256)
+            {
+                return false;
+            }
+
+            var n = tex.name.ToLowerInvariant();
+            if (n.Contains("static") || n.Contains("baked") || n.Contains("blend") || n.Contains("level")
+                || n.Contains("enviro") || n.Contains("outdoor") || n.Contains("texture2d"))
+            {
+                return true;
+            }
+
+            // Name contains "atlas" but not UI/font (fs-tahoma-8px Atlas must not qualify).
+            return n.Contains("atlas") && !n.Contains("tahoma") && !n.Contains("fs-");
         }
 
         private static long AtlasPickScore(Texture2D t, bool wantBlend)
         {
-            var n = t.name.ToLowerInvariant();
             if (!IsSceneAtlasTexture(t))
             {
                 return 0;
             }
 
+            var n = t.name.ToLowerInvariant();
             var pixels = (long)t.width * t.height;
             if (wantBlend)
             {
@@ -363,20 +382,81 @@ namespace UltrakillIOS
                     return pixels + 500_000_000L;
                 }
 
-                return n.Contains("atlas") ? pixels / 4 : 0;
+                return 0;
             }
 
             if (n.Contains("blend"))
             {
-                return pixels / 8;
+                return 0;
             }
 
             if (n.Contains("static") || n.Contains("baked") || n.Contains("level"))
             {
-                return pixels + 200_000_000L;
+                return pixels + 300_000_000L;
             }
 
-            return n.Contains("atlas") ? pixels : pixels / 2;
+            return pixels;
+        }
+
+        private static void PickAtlasesFromStaticGeoMaterials(out Texture2D main, out Texture2D blend)
+        {
+            main = null;
+            blend = null;
+            var mainScore = 0L;
+            var blendScore = 0L;
+            const int enviroLayer = 8;
+            const int outdoorLayer = 24;
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<MeshRenderer>(true))
+            {
+                if (r == null)
+                {
+                    continue;
+                }
+
+                var layer = r.gameObject.layer;
+                if (layer != enviroLayer && layer != outdoorLayer)
+                {
+                    continue;
+                }
+
+                var mats = r.sharedMaterials;
+                if (mats == null)
+                {
+                    continue;
+                }
+
+                foreach (var mat in mats)
+                {
+                    if (mat == null || !mat.HasProperty("_MainTex"))
+                    {
+                        continue;
+                    }
+
+                    var tex = mat.GetTexture("_MainTex") as Texture2D;
+                    if (tex == null || IsRejectedUiFontTexture(tex))
+                    {
+                        continue;
+                    }
+
+                    var pixels = (long)tex.width * tex.height;
+                    if (pixels < 128 * 128)
+                    {
+                        continue;
+                    }
+
+                    var n = tex.name.ToLowerInvariant();
+                    if (n.Contains("blend") && pixels > blendScore)
+                    {
+                        blendScore = pixels;
+                        blend = tex;
+                    }
+                    else if (pixels > mainScore)
+                    {
+                        mainScore = pixels;
+                        main = tex;
+                    }
+                }
+            }
         }
 
         /// <summary>Only fill atlas refs when scene bake textures are already loaded but GUID refs failed (not TMP/UI atlases).</summary>
@@ -389,15 +469,14 @@ namespace UltrakillIOS
                 return;
             }
 
-            if (mainF.GetValue(data) is Texture)
+            if (mainF.GetValue(data) is Texture existing && IsSceneAtlasTexture(existing))
             {
                 return;
             }
 
-            Texture2D mainPick = null;
-            Texture2D blendPick = null;
-            var mainScore = 0L;
-            var blendScore = 0L;
+            PickAtlasesFromStaticGeoMaterials(out var mainPick, out var blendPick);
+            var mainScore = mainPick != null ? (long)mainPick.width * mainPick.height : 0L;
+            var blendScore = blendPick != null ? (long)blendPick.width * blendPick.height : 0L;
             foreach (var t in Resources.FindObjectsOfTypeAll<Texture2D>())
             {
                 if (t == null)
