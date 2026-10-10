@@ -207,7 +207,7 @@ namespace UltrakillIOS
         internal static int RemapBrokenMaterialsOnRenderers(bool includeInactive)
         {
             ShadersBundleWarmup.TryWarmup();
-            RetailContentWarmup.WarmupRetailBundles();
+            RetailContentWarmup.RefreshMaterialIndex();
             var relinked = RetailContentWarmup.RelinkSceneMaterials(includeInactive);
             UkMasterShaderBootstrap.EnsureReady();
             var recovered = UkMasterShaderBootstrap.RecoverInternalErrorMaterials(includeInactive);
