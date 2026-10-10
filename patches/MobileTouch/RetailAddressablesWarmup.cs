@@ -1,107 +1,161 @@
-#if ULTRAKILL_FULL_PORT
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
-
-namespace UltrakillIOS
-{
-    /// <summary>
-    /// Load shaders.bundle through Addressables before scenes/materials (Unity manual: load shader AssetBundle first).
-    /// Avoids duplicate LoadFromFile + mismatched shader instances that cause InternalError/pink materials.
-    /// </summary>
-    internal static class RetailAddressablesWarmup
-    {
-        private const string Area = "AddrWarmup";
-        private static bool _shaderDepsDone;
-
-        private static readonly string[] ShaderCatalogKeys =
-        {
-            "Assets/Shaders/MasterShader/ULTRAKILL-Standard.shader",
-            "Assets/Shaders/MasterShader/ULTRAKILL-Stationary.shader",
-        };
-
-        internal static IEnumerator EnsureShaderBundlesLoaded()
-        {
-            if (_shaderDepsDone)
-            {
-                yield break;
-            }
-
-            _shaderDepsDone = true;
-            var keys = new List<object>();
-            foreach (var key in ShaderCatalogKeys)
-            {
-                keys.Add(key);
-            }
-
-            var locHandle = Addressables.LoadResourceLocationsAsync(keys, Addressables.MergeMode.Union, typeof(Shader));
-            yield return locHandle;
-            if (locHandle.Status != AsyncOperationStatus.Succeeded || locHandle.Result == null || locHandle.Result.Count == 0)
-            {
-                UltrakillLog.Warn(Area, "Shader catalog keys not in locator; materials may stay pink until scene deps load");
-                Addressables.Release(locHandle);
-                yield break;
-            }
-
-            var depHandle = Addressables.DownloadDependenciesAsync(locHandle.Result, true);
-            yield return depHandle;
-            if (depHandle.Status != AsyncOperationStatus.Succeeded)
-            {
-                UltrakillLog.Warn(Area, "DownloadDependenciesAsync(shaders) failed: " + depHandle.OperationException);
-            }
-            else
-            {
-                UltrakillLog.Info(Area, "Shader bundle dependencies downloaded (" + locHandle.Result.Count + " locations)");
-            }
-
-            Addressables.Release(depHandle);
-            Addressables.Release(locHandle);
-
-            foreach (var key in ShaderCatalogKeys)
-            {
-                var load = Addressables.LoadAssetAsync<Shader>(key);
-                yield return load;
-                if (load.Status == AsyncOperationStatus.Succeeded && load.Result != null)
-                {
-                    RetailShaderRegistry.Register(load.Result);
-                }
-
-                Addressables.Release(load);
-            }
-
-            RetailShaderRegistry.RefreshFromMemory();
-            UltrakillLog.Info(Area, "Shader registry count=" + RetailShaderRegistry.Count);
-        }
-
-        internal static IEnumerator EnsureSceneDependencies(string sceneKey)
-        {
-            if (string.IsNullOrEmpty(sceneKey))
-            {
-                yield break;
-            }
-
-            var loc = Addressables.LoadResourceLocationsAsync(sceneKey, typeof(UnityEngine.ResourceManagement.ResourceProviders.SceneInstance));
-            yield return loc;
-            if (loc.Status != AsyncOperationStatus.Succeeded || loc.Result == null || loc.Result.Count == 0)
-            {
-                Addressables.Release(loc);
-                yield break;
-            }
-
-            var dep = Addressables.DownloadDependenciesAsync(loc.Result, true);
-            yield return dep;
-            if (dep.Status == AsyncOperationStatus.Succeeded)
-            {
-                UltrakillLog.Info(Area, "Scene dependencies ready for '" + sceneKey + "'");
-            }
-
-            Addressables.Release(dep);
-            Addressables.Release(loc);
-            RetailShaderRegistry.RefreshFromMemory();
-            RetailContentWarmup.RefreshMaterialIndex();
-        }
-    }
-}
-#endif
+#if ULTRAKILL_FULL_PORT
+using System;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+
+namespace UltrakillIOS
+{
+    /// <summary>
+    /// Load shaders.bundle through Addressables before scenes/materials when possible.
+    /// Must never throw — boot coroutine dies on unhandled exceptions (session 163211).
+    /// </summary>
+    internal static class RetailAddressablesWarmup
+    {
+        private const string Area = "AddrWarmup";
+        private static bool _shaderDepsDone;
+
+        private static readonly string[] ShaderCatalogKeys =
+        {
+            "Assets/Shaders/MasterShader/ULTRAKILL-Standard.shader",
+            "Assets/Shaders/MasterShader/ULTRAKILL-Stationary.shader",
+        };
+
+        internal static IEnumerator EnsureShaderBundlesLoaded()
+        {
+            if (_shaderDepsDone)
+            {
+                yield break;
+            }
+
+            _shaderDepsDone = true;
+
+            try
+            {
+                foreach (var key in ShaderCatalogKeys)
+                {
+                    yield return DownloadAndRegisterShader(key);
+                }
+
+                RetailShaderRegistry.RefreshFromMemory();
+                UltrakillLog.Info(Area, "Shader registry count=" + RetailShaderRegistry.Count);
+            }
+            catch (Exception ex)
+            {
+                UltrakillLog.Warn(Area, "Shader warmup failed (boot continues): " + ex.Message);
+            }
+
+            if (RetailShaderRegistry.Count < 16)
+            {
+                ShadersBundleWarmup.LoadShadersBundleFromDisk();
+            }
+        }
+
+        private static IEnumerator DownloadAndRegisterShader(string key)
+        {
+            AsyncOperationHandle dep = default;
+            AsyncOperationHandle<Shader> load = default;
+            try
+            {
+                dep = Addressables.DownloadDependenciesAsync(key, true);
+                if (dep.IsValid())
+                {
+                    yield return dep;
+                    if (dep.IsValid() && dep.Status != AsyncOperationStatus.Succeeded)
+                    {
+                        UltrakillLog.Warn(Area, "DownloadDependencies failed for " + key + ": " + dep.OperationException);
+                    }
+                }
+
+                load = Addressables.LoadAssetAsync<Shader>(key);
+                if (!load.IsValid())
+                {
+                    yield break;
+                }
+
+                yield return load;
+                if (load.IsValid()
+                    && load.Status == AsyncOperationStatus.Succeeded
+                    && load.Result != null)
+                {
+                    RetailShaderRegistry.Register(load.Result);
+                }
+            }
+            finally
+            {
+                if (load.IsValid())
+                {
+                    Addressables.Release(load);
+                }
+
+                if (dep.IsValid())
+                {
+                    Addressables.Release(dep);
+                }
+            }
+        }
+
+        internal static IEnumerator EnsureSceneDependencies(string sceneKey)
+        {
+            if (string.IsNullOrEmpty(sceneKey))
+            {
+                yield break;
+            }
+
+            AsyncOperationHandle loc = default;
+            AsyncOperationHandle dep = default;
+            try
+            {
+                loc = Addressables.LoadResourceLocationsAsync(
+                    sceneKey,
+                    typeof(UnityEngine.ResourceManagement.ResourceProviders.SceneInstance));
+                if (!loc.IsValid())
+                {
+                    yield break;
+                }
+
+                yield return loc;
+                if (!loc.IsValid()
+                    || loc.Status != AsyncOperationStatus.Succeeded
+                    || loc.Result == null
+                    || loc.Result.Count == 0)
+                {
+                    yield break;
+                }
+
+                dep = Addressables.DownloadDependenciesAsync(loc.Result, true);
+                if (!dep.IsValid())
+                {
+                    yield break;
+                }
+
+                yield return dep;
+                if (dep.IsValid() && dep.Status == AsyncOperationStatus.Succeeded)
+                {
+                    UltrakillLog.Info(Area, "Scene dependencies ready for '" + sceneKey + "'");
+                }
+
+                RetailShaderRegistry.RefreshFromMemory();
+                RetailContentWarmup.RefreshMaterialIndex();
+            }
+            catch (Exception ex)
+            {
+                UltrakillLog.Warn(Area, "Scene dep warmup failed: " + ex.Message);
+            }
+            finally
+            {
+                if (dep.IsValid())
+                {
+                    Addressables.Release(dep);
+                }
+
+                if (loc.IsValid())
+                {
+                    Addressables.Release(loc);
+                }
+            }
+        }
+    }
+}
+#endif
