@@ -65,6 +65,7 @@ namespace UltrakillIOS
             UltrakillLog.Info(Area, "Catalog loaded: locator '" + locator.LocatorId + "', keys=" + locator.Keys.Count());
             Addressables.Release(init);
             ShadersBundleWarmup.TryWarmup();
+            RetailContentWarmup.WarmupRetailBundles();
             UkMasterShaderBootstrap.EnsureReady();
 
             var sceneKey = BootSceneKeys.FirstOrDefault(k => locator.Locate(k, typeof(SceneInstance), out _));

@@ -64,12 +64,49 @@ namespace UltrakillIOS
             }
         }
 
+        private static string _lastStateLog;
+
+        private static void TryBindBakedData(object optimizer, Type optType, BindingFlags flags)
+        {
+            var bakedField = optType.GetField("bakedDataAsset", flags);
+            if (bakedField == null || bakedField.GetValue(optimizer) != null)
+            {
+                return;
+            }
+
+            var dataType = Type.GetType("StaticSceneData, Assembly-CSharp");
+            if (dataType == null)
+            {
+                return;
+            }
+
+            foreach (var data in Resources.FindObjectsOfTypeAll(dataType))
+            {
+                if (data == null)
+                {
+                    continue;
+                }
+
+                var atlasField = dataType.GetField("mainTexAtlas", flags);
+                var atlas = atlasField?.GetValue(data) as Texture;
+                if (atlas == null)
+                {
+                    continue;
+                }
+
+                bakedField.SetValue(optimizer, data);
+                UltrakillLog.Info(Area, "Bound StaticSceneData atlas=" + atlas.name);
+                return;
+            }
+        }
+
         private static void KickOne(object optimizer, Type optType)
         {
             var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             try
             {
                 optType.GetField("usedComputeShadersAtStart", flags)?.SetValue(optimizer, false);
+                TryBindBakedData(optimizer, optType, flags);
                 EnsureBatchMaterials(optimizer, optType, flags);
 
                 optType.GetMethod("FixPosition", flags)?.Invoke(optimizer, null);
@@ -126,10 +163,14 @@ namespace UltrakillIOS
             }
 
             var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as System.Collections.IList;
-            UltrakillLog.Info(Area,
-                "optimizer bakedData=" + (baked != null ? "yes" : "NULL")
+            var msg = "optimizer bakedData=" + (baked != null ? "yes" : "NULL")
                 + " staticMRends=" + (rends?.Count ?? 0)
-                + " outdoorMainTex=" + (outTex != null ? outTex.name : "null"));
+                + " outdoorMainTex=" + (outTex != null ? outTex.name : "null");
+            if (msg != _lastStateLog)
+            {
+                _lastStateLog = msg;
+                UltrakillLog.Info(Area, msg);
+            }
         }
 
         private sealed class Host : MonoBehaviour

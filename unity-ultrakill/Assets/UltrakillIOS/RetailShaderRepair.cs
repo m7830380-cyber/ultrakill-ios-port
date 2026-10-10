@@ -102,6 +102,31 @@ namespace UltrakillIOS
             return null;
         }
 
+        private static bool MaterialHasAnyTexture(Material m)
+        {
+            if (m == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                foreach (var prop in m.GetTexturePropertyNames())
+                {
+                    if (m.GetTexture(prop) != null)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                /* ignore */
+            }
+
+            return false;
+        }
+
         private static bool HydrateMainTex(Material mat, Renderer r, int submesh)
         {
             if (mat == null || !mat.HasProperty("_MainTex"))
@@ -202,6 +227,7 @@ namespace UltrakillIOS
         internal static int RemapBrokenMaterialsOnRenderers(bool includeInactive)
         {
             ShadersBundleWarmup.TryWarmup();
+            RetailContentWarmup.WarmupRetailBundles();
             UkMasterShaderBootstrap.EnsureReady();
             var recovered = UkMasterShaderBootstrap.RecoverInternalErrorMaterials(includeInactive);
             RebindAndHydrateStubMaterials(includeInactive);
@@ -255,7 +281,68 @@ namespace UltrakillIOS
                 UltrakillLog.Info("Shader", "Fixed " + remapped + " null-shader slots");
             }
 
+            ApplyLightmapFallbackShaders(includeInactive);
             return recovered + remapped;
+        }
+
+        private static void ApplyLightmapFallbackShaders(bool includeInactive)
+        {
+            var lm = Shader.Find("Mobile/Lightmap/Diffuse")
+                ?? Shader.Find("Legacy Shaders/Lightmapped/Diffuse");
+            if (lm == null || !lm.isSupported)
+            {
+                return;
+            }
+
+            var n = 0;
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(includeInactive))
+            {
+                if (r == null || r.lightmapIndex < 0 && r.realtimeLightmapIndex < 0)
+                {
+                    continue;
+                }
+
+                if (r.GetComponentInParent<Canvas>() != null)
+                {
+                    continue;
+                }
+
+                var shared = r.sharedMaterials;
+                if (shared == null)
+                {
+                    continue;
+                }
+
+                var dirty = false;
+                for (var i = 0; i < shared.Length; i++)
+                {
+                    var m = shared[i];
+                    if (m == null || m.shader == null)
+                    {
+                        continue;
+                    }
+
+                    if (m.HasProperty("_MainTex") && m.GetTexture("_MainTex") != null)
+                    {
+                        continue;
+                    }
+
+                    m.shader = lm;
+                    HydrateMainTex(m, r, i);
+                    dirty = true;
+                    n++;
+                }
+
+                if (dirty)
+                {
+                    r.sharedMaterials = shared;
+                }
+            }
+
+            if (n > 0)
+            {
+                UltrakillLog.Info("Shader", "Lightmap fallback on " + n + " material slots");
+            }
         }
 
         private sealed class RetailShaderRepairHost : MonoBehaviour
@@ -314,6 +401,7 @@ namespace UltrakillIOS
                 var retail = 0;
                 var broken = 0;
                 var textured = 0;
+                var anyTexProp = 0;
                 var iosFallback = 0;
 
                 foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
@@ -352,14 +440,21 @@ namespace UltrakillIOS
                         {
                             textured++;
                         }
+
+                        if (MaterialHasAnyTexture(m))
+                        {
+                            anyTexProp++;
+                        }
                     }
                 }
 
                 UltrakillLog.Info("Shader",
                     "Shared: retailMats=" + retail + " withMainTex=" + textured
+                    + " anyTexProp=" + anyTexProp
                     + " iosFallback=" + iosFallback + " internalError=" + broken
                     + " stubBundle=" + ShadersBundleIsStub
-                    + " bundleShaders=" + ShadersBundleWarmup.LoadedShaderCount);
+                    + " bundleShaders=" + ShadersBundleWarmup.LoadedShaderCount
+                    + " warmupTex=" + RetailContentWarmup.TexturesLoaded);
             }
         }
     }
