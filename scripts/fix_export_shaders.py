@@ -12,6 +12,7 @@ from pathlib import Path
 STUB_TEMPLATE = r'''Shader "{name}" {{
 	Properties {{
 		_MainTex ("Texture", 2D) = "white" {{}}
+		_BlendTex ("Blend", 2D) = "white" {{}}
 		_Color ("Color", Color) = (1,1,1,1)
 		_Colorize ("Colorize", Color) = (1,1,1,1)
 		_Cutoff ("Alpha Cutoff", Range(0,1)) = 0.5

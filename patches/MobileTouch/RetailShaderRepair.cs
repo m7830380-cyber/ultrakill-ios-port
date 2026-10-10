@@ -62,6 +62,141 @@ namespace UltrakillIOS
                 && name.IndexOf("InternalError", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        /// <summary>Guess retail UK shader from material name when Unity replaced it with InternalErrorShader.</summary>
+        internal static string TryGetIntendedShaderName(Material m)
+        {
+            if (m == null)
+            {
+                return null;
+            }
+
+            var sn = m.shader != null ? m.shader.name : "";
+            if (!IsInternalError(sn))
+            {
+                return sn;
+            }
+
+            var src = RetailContentWarmup.TryGetBundleMaterial(m.name);
+            if (src?.shader != null && !IsInternalError(src.shader.name))
+            {
+                return src.shader.name;
+            }
+
+            if (m.name.IndexOf("Stationary", StringComparison.OrdinalIgnoreCase) >= 0
+                || m.name.IndexOf("Lightmap", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "ULTRAKILL-Stationary";
+            }
+
+            return "ULTRAKILL-Standard";
+        }
+
+        private static int RepairShaderReferences(bool includeInactive)
+        {
+            RetailShaderRegistry.RefreshFromMemory();
+            var fixedN = 0;
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(includeInactive))
+            {
+                if (r == null || r is ParticleSystemRenderer || r.GetComponentInParent<Canvas>() != null)
+                {
+                    continue;
+                }
+
+                var shared = r.sharedMaterials;
+                if (shared == null)
+                {
+                    continue;
+                }
+
+                var dirty = false;
+                for (var i = 0; i < shared.Length; i++)
+                {
+                    var m = shared[i];
+                    if (m == null || m.shader == null)
+                    {
+                        continue;
+                    }
+
+                    var sn = m.shader.name;
+                    if (!IsInternalError(sn) && m.shader.isSupported)
+                    {
+                        var rebind = RetailShaderRegistry.Resolve(sn);
+                        if (rebind != null && rebind != m.shader)
+                        {
+                            m.shader = rebind;
+                            dirty = true;
+                            fixedN++;
+                        }
+
+                        continue;
+                    }
+
+                    var intended = TryGetIntendedShaderName(m);
+                    var resolved = intended != null ? RetailShaderRegistry.Resolve(intended) : null;
+                    if (resolved == null)
+                    {
+                        continue;
+                    }
+
+                    m.shader = resolved;
+                    var src = RetailContentWarmup.TryGetBundleMaterial(m.name);
+                    if (src != null)
+                    {
+                        RetailMaterialVisuals.CopyTexturesAndShader(m, src);
+                    }
+
+                    HydrateMainTex(m, r, i);
+                    RetailMaterialVisuals.HydrateMissingTextures(m);
+                    dirty = true;
+                    fixedN++;
+                }
+
+                if (dirty)
+                {
+                    r.sharedMaterials = shared;
+                }
+            }
+
+            if (fixedN > 0)
+            {
+                UltrakillLog.Info("Shader", "Rebound " + fixedN + " material slots to warmed Addressables shaders");
+            }
+
+            return fixedN;
+        }
+
+        private static int HydrateAllMissingTextures(bool includeInactive)
+        {
+            var n = 0;
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>(includeInactive))
+            {
+                if (r == null || r.GetComponentInParent<Canvas>() != null)
+                {
+                    continue;
+                }
+
+                foreach (var m in r.sharedMaterials)
+                {
+                    if (m == null || MaterialHasAnyTexture(m))
+                    {
+                        continue;
+                    }
+
+                    if (RetailMaterialVisuals.HydrateMissingTextures(m) > 0)
+                    {
+                        n++;
+                    }
+                }
+            }
+
+            if (n > 0)
+            {
+                UltrakillLog.Info("Shader", "Hydrated textures on " + n + " materials from memory index");
+            }
+
+            return n;
+        }
+
         internal static void HydrateMainTexPublic(Material mat, Renderer r, int submesh)
         {
             HydrateMainTex(mat, r, submesh);
@@ -175,7 +310,7 @@ namespace UltrakillIOS
                     }
 
                     var before = m.shader;
-                    var resolved = Shader.Find(sn);
+                    var resolved = RetailShaderRegistry.Resolve(sn) ?? Shader.Find(sn);
                     if (resolved != null && resolved != before && resolved.isSupported)
                     {
                         m.shader = resolved;
@@ -207,11 +342,15 @@ namespace UltrakillIOS
         internal static int RemapBrokenMaterialsOnRenderers(bool includeInactive)
         {
             ShadersBundleWarmup.TryWarmup();
+            RetailShaderRegistry.RefreshFromMemory();
             RetailContentWarmup.RefreshMaterialIndex();
+            var rebound = RepairShaderReferences(includeInactive);
             var relinked = RetailContentWarmup.RelinkSceneMaterials(includeInactive);
+            RebindAndHydrateStubMaterials(includeInactive);
+            var hydrated = HydrateAllMissingTextures(includeInactive);
             UkMasterShaderBootstrap.EnsureReady();
             var recovered = UkMasterShaderBootstrap.RecoverInternalErrorMaterials(includeInactive);
-            RebindAndHydrateStubMaterials(includeInactive);
+            HydrateAllMissingTextures(includeInactive);
 
             // Only null-shader slots left — do not touch InternalError (handled above).
             var remapped = 0;
@@ -268,7 +407,7 @@ namespace UltrakillIOS
                 RetailContentWarmup.RelinkSceneMaterials(includeInactive);
             }
 
-            return recovered + remapped + relinked;
+            return recovered + remapped + relinked + rebound + hydrated;
         }
 
         private static void ApplyLightmapFallbackShaders(bool includeInactive)

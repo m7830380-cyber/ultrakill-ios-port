@@ -42,18 +42,30 @@ namespace UltrakillIOS
             var withTex = 0;
             foreach (var mat in Resources.FindObjectsOfTypeAll<Material>())
             {
-                if (mat == null || string.IsNullOrEmpty(mat.name) || !MaterialHasAnyTexture(mat))
+                if (mat == null || string.IsNullOrEmpty(mat.name))
+                {
+                    continue;
+                }
+
+                if (RetailMaterialVisuals.IsBrokenShader(mat.shader))
+                {
+                    continue;
+                }
+
+                if (!MaterialHasAnyTexture(mat))
                 {
                     continue;
                 }
 
                 withTex++;
                 if (!MaterialsByName.TryGetValue(mat.name, out var existing)
-                    || TexturePropertyCount(mat) > TexturePropertyCount(existing))
+                    || MaterialQuality(mat) > MaterialQuality(existing))
                 {
                     MaterialsByName[mat.name] = mat;
                 }
             }
+
+            RetailMaterialVisuals.RebuildTextureIndex();
 
             MaterialsLoaded = MaterialsByName.Count;
             UltrakillLog.Info(Area,
@@ -110,18 +122,29 @@ namespace UltrakillIOS
                 for (var i = 0; i < shared.Length; i++)
                 {
                     var m = shared[i];
-                    if (m == null || MaterialHasAnyTexture(m))
+                    if (m == null)
+                    {
+                        continue;
+                    }
+
+                    var needsRelink = RetailMaterialVisuals.IsBrokenShader(m.shader) || !MaterialHasAnyTexture(m);
+                    if (!needsRelink)
                     {
                         continue;
                     }
 
                     var src = TryGetBundleMaterial(m.name);
-                    if (src == null || !MaterialHasAnyTexture(src))
+                    if (src == null || RetailMaterialVisuals.IsBrokenShader(src.shader) || !MaterialHasAnyTexture(src))
                     {
                         continue;
                     }
 
-                    shared[i] = src;
+                    RetailMaterialVisuals.CopyTexturesAndShader(m, src);
+                    if (!MaterialHasAnyTexture(m) && MaterialHasAnyTexture(src))
+                    {
+                        shared[i] = src;
+                    }
+
                     changed = true;
                     relinked++;
                 }
@@ -169,6 +192,23 @@ namespace UltrakillIOS
             }
 
             return n;
+        }
+
+        private static int MaterialQuality(Material m)
+        {
+            if (m == null)
+            {
+                return 0;
+            }
+
+            var score = TexturePropertyCount(m) * 10;
+            var sn = m.shader != null ? m.shader.name : "";
+            if (sn.StartsWith("ULTRAKILL", System.StringComparison.OrdinalIgnoreCase))
+            {
+                score += 100;
+            }
+
+            return score;
         }
     }
 }

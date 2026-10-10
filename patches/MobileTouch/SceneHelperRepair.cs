@@ -122,6 +122,12 @@ namespace UltrakillIOS
 
         private IEnumerator RepairAfterLoad()
         {
+            var sceneKey = ResolveAddressablesSceneKey();
+            if (!string.IsNullOrEmpty(sceneKey))
+            {
+                yield return RetailAddressablesWarmup.EnsureSceneDependencies(sceneKey);
+            }
+
             MuteBrokenBehaviours();
             StaticSceneOptimizerIosRepair.KickAllInLoadedScenes();
             RemapBrokenShaders();
@@ -130,6 +136,40 @@ namespace UltrakillIOS
             RemapBrokenShaders();
             TryRepair();
             MuteBrokenBehaviours();
+        }
+
+        private static string ResolveAddressablesSceneKey()
+        {
+            try
+            {
+                var shType = Type.GetType("SceneHelper, Assembly-CSharp");
+                if (shType == null)
+                {
+                    return null;
+                }
+
+                foreach (var sh in UnityEngine.Object.FindObjectsOfType(shType))
+                {
+                    var f = shType.GetField("CurrentScene", BindingFlags.Instance | BindingFlags.Public);
+                    var s = f?.GetValue(sh) as string;
+                    if (string.IsNullOrEmpty(s))
+                    {
+                        continue;
+                    }
+
+                    if (s.IndexOf(' ') >= 0 || string.Equals(s, "Tutorial", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(s, "Intro", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return s;
+                    }
+                }
+            }
+            catch
+            {
+                /* ignore */
+            }
+
+            return null;
         }
 
         private static void TmpBootstrapForceApply()
