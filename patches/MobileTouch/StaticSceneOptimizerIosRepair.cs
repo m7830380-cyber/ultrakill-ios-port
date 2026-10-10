@@ -611,6 +611,7 @@ namespace UltrakillIOS
             var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             try
             {
+                TutorialBakeDataWarmup.EnsureLoaded();
                 optType.GetField("usedComputeShadersAtStart", flags)?.SetValue(optimizer, false);
                 TryBindBakedData(optimizer, optType, flags);
                 if (_sceneRebuildOnly)
@@ -627,6 +628,11 @@ namespace UltrakillIOS
                 if (canKickMeshes)
                 {
                     TryPopulateStaticMRends(optimizer, optType, flags);
+                    var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as IList;
+                    var idx = dataType.GetField("firstSubMesh", flags)?.GetValue(baked) as IList;
+                    UltrakillLog.Info(Area, "pre-SetupMeshes staticMRends=" + (rends?.Count ?? 0)
+                        + " firstSubMesh=" + (idx?.Count ?? 0)
+                        + " bakedMeshes=" + ((dataType.GetField("bakedMeshes", flags)?.GetValue(baked) as IList)?.Count ?? 0));
                 }
 
                 EnsureBatchMaterials(optimizer, optType, flags);

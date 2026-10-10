@@ -169,6 +169,10 @@ public static class IosRetailBundleBuild
                 BuildAssetBundleOptions.ChunkBasedCompression,
                 BuildTarget.iOS);
             Debug.Log("[IosBundles] legacy scene build manifest: " + (manifest != null ? manifest.name : "null"));
+
+            // AssetRipper often leaves bakedDataAsset as a Missing/DLL script ref, so the scene bundle
+            // omits BakedData + atlas-UV Combined Mesh. Pack them explicitly for runtime LoadFromFile.
+            PackTutorialBakeCompanion(outDir);
         }
 
         if (builds.Count == 0)
@@ -195,6 +199,50 @@ public static class IosRetailBundleBuild
         {
             EditorApplication.Exit(1);
         }
+    }
+
+    private static void PackTutorialBakeCompanion(string outDir)
+    {
+        const string bakeAsset = "Assets/MonoBehaviour/BakedData_0.asset";
+        const string bakeMesh = "Assets/Mesh/Combined Mesh (root_ StaticSceneOptimizer)_0.asset";
+        const string mainAtlas = "Assets/Texture2D/Texture2D_2.png";
+        const string blendAtlas = "Assets/Texture2D/Texture2D_1.png";
+        var paths = new[] { bakeAsset, bakeMesh, mainAtlas, blendAtlas }
+            .Where(p => !string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(p)))
+            .ToArray();
+        if (paths.Length == 0)
+        {
+            Debug.LogWarning("[IosBundles] Tutorial bake companion: no bake assets found in export");
+            return;
+        }
+
+        var so = AssetDatabase.LoadMainAssetAtPath(bakeAsset);
+        var meshCount = -1;
+        if (so != null)
+        {
+            var t = so.GetType();
+            var f = t.GetField("bakedMeshes");
+            if (f?.GetValue(so) is System.Collections.IList list)
+            {
+                meshCount = list.Count;
+            }
+        }
+
+        Debug.Log("[IosBundles] Tutorial bake companion assets=" + paths.Length
+            + " BakedData type=" + (so != null ? so.GetType().Name : "NULL")
+            + " bakedMeshes=" + meshCount);
+
+        var abb = new AssetBundleBuild
+        {
+            assetBundleName = "specialscenes_scenes_tutorial_bakedata.bundle",
+            assetNames = paths,
+        };
+        var manifest = BuildPipeline.BuildAssetBundles(
+            outDir,
+            new[] { abb },
+            BuildAssetBundleOptions.ChunkBasedCompression,
+            BuildTarget.iOS);
+        Debug.Log("[IosBundles] bake companion manifest: " + (manifest != null ? manifest.name : "null"));
     }
 
     private static void IndexShaderFile(string file, Dictionary<string, List<string>> byName, Dictionary<string, string> shaderPathByName)

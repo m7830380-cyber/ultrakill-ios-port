@@ -18,6 +18,10 @@ $mapPath = Join-Path $repo "artifacts\catalog-map.json"
 python (Join-Path $repo "scripts\decode_catalog.py") (Join-Path $RetailAa "catalog.json") $mapPath
 if ($LASTEXITCODE -ne 0) { throw "catalog decode failed" }
 
+# AssetRipper dumps StaticSceneData index lists as hex blobs — Unity then ships empty bake data on device.
+python (Join-Path $repo "scripts\fix-BakedDataAsset.py") (Join-Path $ExportProject "Assets\MonoBehaviour")
+if ($LASTEXITCODE -ne 0) { Write-Warning "Fix-BakedDataAsset.py exit $LASTEXITCODE (continuing)" }
+
 $tools = Join-Path $ExportProject "Assets\IosBundleTools\Editor"
 New-Item -ItemType Directory -Force -Path $tools | Out-Null
 Copy-Item (Join-Path $repo "export-tools\Editor\*") $tools -Force
