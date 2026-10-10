@@ -325,7 +325,14 @@ namespace UltrakillIOS
 
         private static void ForceBrightSky()
         {
-            // Do NOT leave skybox null — SkyboxEnabler / portals flip clearFlags back to Skybox.
+            // Menu only: invent a clear colour so null-skybox + Skybox clear is not pure black.
+            // Gameplay: never replace retail skybox with Unlit/Color cyan (session 202141).
+            if (!IosSceneMode.IsMainMenuScene())
+            {
+                RenderSettings.fog = false;
+                return;
+            }
+
             if (_brightSky == null)
             {
                 var sh = Shader.Find("Skybox/Procedural")
@@ -366,7 +373,6 @@ namespace UltrakillIOS
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.75f, 0.75f, 0.8f, 1f);
             RenderSettings.ambientIntensity = 1.2f;
-            // Do not null skybox every call — leave whatever Playable set.
         }
 
         private static void TryEndStuckIntro()

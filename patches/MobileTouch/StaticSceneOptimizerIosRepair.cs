@@ -69,6 +69,8 @@ namespace UltrakillIOS
         private static int _kickPasses;
         private static bool _warnedBakeMissing;
         private static bool _warnedStaticData;
+        /// <summary>True when we invented bakedMeshes from scene filters — UVs are NOT atlas-packed; never SetupMeshes.</summary>
+        private static bool _sceneRebuildOnly;
 
         private static void TryBindBakedData(object optimizer, Type optType, BindingFlags flags)
         {
@@ -109,11 +111,28 @@ namespace UltrakillIOS
 
             if (best != null)
             {
+                var meshesBefore = dataType.GetField("bakedMeshes", flags)?.GetValue(best) as IList;
+                var hadRetailMeshes = meshesBefore != null && meshesBefore.Count > 0;
                 HydrateAtlasFields(best, dataType, flags);
-                TryRebuildBakedMeshesFromScene(best, dataType, flags, out var orderedRends);
-                if (orderedRends.Count > 0)
+                if (!hadRetailMeshes)
                 {
-                    TryAssignStaticMRends(optimizer, optType, flags, orderedRends);
+                    // Bundle has empty bake lists. Do NOT invent meshes + call SetupMeshes:
+                    // that swaps every static renderer onto atlas batch mats with wrong UVs → white geo.
+                    _sceneRebuildOnly = true;
+                    if (optimizer is Behaviour beh)
+                    {
+                        beh.enabled = false;
+                    }
+
+                    if (!_warnedStaticData)
+                    {
+                        _warnedStaticData = true;
+                        UltrakillLog.Warn(Area,
+                            "Retail bake lists empty — leaving original MeshRenderer materials (no SetupMeshes/atlas batch). "
+                            + "Fix is content/bundle with real StaticSceneData, not fake rebuild.");
+                    }
+
+                    return;
                 }
             }
 
@@ -134,9 +153,7 @@ namespace UltrakillIOS
                 if (!_warnedStaticData)
                 {
                     _warnedStaticData = true;
-                    UltrakillLog.Warn(Area,
-                        "StaticSceneData still unusable after scene rebuild: maxBakedMeshes=" + meshN
-                        + " (atlas GUID refs empty in bundle — need IPA with SceneOpt rebuild fix)");
+                    UltrakillLog.Warn(Area, "StaticSceneData unusable: maxBakedMeshes=" + meshN);
                 }
 
                 return;
@@ -595,8 +612,15 @@ namespace UltrakillIOS
             try
             {
                 optType.GetField("usedComputeShadersAtStart", flags)?.SetValue(optimizer, false);
-                optType.GetField("nothingBaked", flags)?.SetValue(optimizer, false);
                 TryBindBakedData(optimizer, optType, flags);
+                if (_sceneRebuildOnly)
+                {
+                    optType.GetField("nothingBaked", flags)?.SetValue(optimizer, true);
+                    LogState(optimizer, optType, flags);
+                    return;
+                }
+
+                optType.GetField("nothingBaked", flags)?.SetValue(optimizer, false);
                 var baked = optType.GetField("bakedDataAsset", flags)?.GetValue(optimizer);
                 var dataType = Type.GetType("StaticSceneData, Assembly-CSharp");
                 var canKickMeshes = baked != null && dataType != null && IsBakeDataUsable(baked, dataType, flags);
@@ -709,6 +733,8 @@ namespace UltrakillIOS
 
                 _kickPasses = 0;
                 _lastStateLog = null;
+                _sceneRebuildOnly = false;
+                _warnedStaticData = false;
                 StartCoroutine(KickAfterStart());
             }
 

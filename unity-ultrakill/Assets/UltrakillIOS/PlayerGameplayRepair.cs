@@ -416,8 +416,16 @@ namespace UltrakillIOS
                 cam.cullingMask = ~0;
                 cam.useOcclusionCulling = false;
                 cam.targetTexture = null;
-                cam.clearFlags = CameraClearFlags.SolidColor;
-                cam.backgroundColor = WorldClear;
+                if (IosSceneMode.IsMainMenuScene() || RenderSettings.skybox == null)
+                {
+                    cam.clearFlags = CameraClearFlags.SolidColor;
+                    cam.backgroundColor = WorldClear;
+                }
+                else
+                {
+                    cam.clearFlags = CameraClearFlags.Skybox;
+                }
+
                 cam.depth = 0f;
                 if (!cam.CompareTag("MainCamera"))
                 {
@@ -598,17 +606,7 @@ namespace UltrakillIOS
                 }
             }
 
-            // Keep clear flags honest even if something re-enables Skybox mid-frame.
-            if (_mainCam != null)
-            {
-                if (_mainCam.clearFlags != CameraClearFlags.SolidColor)
-                {
-                    _mainCam.clearFlags = CameraClearFlags.SolidColor;
-                }
-
-                _mainCam.backgroundColor = WorldClear;
-                EnsureSkyMaterial();
-            }
+            // Do NOT force SolidColor every frame — that painted cyan/grey over Tutorial (session 202141).
         }
 
         private static void EnsureSkyMaterial()
