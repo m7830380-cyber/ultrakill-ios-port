@@ -102,6 +102,14 @@ namespace UltrakillIOS
                     continue;
                 }
 
+                // Keep IPA bake batch mats on Resources ULTRAKILL-Standard — stub rebind → purple/same-tile.
+                var goName = r.gameObject.name;
+                if (goName.IndexOf("BakedSub_", StringComparison.Ordinal) >= 0
+                    || goName.IndexOf("BakedStaticGeo", StringComparison.Ordinal) >= 0)
+                {
+                    continue;
+                }
+
                 var shared = r.sharedMaterials;
                 if (shared == null)
                 {
@@ -113,6 +121,12 @@ namespace UltrakillIOS
                 {
                     var m = shared[i];
                     if (m == null || m.shader == null)
+                    {
+                        continue;
+                    }
+
+                    var matName = m.name ?? "";
+                    if (matName.IndexOf("UltrakillIOS.Batch", StringComparison.Ordinal) >= 0)
                     {
                         continue;
                     }

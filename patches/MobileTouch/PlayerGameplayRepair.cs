@@ -15,7 +15,8 @@ namespace UltrakillIOS
     {
         private const string Area = "Playable";
         private const float MoveSpeed = 12f;
-        private const float LookSens = 0.22f;
+        private const float LookSens = 0.07f;
+        private const float LookSmooth = 18f;
 
         private static Material _skyMat;
         private static bool _lightingDone;
@@ -30,6 +31,7 @@ namespace UltrakillIOS
         private AudioSource _fallWhoosh;
         private float _yaw;
         private float _pitch;
+        private Vector2 _lookVel;
         private bool _bound;
         private float _nextDiag;
 
@@ -167,6 +169,7 @@ namespace UltrakillIOS
             RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: true);
             yield return new WaitForSecondsRealtime(0.5f);
             RetailShaderRepair.RemapBrokenMaterialsOnRenderers(includeInactive: false);
+            ParticleVisualRepair.SuppressBroken();
             LevelLookHorizon();
         }
 
@@ -421,6 +424,7 @@ namespace UltrakillIOS
 
             if (cam != null)
             {
+                var sameCam = _bound && _camTr == cam.transform;
                 _camTr = cam.transform;
                 _mainCam = cam;
                 cam.enabled = true;
@@ -443,9 +447,13 @@ namespace UltrakillIOS
                     cam.tag = "MainCamera";
                 }
 
-                var e = _camTr.eulerAngles;
-                _yaw = e.y;
-                _pitch = e.x > 180f ? e.x - 360f : e.x;
+                if (!sameCam)
+                {
+                    var e = _camTr.eulerAngles;
+                    _yaw = e.y;
+                    _pitch = e.x > 180f ? e.x - 360f : e.x;
+                    _lookVel = Vector2.zero;
+                }
             }
 
             foreach (var c in UnityEngine.Object.FindObjectsOfType<Camera>(true))
@@ -548,29 +556,17 @@ namespace UltrakillIOS
                 return;
             }
 
+            // Touch only — never mouse.delta (HUD used to queue deltas → unstable look).
             var look = TouchGameplayBridge.Look;
             TouchGameplayBridge.Look = Vector2.zero;
-            if (look.sqrMagnitude < 0.0001f)
-            {
-                try
-                {
-                    var mouse = UnityEngine.InputSystem.Mouse.current;
-                    if (mouse != null)
-                    {
-                        look = mouse.delta.ReadValue();
-                    }
-                }
-                catch
-                {
-                    look = new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y")) * 10f;
-                }
-            }
 
-            if (look.sqrMagnitude > 0.0001f)
+            var t = 1f - Mathf.Exp(-LookSmooth * Time.unscaledDeltaTime);
+            _lookVel = Vector2.Lerp(_lookVel, look, t);
+            if (_lookVel.sqrMagnitude > 0.00001f)
             {
-                _yaw += look.x * LookSens;
-                _pitch -= look.y * LookSens;
-                _pitch = Mathf.Clamp(_pitch, -89f, 89f);
+                _yaw += _lookVel.x * LookSens;
+                _pitch -= _lookVel.y * LookSens;
+                _pitch = Mathf.Clamp(_pitch, -85f, 85f);
             }
 
             ApplyCameraRotation();

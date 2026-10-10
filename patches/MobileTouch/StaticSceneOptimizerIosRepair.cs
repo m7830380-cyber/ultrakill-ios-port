@@ -1,6 +1,7 @@
 #if ULTRAKILL_FULL_PORT
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -70,6 +71,7 @@ namespace UltrakillIOS
         private static int _kickPasses;
         private static bool _warnedBakeMissing;
         private static bool _warnedStaticData;
+        private static bool _expandedSubmeshes;
         /// <summary>True when we invented bakedMeshes from scene filters — UVs are NOT atlas-packed; never SetupMeshes.</summary>
         private static bool _sceneRebuildOnly;
 
@@ -755,6 +757,8 @@ namespace UltrakillIOS
                     optType.GetMethod("SetupMeshes", flags)?.Invoke(optimizer, null);
                     _kickPasses++;
                     UltrakillLog.Info(Area, "SetupMeshes OK pass=" + _kickPasses);
+                    // SetStaticBatchInfo is unreliable on iOS IL2CPP — every MR drew the same atlas tile.
+                    ExpandToStandaloneSubmeshes(optimizer, optType, baked, dataType, flags);
                 }
 
                 LogState(optimizer, optType, flags);
@@ -767,6 +771,132 @@ namespace UltrakillIOS
             catch (Exception ex)
             {
                 UltrakillLog.Warn(Area, "Kick failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Replace Combined Mesh + SetStaticBatchInfo with one real Mesh per bake slot so atlas UVs differ.
+        /// </summary>
+        private static void ExpandToStandaloneSubmeshes(
+            object optimizer,
+            Type optType,
+            object baked,
+            Type dataType,
+            BindingFlags flags)
+        {
+            if (baked == null || dataType == null)
+            {
+                return;
+            }
+
+            var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as IList;
+            var firstSubs = dataType.GetField("firstSubMesh", flags)?.GetValue(baked) as IList;
+            var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(baked) as IList;
+            var meshIdx = dataType.GetField("mrMeshIndices", flags)?.GetValue(baked) as IList;
+            if (rends == null || firstSubs == null || meshes == null || meshIdx == null
+                || rends.Count == 0 || rends.Count != firstSubs.Count)
+            {
+                return;
+            }
+
+            var cache = new Dictionary<long, Mesh>();
+            var expanded = 0;
+            for (var i = 0; i < rends.Count; i++)
+            {
+                var mr = rends[i] as MeshRenderer;
+                if (mr == null)
+                {
+                    continue;
+                }
+
+                var mf = mr.GetComponent<MeshFilter>();
+                if (mf == null)
+                {
+                    continue;
+                }
+
+                var mi = Convert.ToInt32(meshIdx[i]);
+                var si = Convert.ToInt32(firstSubs[i]);
+                if (mi < 0 || mi >= meshes.Count)
+                {
+                    continue;
+                }
+
+                var src = meshes[mi] as Mesh;
+                if (src == null || si < 0 || si >= src.subMeshCount)
+                {
+                    continue;
+                }
+
+                var key = ((long)src.GetInstanceID() << 32) | (uint)si;
+                if (!cache.TryGetValue(key, out var piece) || piece == null)
+                {
+                    piece = ExtractSubmesh(src, si);
+                    if (piece == null)
+                    {
+                        continue;
+                    }
+
+                    cache[key] = piece;
+                }
+
+                mf.sharedMesh = piece;
+                expanded++;
+            }
+
+            if (expanded > 0 && !_expandedSubmeshes)
+            {
+                _expandedSubmeshes = true;
+                UltrakillLog.Info(Area, "Expanded bake slots to standalone submeshes=" + expanded
+                    + " uniquePieces=" + cache.Count);
+            }
+        }
+
+        private static Mesh ExtractSubmesh(Mesh src, int subMesh)
+        {
+            try
+            {
+                var tris = src.GetTriangles(subMesh);
+                if (tris == null || tris.Length == 0)
+                {
+                    return null;
+                }
+
+                var srcV = src.vertices;
+                var srcUv = src.uv;
+                var srcN = src.normals;
+                var map = new Dictionary<int, int>(Mathf.Min(tris.Length, 4096));
+                var verts = new List<Vector3>(tris.Length);
+                var uvs = new List<Vector2>(tris.Length);
+                var norms = new List<Vector3>(tris.Length);
+                var newTris = new int[tris.Length];
+                for (var t = 0; t < tris.Length; t++)
+                {
+                    var old = tris[t];
+                    if (!map.TryGetValue(old, out var ni))
+                    {
+                        ni = verts.Count;
+                        map[old] = ni;
+                        verts.Add(srcV[old]);
+                        uvs.Add(srcUv != null && old < srcUv.Length ? srcUv[old] : Vector2.zero);
+                        norms.Add(srcN != null && old < srcN.Length ? srcN[old] : Vector3.up);
+                    }
+
+                    newTris[t] = ni;
+                }
+
+                var m = new Mesh { name = src.name + "_sub" + subMesh };
+                m.SetVertices(verts);
+                m.SetUVs(0, uvs);
+                m.SetNormals(norms);
+                m.SetTriangles(newTris, 0, true);
+                m.RecalculateBounds();
+                return m;
+            }
+            catch (Exception ex)
+            {
+                UltrakillLog.Warn(Area, "ExtractSubmesh " + subMesh + ": " + ex.Message);
+                return null;
             }
         }
 
@@ -798,14 +928,34 @@ namespace UltrakillIOS
 
             if (Bad(outdoors))
             {
-                outdoors = new Material(master);
+                outdoors = new Material(master) { name = "UltrakillIOS.BatchOutdoors" };
                 outF?.SetValue(optimizer, outdoors);
             }
 
             if (Bad(env))
             {
-                env = new Material(master);
+                env = new Material(master) { name = "UltrakillIOS.BatchEnvironment" };
                 envF?.SetValue(optimizer, env);
+            }
+
+            // Keep atlas on batch mats even if SetupMaterial already ran.
+            var baked = optType.GetField("bakedDataAsset", flags)?.GetValue(optimizer);
+            var dataType = Type.GetType("StaticSceneData, Assembly-CSharp");
+            if (baked != null && dataType != null)
+            {
+                var atlas = dataType.GetField("mainTexAtlas", flags)?.GetValue(baked) as Texture;
+                if (atlas != null)
+                {
+                    if (outdoors != null && outdoors.HasProperty("_MainTex"))
+                    {
+                        outdoors.SetTexture("_MainTex", atlas);
+                    }
+
+                    if (env != null && env.HasProperty("_MainTex"))
+                    {
+                        env.SetTexture("_MainTex", atlas);
+                    }
+                }
             }
         }
 
@@ -867,6 +1017,7 @@ namespace UltrakillIOS
                 _lastStateLog = null;
                 _sceneRebuildOnly = false;
                 _warnedStaticData = false;
+                _expandedSubmeshes = false;
                 DisableOptimizersUntilKick();
                 StartCoroutine(KickAfterStart());
             }

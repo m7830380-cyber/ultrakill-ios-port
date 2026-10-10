@@ -5,7 +5,8 @@ namespace UltrakillIOS
     internal sealed class MobileTouchHud : MonoBehaviour
     {
         private const float MoveStickRadius = 120f;
-        private const float LookSensitivity = 3.6f;
+        // Pixel→look scale only; PlayerGameplayRepair applies final sens. Keep low — retina deltas are large.
+        private const float LookSensitivity = 0.65f;
 
         private Vector2 _moveStickCenter;
         private Vector2 _moveVector;
@@ -146,9 +147,8 @@ namespace UltrakillIOS
                     return;
                 }
 
-                var scaled = delta * LookSensitivity;
-                LegacyInputSynthesizer.ApplyLookDelta(scaled);
-                TouchGameplayBridge.Look += scaled;
+                // Do NOT QueueDeltaStateEvent mouse — DriveLook was also reading mouse.delta → double/jitter.
+                TouchGameplayBridge.Look += delta * LookSensitivity;
             }
         }
 
