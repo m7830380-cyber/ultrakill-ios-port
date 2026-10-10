@@ -66,6 +66,7 @@ namespace UltrakillIOS
 
         private static string _lastStateLog;
         private static int _kickPasses;
+        private static bool _warnedBakeMissing;
 
         private static void TryBindBakedData(object optimizer, Type optType, BindingFlags flags)
         {
@@ -81,6 +82,8 @@ namespace UltrakillIOS
                 return;
             }
 
+            var found = 0;
+            var withAtlas = 0;
             foreach (var data in Resources.FindObjectsOfTypeAll(dataType))
             {
                 if (data == null)
@@ -88,6 +91,7 @@ namespace UltrakillIOS
                     continue;
                 }
 
+                found++;
                 var atlasField = dataType.GetField("mainTexAtlas", flags);
                 var atlas = atlasField?.GetValue(data) as Texture;
                 if (atlas == null)
@@ -95,9 +99,15 @@ namespace UltrakillIOS
                     continue;
                 }
 
+                withAtlas++;
                 bakedField.SetValue(optimizer, data);
-                UltrakillLog.Info(Area, "Bound StaticSceneData atlas=" + atlas.name);
+                UltrakillLog.Info(Area, "Bound StaticSceneData atlas=" + atlas.name + " (candidates=" + found + ")");
                 return;
+            }
+
+            if (found > 0)
+            {
+                UltrakillLog.Warn(Area, "StaticSceneData assets=" + found + " but none have mainTexAtlas");
             }
         }
 
@@ -107,6 +117,7 @@ namespace UltrakillIOS
             try
             {
                 optType.GetField("usedComputeShadersAtStart", flags)?.SetValue(optimizer, false);
+                optType.GetField("nothingBaked", flags)?.SetValue(optimizer, false);
                 TryBindBakedData(optimizer, optType, flags);
                 EnsureBatchMaterials(optimizer, optType, flags);
 
@@ -170,11 +181,21 @@ namespace UltrakillIOS
             var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as System.Collections.IList;
             var nothingBaked = optType.GetField("nothingBaked", flags)?.GetValue(optimizer);
             var go = (optimizer as UnityEngine.Object)?.name ?? "?";
+            var beh = optimizer as Behaviour;
+            var scriptOk = beh != null && beh.GetType().Name == "StaticSceneOptimizer";
             var msg = "optimizer go=" + go
+                + " scriptOk=" + scriptOk
                 + " bakedData=" + (baked != null ? "yes" : "NULL")
                 + " staticMRends=" + (rends?.Count ?? 0)
                 + " nothingBaked=" + nothingBaked
                 + " outdoorMainTex=" + (outTex != null ? outTex.name : "null");
+            if (!_warnedBakeMissing && (rends?.Count ?? 0) == 0 && baked == null)
+            {
+                _warnedBakeMissing = true;
+                UltrakillLog.Warn(Area,
+                    "Geo white: optimizer has no bake data in memory — need iOS Tutorial bundle with StaticSceneData "
+                    + "(legacy Build-IosBundles scene build), not stub shaders alone");
+            }
             if (msg != _lastStateLog)
             {
                 _lastStateLog = msg;

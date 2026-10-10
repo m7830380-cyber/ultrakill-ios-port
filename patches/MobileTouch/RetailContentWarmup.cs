@@ -15,12 +15,24 @@ namespace UltrakillIOS
         private static readonly System.Collections.Generic.Dictionary<string, Material> MaterialsByName =
             new System.Collections.Generic.Dictionary<string, Material>();
 
+        private static string _lastIndexScene = "";
+        private static int _lastIndexFrame = -9999;
+
         public static int TexturesLoaded { get; private set; }
         public static int MaterialsLoaded { get; private set; }
 
         /// <summary>Index textured materials already resident (post-Addressables).</summary>
         internal static void RefreshMaterialIndex()
         {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ?? "";
+            if (scene == _lastIndexScene && Time.frameCount - _lastIndexFrame < 90)
+            {
+                return;
+            }
+
+            _lastIndexScene = scene;
+            _lastIndexFrame = Time.frameCount;
+
             MaterialsByName.Clear();
             MaterialsLoaded = 0;
 
