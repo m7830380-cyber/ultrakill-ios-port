@@ -1,5 +1,6 @@
 #if ULTRAKILL_FULL_PORT
 using System;
+using System.Collections;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -82,8 +83,8 @@ namespace UltrakillIOS
                 return;
             }
 
-            var found = 0;
-            var withAtlas = 0;
+            object best = null;
+            var bestScore = 0;
             foreach (var data in Resources.FindObjectsOfTypeAll(dataType))
             {
                 if (data == null)
@@ -91,23 +92,164 @@ namespace UltrakillIOS
                     continue;
                 }
 
-                found++;
-                var atlasField = dataType.GetField("mainTexAtlas", flags);
-                var atlas = atlasField?.GetValue(data) as Texture;
-                if (atlas == null)
+                HydrateAtlasFields(data, dataType, flags);
+                var score = ScoreBakedData(data, dataType, flags);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = data;
+                }
+            }
+
+            if (best == null || bestScore <= 0)
+            {
+                UltrakillLog.Warn(Area, "No usable StaticSceneData (session 140644: asset present but atlas/meshes unresolved)");
+                return;
+            }
+
+            bakedField.SetValue(optimizer, best);
+            var main = dataType.GetField("mainTexAtlas", flags)?.GetValue(best) as Texture;
+            var meshList = dataType.GetField("bakedMeshes", flags)?.GetValue(best) as IList;
+            UltrakillLog.Info(Area,
+                "Bound StaticSceneData atlas=" + (main != null ? main.name : "null")
+                + " bakedMeshes=" + (meshList != null ? meshList.Count : 0));
+        }
+
+        private static int ScoreBakedData(object data, Type dataType, BindingFlags flags)
+        {
+            var score = 0;
+            if (dataType.GetField("mainTexAtlas", flags)?.GetValue(data) is Texture)
+            {
+                score += 1000;
+            }
+
+            if (dataType.GetField("blendTexAtlas", flags)?.GetValue(data) is Texture)
+            {
+                score += 100;
+            }
+
+            var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(data) as IList;
+            if (meshes != null)
+            {
+                score += meshes.Count;
+            }
+
+            return score;
+        }
+
+        /// <summary>iOS scene load often leaves StaticSceneData with null atlas refs (140644); match loaded textures by name.</summary>
+        private static void HydrateAtlasFields(object data, Type dataType, BindingFlags flags)
+        {
+            var mainF = dataType.GetField("mainTexAtlas", flags);
+            var blendF = dataType.GetField("blendTexAtlas", flags);
+            if (mainF == null)
+            {
+                return;
+            }
+
+            if (mainF.GetValue(data) is Texture)
+            {
+                return;
+            }
+
+            Texture2D mainPick = null;
+            Texture2D blendPick = null;
+            var mainScore = 0L;
+            var blendScore = 0L;
+            foreach (var t in Resources.FindObjectsOfTypeAll<Texture2D>())
+            {
+                if (t == null)
                 {
                     continue;
                 }
 
-                withAtlas++;
-                bakedField.SetValue(optimizer, data);
-                UltrakillLog.Info(Area, "Bound StaticSceneData atlas=" + atlas.name + " (candidates=" + found + ")");
+                var n = t.name.ToLowerInvariant();
+                var pixels = (long)t.width * t.height;
+                if (n.Contains("atlas") || n.Contains("static") || n.Contains("baked"))
+                {
+                    if (n.Contains("blend"))
+                    {
+                        if (pixels > blendScore)
+                        {
+                            blendScore = pixels;
+                            blendPick = t;
+                        }
+                    }
+                    else if (pixels > mainScore)
+                    {
+                        mainScore = pixels;
+                        mainPick = t;
+                    }
+                }
+            }
+
+            if (mainPick == null)
+            {
+                foreach (var t in Resources.FindObjectsOfTypeAll<Texture2D>())
+                {
+                    if (t == null)
+                    {
+                        continue;
+                    }
+
+                    var pixels = (long)t.width * t.height;
+                    if (pixels > mainScore && t.width >= 256 && t.height >= 256)
+                    {
+                        mainScore = pixels;
+                        mainPick = t;
+                    }
+                }
+            }
+
+            if (mainPick != null)
+            {
+                mainF.SetValue(data, mainPick);
+                UltrakillLog.Info(Area, "Hydrated mainTexAtlas from loaded texture '" + mainPick.name + "'");
+            }
+
+            if (blendPick != null && blendF != null)
+            {
+                blendF.SetValue(data, blendPick);
+            }
+        }
+
+        private static void TryPopulateStaticMRends(object optimizer, Type optType, BindingFlags flags)
+        {
+            var listField = optType.GetField("staticMRends", flags);
+            if (listField == null)
+            {
                 return;
             }
 
-            if (found > 0)
+            var list = listField.GetValue(optimizer);
+            if (list is not IList ilist || ilist.Count > 0)
             {
-                UltrakillLog.Warn(Area, "StaticSceneData assets=" + found + " but none have mainTexAtlas");
+                return;
+            }
+
+            const int enviroLayer = 8;
+            const int outdoorLayer = 24;
+            var added = 0;
+            foreach (var r in Object.FindObjectsOfType<MeshRenderer>(true))
+            {
+                if (r == null)
+                {
+                    continue;
+                }
+
+                var layer = r.gameObject.layer;
+                if (layer != enviroLayer && layer != outdoorLayer)
+                {
+                    continue;
+                }
+
+                ilist.Add(r);
+                added++;
+            }
+
+            if (added > 0)
+            {
+                UltrakillLog.Info(Area, "Populated staticMRends=" + added + " from enviro/outdoor layers");
             }
         }
 
@@ -119,6 +261,7 @@ namespace UltrakillIOS
                 optType.GetField("usedComputeShadersAtStart", flags)?.SetValue(optimizer, false);
                 optType.GetField("nothingBaked", flags)?.SetValue(optimizer, false);
                 TryBindBakedData(optimizer, optType, flags);
+                TryPopulateStaticMRends(optimizer, optType, flags);
                 EnsureBatchMaterials(optimizer, optType, flags);
 
                 optType.GetMethod("FixPosition", flags)?.Invoke(optimizer, null);
