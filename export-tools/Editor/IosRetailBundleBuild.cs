@@ -41,6 +41,7 @@ public static class IosRetailBundleBuild
             .GroupBy(p => Path.GetFileNameWithoutExtension(p)).ToDictionary(g => g.Key, g => g.First());
 
         var builds = new List<AssetBundleBuild>();
+        var sceneBuilds = new List<AssetBundleBuild>();
         var claimed = new HashSet<string>();
         string shaderBundle = null, monoScriptBundle = null;
         int matched = 0, unmatched = 0;
@@ -63,17 +64,16 @@ public static class IosRetailBundleBuild
             {
                 foreach (var scene in sceneAssets)
                 {
-                    if (scenePaths.TryGetValue(scene.internalId, out var path))
-                    {
-                        assetNames.Add(path);
-                        addressableNames.Add(scene.internalId);
-                        matched++;
-                    }
-                    else
+                    if (!scenePaths.TryGetValue(scene.internalId, out var path))
                     {
                         Debug.LogWarning("[IosBundles] scene not exported: " + scene.primaryKey + " (" + scene.internalId + ")");
                         unmatched++;
+                        continue;
                     }
+
+                    assetNames.Add(path);
+                    addressableNames.Add(scene.internalId);
+                    matched++;
                 }
             }
             else
@@ -136,18 +136,46 @@ public static class IosRetailBundleBuild
                 continue;
             }
 
-            builds.Add(new AssetBundleBuild
+            var abb = new AssetBundleBuild
             {
                 assetBundleName = bundle.file,
                 assetNames = assetNames.ToArray(),
                 addressableNames = addressableNames.ToArray(),
-            });
-            Debug.Log("[IosBundles] queued " + bundle.file + " with " + assetNames.Count + " assets");
+            };
+            if (sceneAssets.Count > 0)
+            {
+                sceneBuilds.Add(abb);
+            }
+            else
+            {
+                builds.Add(abb);
+            }
+
+            Debug.Log("[IosBundles] queued " + bundle.file + " with " + assetNames.Count + " assets"
+                + (sceneAssets.Count > 0 ? " (scene/legacy)" : " (sbp)"));
         }
 
-        Debug.Log("[IosBundles] matched " + matched + " catalog assets, unmatched " + unmatched + ", bundles " + builds.Count);
+        Debug.Log("[IosBundles] matched " + matched + " catalog assets, unmatched " + unmatched
+            + ", sceneBundles " + sceneBuilds.Count + ", assetBundles " + builds.Count);
 
         Directory.CreateDirectory(outDir);
+
+        if (sceneBuilds.Count > 0)
+        {
+            // SBP rejects scene+asset mixes; legacy API packs scene dependencies (StaticSceneData, baked meshes).
+            var manifest = BuildPipeline.BuildAssetBundles(
+                outDir,
+                sceneBuilds.ToArray(),
+                BuildAssetBundleOptions.ChunkBasedCompression,
+                BuildTarget.iOS);
+            Debug.Log("[IosBundles] legacy scene build manifest: " + (manifest != null ? manifest.name : "null"));
+        }
+
+        if (builds.Count == 0)
+        {
+            return;
+        }
+
         var parameters = new BundleBuildParameters(BuildTarget.iOS, BuildTargetGroup.iOS, outDir)
         {
             BundleCompression = UnityEngine.BuildCompression.LZ4,
@@ -162,7 +190,7 @@ public static class IosRetailBundleBuild
         }
 
         var code = ContentPipeline.BuildAssetBundles(parameters, new BundleBuildContent(builds), out IBundleBuildResults results, tasks);
-        Debug.Log("[IosBundles] build result: " + code + ", bundles written: " + (results?.BundleInfos.Count ?? 0));
+        Debug.Log("[IosBundles] SBP build result: " + code + ", bundles written: " + (results?.BundleInfos.Count ?? 0));
         if (code < ReturnCode.Success)
         {
             EditorApplication.Exit(1);

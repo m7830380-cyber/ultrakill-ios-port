@@ -2,7 +2,8 @@ param(
     [string]$ExportProject = "C:\Users\v0id\ultrakill-export\ExportedProject",
     [string]$Unity = "C:\Program Files\Unity\Hub\Editor\2022.3.62f1\Editor\Unity.exe",
     [string]$RetailAa = "C:\Program Files (x86)\Steam\steamapps\common\ULTRAKILL\ULTRAKILL_Data\StreamingAssets\aa",
-    [string]$OutRoot = "$PSScriptRoot\..\artifacts\ios-content"
+    [string]$OutRoot = "$PSScriptRoot\..\artifacts\ios-content",
+    [string]$OnlyBundle = ""
 )
 
 # Prepares the AssetRipper export for an iOS bundle build, runs it, and writes an aa folder (iOS bundles plus the
@@ -42,10 +43,18 @@ $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
 $manifest.dependencies | Add-Member -NotePropertyName "com.unity.scriptablebuildpipeline" -NotePropertyValue "1.21.21" -Force
 $manifest | ConvertTo-Json -Depth 5 | Set-Content $manifestPath -Encoding UTF8
 
-if (Test-Path $bundleOut) { Remove-Item -Recurse -Force $bundleOut }
+if (-not $OnlyBundle -and (Test-Path $bundleOut)) {
+    Remove-Item -Recurse -Force $bundleOut
+}
+New-Item -ItemType Directory -Force -Path $bundleOut | Out-Null
 $log = Join-Path $repo "artifacts\ios-bundles.log"
+$extra = @()
+if ($OnlyBundle) {
+    $extra += "-onlyBundle"
+    $extra += $OnlyBundle
+}
 & $Unity -batchmode -nographics -quit -buildTarget iOS -projectPath $ExportProject -logFile $log `
-    -executeMethod IosRetailBundleBuild.Build -catalogMap $mapPath -outDir $bundleOut | Out-Null
+    -executeMethod IosRetailBundleBuild.Build -catalogMap $mapPath -outDir $bundleOut @extra | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Unity bundle build failed (exit $LASTEXITCODE); see $log" }
 
 $catalog = Get-Content (Join-Path $RetailAa "catalog.json") -Raw

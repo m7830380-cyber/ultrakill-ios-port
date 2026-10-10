@@ -168,8 +168,12 @@ namespace UltrakillIOS
             }
 
             var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as System.Collections.IList;
-            var msg = "optimizer bakedData=" + (baked != null ? "yes" : "NULL")
+            var nothingBaked = optType.GetField("nothingBaked", flags)?.GetValue(optimizer);
+            var go = (optimizer as UnityEngine.Object)?.name ?? "?";
+            var msg = "optimizer go=" + go
+                + " bakedData=" + (baked != null ? "yes" : "NULL")
                 + " staticMRends=" + (rends?.Count ?? 0)
+                + " nothingBaked=" + nothingBaked
                 + " outdoorMainTex=" + (outTex != null ? outTex.name : "null");
             if (msg != _lastStateLog)
             {
