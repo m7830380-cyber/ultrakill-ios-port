@@ -9,7 +9,11 @@ from pathlib import Path
 
 
 def parse_int_list(text: str, field: str) -> list[int]:
-    m = re.search(rf"(?ms)^[ \t]*{re.escape(field)}:\s*\n((?:[ \t]*- .+\n)+)", text)
+    # Do NOT use DOTALL — '.' must not cross newlines or lists merge into one blob.
+    m = re.search(
+        rf"(?m)^[ \t]*{re.escape(field)}:\s*\n((?:[ \t]*- .+\n)*(?:[ \t]*- .+)\n?)",
+        text,
+    )
     if not m:
         raise SystemExit(f"missing YAML list for {field}")
     out: list[int] = []
