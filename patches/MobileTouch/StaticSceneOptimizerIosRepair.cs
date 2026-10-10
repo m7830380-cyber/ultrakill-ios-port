@@ -101,9 +101,23 @@ namespace UltrakillIOS
                 }
             }
 
-            if (best == null || bestScore <= 0)
+            if (best == null || !IsBakeDataUsable(best, dataType, flags))
             {
-                UltrakillLog.Warn(Area, "No usable StaticSceneData (session 140644: asset present but atlas/meshes unresolved)");
+                var meshN = 0;
+                foreach (var data in Resources.FindObjectsOfTypeAll(dataType))
+                {
+                    if (data is null)
+                    {
+                        continue;
+                    }
+
+                    var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(data) as IList;
+                    meshN = Math.Max(meshN, meshes?.Count ?? 0);
+                }
+
+                UltrakillLog.Warn(Area,
+                    "StaticSceneData not usable on device (need bakedMeshes>0 + scene atlases). maxBakedMeshes=" + meshN
+                    + " — overlay cannot fake geo; fix iOS content bundles + shaders.bundle");
                 return;
             }
 
@@ -115,29 +129,59 @@ namespace UltrakillIOS
                 + " bakedMeshes=" + (meshList != null ? meshList.Count : 0));
         }
 
+        private static bool IsBakeDataUsable(object data, Type dataType, BindingFlags flags)
+        {
+            var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(data) as IList;
+            if (meshes == null || meshes.Count == 0)
+            {
+                return false;
+            }
+
+            var main = dataType.GetField("mainTexAtlas", flags)?.GetValue(data) as Texture;
+            var blend = dataType.GetField("blendTexAtlas", flags)?.GetValue(data) as Texture;
+            return main != null && blend != null && IsSceneAtlasTexture(main) && IsSceneAtlasTexture(blend);
+        }
+
         private static int ScoreBakedData(object data, Type dataType, BindingFlags flags)
         {
-            var score = 0;
-            if (dataType.GetField("mainTexAtlas", flags)?.GetValue(data) is Texture)
+            var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(data) as IList;
+            var meshCount = meshes?.Count ?? 0;
+            if (meshCount == 0)
+            {
+                return 0;
+            }
+
+            var score = meshCount;
+            if (dataType.GetField("mainTexAtlas", flags)?.GetValue(data) is Texture main && IsSceneAtlasTexture(main))
             {
                 score += 1000;
             }
 
-            if (dataType.GetField("blendTexAtlas", flags)?.GetValue(data) is Texture)
+            if (dataType.GetField("blendTexAtlas", flags)?.GetValue(data) is Texture blend && IsSceneAtlasTexture(blend))
             {
                 score += 100;
-            }
-
-            var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(data) as IList;
-            if (meshes != null)
-            {
-                score += meshes.Count;
             }
 
             return score;
         }
 
-        /// <summary>iOS scene load often leaves StaticSceneData with null atlas refs (140644); match loaded textures by name.</summary>
+        private static bool IsSceneAtlasTexture(Texture t)
+        {
+            if (t == null)
+            {
+                return false;
+            }
+
+            var n = t.name.ToLowerInvariant();
+            if (n.Contains("sdf") || n.Contains("liberation") || n.Contains("font") || n.Contains("tmp"))
+            {
+                return false;
+            }
+
+            return n.Contains("atlas") || n.Contains("static") || n.Contains("baked") || n.Contains("blend");
+        }
+
+        /// <summary>Only fill atlas refs when scene bake textures are already loaded but GUID refs failed (not TMP/UI atlases).</summary>
         private static void HydrateAtlasFields(object data, Type dataType, BindingFlags flags)
         {
             var mainF = dataType.GetField("mainTexAtlas", flags);
@@ -163,41 +207,25 @@ namespace UltrakillIOS
                     continue;
                 }
 
+                if (!IsSceneAtlasTexture(t))
+                {
+                    continue;
+                }
+
                 var n = t.name.ToLowerInvariant();
                 var pixels = (long)t.width * t.height;
-                if (n.Contains("atlas") || n.Contains("static") || n.Contains("baked"))
+                if (n.Contains("blend"))
                 {
-                    if (n.Contains("blend"))
+                    if (pixels > blendScore)
                     {
-                        if (pixels > blendScore)
-                        {
-                            blendScore = pixels;
-                            blendPick = t;
-                        }
-                    }
-                    else if (pixels > mainScore)
-                    {
-                        mainScore = pixels;
-                        mainPick = t;
+                        blendScore = pixels;
+                        blendPick = t;
                     }
                 }
-            }
-
-            if (mainPick == null)
-            {
-                foreach (var t in Resources.FindObjectsOfTypeAll<Texture2D>())
+                else if (pixels > mainScore)
                 {
-                    if (t == null)
-                    {
-                        continue;
-                    }
-
-                    var pixels = (long)t.width * t.height;
-                    if (pixels > mainScore && t.width >= 256 && t.height >= 256)
-                    {
-                        mainScore = pixels;
-                        mainPick = t;
-                    }
+                    mainScore = pixels;
+                    mainPick = t;
                 }
             }
 
@@ -223,6 +251,19 @@ namespace UltrakillIOS
 
             var list = listField.GetValue(optimizer);
             if (list is not IList ilist || ilist.Count > 0)
+            {
+                return;
+            }
+
+            var baked = optType.GetField("bakedDataAsset", flags)?.GetValue(optimizer);
+            var dataType = Type.GetType("StaticSceneData, Assembly-CSharp");
+            if (baked == null || dataType == null || !IsBakeDataUsable(baked, dataType, flags))
+            {
+                return;
+            }
+
+            var indices = dataType.GetField("mrMeshIndices", flags)?.GetValue(baked) as IList;
+            if (indices == null || indices.Count == 0)
             {
                 return;
             }
@@ -261,11 +302,18 @@ namespace UltrakillIOS
                 optType.GetField("usedComputeShadersAtStart", flags)?.SetValue(optimizer, false);
                 optType.GetField("nothingBaked", flags)?.SetValue(optimizer, false);
                 TryBindBakedData(optimizer, optType, flags);
-                TryPopulateStaticMRends(optimizer, optType, flags);
+                var baked = optType.GetField("bakedDataAsset", flags)?.GetValue(optimizer);
+                var dataType = Type.GetType("StaticSceneData, Assembly-CSharp");
+                var canKickMeshes = baked != null && dataType != null && IsBakeDataUsable(baked, dataType, flags);
+                if (canKickMeshes)
+                {
+                    TryPopulateStaticMRends(optimizer, optType, flags);
+                }
+
                 EnsureBatchMaterials(optimizer, optType, flags);
 
                 optType.GetMethod("FixPosition", flags)?.Invoke(optimizer, null);
-                if (_kickPasses < 2)
+                if (_kickPasses < 2 && canKickMeshes)
                 {
                     optType.GetMethod("SetupMaterial", flags)?.Invoke(optimizer, new object[] { false });
                     optType.GetMethod("SetupMeshes", flags)?.Invoke(optimizer, null);
