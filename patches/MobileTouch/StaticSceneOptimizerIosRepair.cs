@@ -102,6 +102,21 @@ namespace UltrakillIOS
                 }
             }
 
+            if (best == null)
+            {
+                best = PickStaticSceneDataShell(dataType);
+            }
+
+            if (best != null)
+            {
+                HydrateAtlasFields(best, dataType, flags);
+                TryRebuildBakedMeshesFromScene(best, dataType, flags, out var orderedRends);
+                if (orderedRends.Count > 0)
+                {
+                    TryAssignStaticMRends(optimizer, optType, flags, orderedRends);
+                }
+            }
+
             if (best == null || !IsBakeDataUsable(best, dataType, flags))
             {
                 var meshN = 0;
@@ -120,8 +135,8 @@ namespace UltrakillIOS
                 {
                     _warnedStaticData = true;
                     UltrakillLog.Warn(Area,
-                        "StaticSceneData unusable: maxBakedMeshes=" + meshN
-                        + " (Tutorial bundle missing bake lists on device — rebuild scene bundle / fix StaticSceneData refs)");
+                        "StaticSceneData still unusable after scene rebuild: maxBakedMeshes=" + meshN
+                        + " (atlas GUID refs empty in bundle — need IPA with SceneOpt rebuild fix)");
                 }
 
                 return;
@@ -145,7 +160,149 @@ namespace UltrakillIOS
 
             var main = dataType.GetField("mainTexAtlas", flags)?.GetValue(data) as Texture;
             var blend = dataType.GetField("blendTexAtlas", flags)?.GetValue(data) as Texture;
-            return main != null && blend != null && IsSceneAtlasTexture(main) && IsSceneAtlasTexture(blend);
+            if (main == null || !IsSceneAtlasTexture(main))
+            {
+                return false;
+            }
+
+            if (blend == null || !IsSceneAtlasTexture(blend))
+            {
+                dataType.GetField("blendTexAtlas", flags)?.SetValue(data, main);
+            }
+
+            return true;
+        }
+
+        private static object PickStaticSceneDataShell(Type dataType)
+        {
+            foreach (var data in Resources.FindObjectsOfTypeAll(dataType))
+            {
+                if (data != null)
+                {
+                    return data;
+                }
+            }
+
+            return null;
+        }
+
+        private static void TryAssignStaticMRends(
+            object optimizer,
+            Type optType,
+            BindingFlags flags,
+            System.Collections.Generic.List<MeshRenderer> ordered)
+        {
+            var listField = optType.GetField("staticMRends", flags);
+            if (listField == null)
+            {
+                return;
+            }
+
+            var list = listField.GetValue(optimizer) as IList;
+            if (list == null)
+            {
+                return;
+            }
+
+            list.Clear();
+            foreach (var r in ordered)
+            {
+                if (r != null)
+                {
+                    list.Add(r);
+                }
+            }
+
+            if (ordered.Count > 0)
+            {
+                UltrakillLog.Info(Area, "staticMRends=" + ordered.Count + " from scene Combined/static geo");
+            }
+        }
+
+        /// <summary>
+        /// Retail StaticSceneData often loads with empty bakedMeshes on iOS while Combined Mesh assets are on filters.
+        /// </summary>
+        private static bool TryRebuildBakedMeshesFromScene(
+            object data,
+            Type dataType,
+            BindingFlags flags,
+            out System.Collections.Generic.List<MeshRenderer> orderedRenderers)
+        {
+            orderedRenderers = new System.Collections.Generic.List<MeshRenderer>();
+            var meshField = dataType.GetField("bakedMeshes", flags);
+            var mrIdxField = dataType.GetField("mrMeshIndices", flags);
+            var subField = dataType.GetField("firstSubMesh", flags);
+            if (meshField == null || mrIdxField == null || subField == null)
+            {
+                return false;
+            }
+
+            var meshes = meshField.GetValue(data) as IList;
+            if (meshes == null)
+            {
+                return false;
+            }
+
+            if (meshes.Count > 0)
+            {
+                return true;
+            }
+
+            const int enviroLayer = 8;
+            const int outdoorLayer = 24;
+            var candidates = new System.Collections.Generic.List<MeshRenderer>();
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<MeshRenderer>(true))
+            {
+                if (r == null)
+                {
+                    continue;
+                }
+
+                var layer = r.gameObject.layer;
+                if (layer != enviroLayer && layer != outdoorLayer)
+                {
+                    continue;
+                }
+
+                var mf = r.GetComponent<MeshFilter>();
+                if (mf == null || mf.sharedMesh == null)
+                {
+                    continue;
+                }
+
+                candidates.Add(r);
+            }
+
+            if (candidates.Count == 0)
+            {
+                return false;
+            }
+
+            candidates.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+            var meshToIndex = new System.Collections.Generic.Dictionary<Mesh, int>();
+            var mrIndices = new System.Collections.Generic.List<ushort>();
+            var firstSubs = new System.Collections.Generic.List<ushort>();
+
+            foreach (var r in candidates)
+            {
+                var mesh = r.GetComponent<MeshFilter>().sharedMesh;
+                if (!meshToIndex.TryGetValue(mesh, out var idx))
+                {
+                    idx = meshes.Count;
+                    meshes.Add(mesh);
+                    meshToIndex[mesh] = idx;
+                }
+
+                mrIndices.Add((ushort)idx);
+                firstSubs.Add(0);
+                orderedRenderers.Add(r);
+            }
+
+            mrIdxField.SetValue(data, mrIndices);
+            subField.SetValue(data, firstSubs);
+            UltrakillLog.Info(Area,
+                "Rebuilt bakedMeshes=" + meshes.Count + " from " + orderedRenderers.Count + " static renderers");
+            return meshes.Count > 0;
         }
 
         private static int ScoreBakedData(object data, Type dataType, BindingFlags flags)
@@ -179,12 +336,47 @@ namespace UltrakillIOS
             }
 
             var n = t.name.ToLowerInvariant();
-            if (n.Contains("sdf") || n.Contains("liberation") || n.Contains("font") || n.Contains("tmp"))
+            if (n.Contains("sdf") || n.Contains("liberation") || n.Contains("font") || n.Contains("tmp")
+                || n.Contains("vcr") || n.Contains("osd") || n.Contains("mono_") || n.Contains("ui/")
+                || n.Contains("hud") || n.Contains("icon"))
             {
                 return false;
             }
 
-            return n.Contains("atlas") || n.Contains("static") || n.Contains("baked") || n.Contains("blend");
+            return n.Contains("atlas") || n.Contains("static") || n.Contains("baked") || n.Contains("blend")
+                || n.Contains("level") || n.Contains("scene") || n.Contains("enviro") || n.Contains("outdoor");
+        }
+
+        private static long AtlasPickScore(Texture2D t, bool wantBlend)
+        {
+            var n = t.name.ToLowerInvariant();
+            if (!IsSceneAtlasTexture(t))
+            {
+                return 0;
+            }
+
+            var pixels = (long)t.width * t.height;
+            if (wantBlend)
+            {
+                if (n.Contains("blend"))
+                {
+                    return pixels + 500_000_000L;
+                }
+
+                return n.Contains("atlas") ? pixels / 4 : 0;
+            }
+
+            if (n.Contains("blend"))
+            {
+                return pixels / 8;
+            }
+
+            if (n.Contains("static") || n.Contains("baked") || n.Contains("level"))
+            {
+                return pixels + 200_000_000L;
+            }
+
+            return n.Contains("atlas") ? pixels : pixels / 2;
         }
 
         /// <summary>Only fill atlas refs when scene bake textures are already loaded but GUID refs failed (not TMP/UI atlases).</summary>
@@ -213,25 +405,18 @@ namespace UltrakillIOS
                     continue;
                 }
 
-                if (!IsSceneAtlasTexture(t))
+                var mainS = AtlasPickScore(t, false);
+                if (mainS > mainScore)
                 {
-                    continue;
+                    mainScore = mainS;
+                    mainPick = t;
                 }
 
-                var n = t.name.ToLowerInvariant();
-                var pixels = (long)t.width * t.height;
-                if (n.Contains("blend"))
+                var blendS = AtlasPickScore(t, true);
+                if (blendS > blendScore)
                 {
-                    if (pixels > blendScore)
-                    {
-                        blendScore = pixels;
-                        blendPick = t;
-                    }
-                }
-                else if (pixels > mainScore)
-                {
-                    mainScore = pixels;
-                    mainPick = t;
+                    blendScore = blendS;
+                    blendPick = t;
                 }
             }
 
@@ -390,8 +575,7 @@ namespace UltrakillIOS
             {
                 _warnedBakeMissing = true;
                 UltrakillLog.Warn(Area,
-                    "Geo white: optimizer has no bake data in memory — need iOS Tutorial bundle with StaticSceneData "
-                    + "(legacy Build-IosBundles scene build), not stub shaders alone");
+                    "Geo white: optimizer still has no bakedData/staticMRends — install latest IPA (SceneOpt scene rebuild)");
             }
             if (msg != _lastStateLog)
             {
