@@ -230,7 +230,7 @@ namespace UltrakillIOS
             const int enviroLayer = 8;
             const int outdoorLayer = 24;
             var added = 0;
-            foreach (var r in Object.FindObjectsOfType<MeshRenderer>(true))
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<MeshRenderer>(true))
             {
                 if (r == null)
                 {
