@@ -75,13 +75,34 @@ namespace UltrakillIOS
         private static void TryBindBakedData(object optimizer, Type optType, BindingFlags flags)
         {
             var bakedField = optType.GetField("bakedDataAsset", flags);
-            if (bakedField == null || bakedField.GetValue(optimizer) != null)
+            if (bakedField == null)
             {
                 return;
             }
 
             var dataType = Type.GetType("StaticSceneData, Assembly-CSharp");
             if (dataType == null)
+            {
+                return;
+            }
+
+            // AssetRipper BakedData SO = Missing Script; assemble from JSON+mesh instead.
+            var assembled = TutorialBakeDataWarmup.GetCreatedStaticSceneData();
+            if (assembled != null && IsBakeDataUsable(assembled, dataType, flags))
+            {
+                _sceneRebuildOnly = false;
+                bakedField.SetValue(optimizer, assembled);
+                var mainA = dataType.GetField("mainTexAtlas", flags)?.GetValue(assembled) as Texture;
+                var meshListA = dataType.GetField("bakedMeshes", flags)?.GetValue(assembled) as IList;
+                var subA = dataType.GetField("firstSubMesh", flags)?.GetValue(assembled) as IList;
+                UltrakillLog.Info(Area,
+                    "Bound assembled StaticSceneData atlas=" + (mainA != null ? mainA.name : "null")
+                    + " bakedMeshes=" + (meshListA != null ? meshListA.Count : 0)
+                    + " firstSubMesh=" + (subA != null ? subA.Count : 0));
+                return;
+            }
+
+            if (bakedField.GetValue(optimizer) != null)
             {
                 return;
             }
@@ -116,8 +137,6 @@ namespace UltrakillIOS
                 HydrateAtlasFields(best, dataType, flags);
                 if (!hadRetailMeshes)
                 {
-                    // Bundle has empty bake lists. Do NOT invent meshes + call SetupMeshes:
-                    // that swaps every static renderer onto atlas batch mats with wrong UVs → white geo.
                     _sceneRebuildOnly = true;
                     if (optimizer is Behaviour beh)
                     {
@@ -128,8 +147,8 @@ namespace UltrakillIOS
                     {
                         _warnedStaticData = true;
                         UltrakillLog.Warn(Area,
-                            "Retail bake lists empty — leaving original MeshRenderer materials (no SetupMeshes/atlas batch). "
-                            + "Fix is content/bundle with real StaticSceneData, not fake rebuild.");
+                            "BakedData SO empty/Missing Script — need tutorial_bake.json.txt in bake companion "
+                            + "(AssetRipper Common Issues: SO needs matching scripts).");
                     }
 
                     return;
@@ -138,22 +157,10 @@ namespace UltrakillIOS
 
             if (best == null || !IsBakeDataUsable(best, dataType, flags))
             {
-                var meshN = 0;
-                foreach (var data in Resources.FindObjectsOfTypeAll(dataType))
-                {
-                    if (data is null)
-                    {
-                        continue;
-                    }
-
-                    var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(data) as IList;
-                    meshN = Math.Max(meshN, meshes?.Count ?? 0);
-                }
-
                 if (!_warnedStaticData)
                 {
                     _warnedStaticData = true;
-                    UltrakillLog.Warn(Area, "StaticSceneData unusable: maxBakedMeshes=" + meshN);
+                    UltrakillLog.Warn(Area, "StaticSceneData unusable after companion load");
                 }
 
                 return;
@@ -553,6 +560,50 @@ namespace UltrakillIOS
             }
         }
 
+        /// <summary>
+        /// Scene staticMRends refs are often empty after rip; spawn one MeshRenderer per firstSubMesh entry.
+        /// </summary>
+        private static void TrySpawnBakedRenderersIfEmpty(
+            object optimizer,
+            Type optType,
+            object baked,
+            Type dataType,
+            BindingFlags flags)
+        {
+            var listField = optType.GetField("staticMRends", flags);
+            var list = listField?.GetValue(optimizer) as IList;
+            if (list == null || list.Count > 0)
+            {
+                return;
+            }
+
+            var firstSubs = dataType.GetField("firstSubMesh", flags)?.GetValue(baked) as IList;
+            var meshes = dataType.GetField("bakedMeshes", flags)?.GetValue(baked) as IList;
+            if (firstSubs == null || firstSubs.Count == 0 || meshes == null || meshes.Count == 0)
+            {
+                return;
+            }
+
+            var mesh = meshes[0] as Mesh;
+            if (mesh == null)
+            {
+                return;
+            }
+
+            var root = new GameObject("UltrakillIOS.BakedStaticGeo");
+            const int enviroLayer = 8;
+            for (var i = 0; i < firstSubs.Count; i++)
+            {
+                var go = new GameObject("BakedSub_" + i);
+                go.transform.SetParent(root.transform, false);
+                go.layer = enviroLayer;
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                list.Add(go.AddComponent<MeshRenderer>());
+            }
+
+            UltrakillLog.Info(Area, "Spawned staticMRends=" + list.Count + " for bake submeshes (scene list was empty)");
+        }
+
         private static void TryPopulateStaticMRends(object optimizer, Type optType, BindingFlags flags)
         {
             var listField = optType.GetField("staticMRends", flags);
@@ -628,6 +679,7 @@ namespace UltrakillIOS
                 if (canKickMeshes)
                 {
                     TryPopulateStaticMRends(optimizer, optType, flags);
+                    TrySpawnBakedRenderersIfEmpty(optimizer, optType, baked, dataType, flags);
                     var rends = optType.GetField("staticMRends", flags)?.GetValue(optimizer) as IList;
                     var idx = dataType.GetField("firstSubMesh", flags)?.GetValue(baked) as IList;
                     UltrakillLog.Info(Area, "pre-SetupMeshes staticMRends=" + (rends?.Count ?? 0)

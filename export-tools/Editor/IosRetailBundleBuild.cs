@@ -203,34 +203,24 @@ public static class IosRetailBundleBuild
 
     private static void PackTutorialBakeCompanion(string outDir)
     {
-        const string bakeAsset = "Assets/MonoBehaviour/BakedData_0.asset";
+        // Do NOT pack BakedData_0.asset — Missing Script (DLL fileID); fields never deserialize on device.
+        // Pack mesh + atlases + tutorial_bake.json.txt (index lists) instead.
         const string bakeMesh = "Assets/Mesh/Combined Mesh (root_ StaticSceneOptimizer)_0.asset";
         const string mainAtlas = "Assets/Texture2D/Texture2D_2.png";
         const string blendAtlas = "Assets/Texture2D/Texture2D_1.png";
-        var paths = new[] { bakeAsset, bakeMesh, mainAtlas, blendAtlas }
+        const string bakeJson = "Assets/IosBundleTools/tutorial_bake.json.txt";
+        AssetDatabase.Refresh();
+        var paths = new[] { bakeMesh, mainAtlas, blendAtlas, bakeJson }
             .Where(p => !string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(p)))
             .ToArray();
-        if (paths.Length == 0)
+        if (paths.Length < 3)
         {
-            Debug.LogWarning("[IosBundles] Tutorial bake companion: no bake assets found in export");
+            Debug.LogWarning("[IosBundles] Tutorial bake companion incomplete; found " + paths.Length
+                + " (need mesh+atlases+json). Run scripts/Export-TutorialBakeJson.py");
             return;
         }
 
-        var so = AssetDatabase.LoadMainAssetAtPath(bakeAsset);
-        var meshCount = -1;
-        if (so != null)
-        {
-            var t = so.GetType();
-            var f = t.GetField("bakedMeshes");
-            if (f?.GetValue(so) is System.Collections.IList list)
-            {
-                meshCount = list.Count;
-            }
-        }
-
-        Debug.Log("[IosBundles] Tutorial bake companion assets=" + paths.Length
-            + " BakedData type=" + (so != null ? so.GetType().Name : "NULL")
-            + " bakedMeshes=" + meshCount);
+        Debug.Log("[IosBundles] Tutorial bake companion (no SO) assets=" + string.Join(", ", paths));
 
         var abb = new AssetBundleBuild
         {
@@ -240,7 +230,7 @@ public static class IosRetailBundleBuild
         var manifest = BuildPipeline.BuildAssetBundles(
             outDir,
             new[] { abb },
-            BuildAssetBundleOptions.ChunkBasedCompression,
+            BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.ForceRebuildAssetBundle,
             BuildTarget.iOS);
         Debug.Log("[IosBundles] bake companion manifest: " + (manifest != null ? manifest.name : "null"));
     }

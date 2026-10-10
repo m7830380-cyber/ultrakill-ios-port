@@ -22,6 +22,11 @@ if ($LASTEXITCODE -ne 0) { throw "catalog decode failed" }
 python (Join-Path $repo "scripts\fix-BakedDataAsset.py") (Join-Path $ExportProject "Assets\MonoBehaviour")
 if ($LASTEXITCODE -ne 0) { Write-Warning "Fix-BakedDataAsset.py exit $LASTEXITCODE (continuing)" }
 
+python (Join-Path $repo "scripts\Export-TutorialBakeJson.py") `
+    --asset (Join-Path $ExportProject "Assets\MonoBehaviour\BakedData_0.asset") `
+    --out (Join-Path $ExportProject "Assets\IosBundleTools\tutorial_bake.json.txt")
+if ($LASTEXITCODE -ne 0) { Write-Warning "Export-TutorialBakeJson.py exit $LASTEXITCODE (continuing)" }
+
 $tools = Join-Path $ExportProject "Assets\IosBundleTools\Editor"
 New-Item -ItemType Directory -Force -Path $tools | Out-Null
 Copy-Item (Join-Path $repo "export-tools\Editor\*") $tools -Force
