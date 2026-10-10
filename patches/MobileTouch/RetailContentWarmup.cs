@@ -30,11 +30,11 @@ namespace UltrakillIOS
                 return;
             }
 
-            WarmupBundleFile(aa, "textures.bundle", ref TexturesLoaded, ref MaterialsLoaded);
-            WarmupBundleFile(aa, "materials.bundle", ref TexturesLoaded, ref MaterialsLoaded);
+            WarmupBundleFile(aa, "textures.bundle");
+            WarmupBundleFile(aa, "materials.bundle");
         }
 
-        private static void WarmupBundleFile(string aaRoot, string fileName, ref int texCount, ref int matCount)
+        private static void WarmupBundleFile(string aaRoot, string fileName)
         {
             foreach (var path in Directory.GetFiles(aaRoot, fileName, SearchOption.AllDirectories))
             {
@@ -47,8 +47,8 @@ namespace UltrakillIOS
 
                 var tex = ab.LoadAllAssets<Texture>();
                 var mats = ab.LoadAllAssets<Material>();
-                texCount += tex != null ? tex.Length : 0;
-                matCount += mats != null ? mats.Length : 0;
+                TexturesLoaded += tex != null ? tex.Length : 0;
+                MaterialsLoaded += mats != null ? mats.Length : 0;
                 ab.Unload(false);
 
                 UltrakillLog.Info(Area,
