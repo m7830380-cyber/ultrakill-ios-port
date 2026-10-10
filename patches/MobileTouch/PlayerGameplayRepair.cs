@@ -112,15 +112,32 @@ namespace UltrakillIOS
                 return;
             }
 
-            if (cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Nothing)
+            if (IosSceneMode.IsMainMenuScene())
             {
-                cam.clearFlags = CameraClearFlags.SolidColor;
+                if (cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Nothing)
+                {
+                    cam.clearFlags = CameraClearFlags.SolidColor;
+                }
+
+                if (cam.clearFlags == CameraClearFlags.SolidColor
+                    && cam.backgroundColor.maxColorComponent < 0.15f)
+                {
+                    cam.backgroundColor = WorldClear;
+                }
+
+                return;
+            }
+
+            if (RenderSettings.skybox != null)
+            {
+                cam.clearFlags = CameraClearFlags.Skybox;
+                return;
             }
 
             if (cam.clearFlags == CameraClearFlags.SolidColor
-                && cam.backgroundColor.maxColorComponent < 0.15f)
+                && cam.backgroundColor.maxColorComponent < 0.12f)
             {
-                cam.backgroundColor = new Color(0.35f, 0.4f, 0.48f, 1f);
+                cam.backgroundColor = WorldClear;
             }
         }
 

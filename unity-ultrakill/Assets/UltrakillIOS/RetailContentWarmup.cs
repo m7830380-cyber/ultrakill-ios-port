@@ -1,61 +1,259 @@
 #if ULTRAKILL_FULL_PORT
-using System.IO;
 using UnityEngine;
 
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Materials reference textures in separate Addressables bundles; without loading them, _MainTex stays null (white).
-    /// Session 104451: withMainTex=12/1362 after shader recovery.
+    /// Never LoadFromFile materials/textures.bundle — Addressables owns those paths (session 122619:
+    /// "another AssetBundle with the same files is already loaded" → Main Menu load failed).
+    /// Build a relink index from materials already loaded into memory after Addressables runs.
     /// </summary>
     internal static class RetailContentWarmup
     {
         private const string Area = "ContentWarmup";
-        private static bool _done;
+
+        private static readonly System.Collections.Generic.Dictionary<string, Material> MaterialsByName =
+            new System.Collections.Generic.Dictionary<string, Material>();
+
+        private static string _lastIndexScene = "";
+        private static int _lastIndexFrame = -9999;
 
         public static int TexturesLoaded { get; private set; }
         public static int MaterialsLoaded { get; private set; }
 
-        internal static void WarmupRetailBundles()
+        /// <summary>Index textured materials already resident (post-Addressables).</summary>
+        internal static void RefreshMaterialIndex()
         {
-            if (_done || !ExternalContentBootstrap.IsReady)
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name ?? "";
+            if (scene == _lastIndexScene && Time.frameCount - _lastIndexFrame < 90)
             {
                 return;
             }
 
-            _done = true;
-            var aa = Path.Combine(ExternalContentBootstrap.ContentStreamingAssetsPath, "aa");
-            if (!Directory.Exists(aa))
-            {
-                return;
-            }
+            _lastIndexScene = scene;
+            _lastIndexFrame = Time.frameCount;
 
-            WarmupBundleFile(aa, "textures.bundle");
-            WarmupBundleFile(aa, "materials.bundle");
-        }
+            MaterialsByName.Clear();
+            MaterialsLoaded = 0;
 
-        private static void WarmupBundleFile(string aaRoot, string fileName)
-        {
-            foreach (var path in Directory.GetFiles(aaRoot, fileName, SearchOption.AllDirectories))
+            var textures = Resources.FindObjectsOfTypeAll<Texture>();
+            TexturesLoaded = textures != null ? textures.Length : 0;
+
+            var withTex = 0;
+            foreach (var mat in Resources.FindObjectsOfTypeAll<Material>())
             {
-                var ab = AssetBundle.LoadFromFile(path);
-                if (ab == null)
+                if (mat == null || string.IsNullOrEmpty(mat.name))
                 {
-                    UltrakillLog.Warn(Area, "LoadFromFile failed: " + path);
                     continue;
                 }
 
-                var tex = ab.LoadAllAssets<Texture>();
-                var mats = ab.LoadAllAssets<Material>();
-                TexturesLoaded += tex != null ? tex.Length : 0;
-                MaterialsLoaded += mats != null ? mats.Length : 0;
-                ab.Unload(false);
+                if (RetailMaterialVisuals.IsBrokenShader(mat.shader))
+                {
+                    continue;
+                }
 
-                UltrakillLog.Info(Area,
-                    fileName + " from " + Path.GetFileName(Path.GetDirectoryName(path))
-                    + " textures=" + (tex != null ? tex.Length : 0)
-                    + " materials=" + (mats != null ? mats.Length : 0));
+                if (!MaterialHasAnyTexture(mat))
+                {
+                    continue;
+                }
+
+                withTex++;
+                if (!MaterialsByName.TryGetValue(mat.name, out var existing)
+                    || MaterialQuality(mat) > MaterialQuality(existing))
+                {
+                    MaterialsByName[mat.name] = mat;
+                }
             }
+
+            RetailMaterialVisuals.RebuildTextureIndex();
+
+            MaterialsLoaded = MaterialsByName.Count;
+            UltrakillLog.Info(Area,
+                "Material index from loaded assets: unique=" + MaterialsByName.Count
+                + " withAnyTexProp=" + withTex
+                + " texturesInMemory=" + TexturesLoaded);
+        }
+
+        internal static Material TryGetBundleMaterial(string materialName)
+        {
+            if (string.IsNullOrEmpty(materialName))
+            {
+                return null;
+            }
+
+            var stem = StripInstance(materialName);
+            if (MaterialsByName.TryGetValue(materialName, out var m))
+            {
+                return m;
+            }
+
+            if (MaterialsByName.TryGetValue(stem, out m))
+            {
+                return m;
+            }
+
+            foreach (var kv in MaterialsByName)
+            {
+                if (string.Equals(kv.Key, materialName, System.StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(kv.Key, stem, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return kv.Value;
+                }
+            }
+
+            return null;
+        }
+
+        private static Material TryGetBundleMaterialFuzzy(string materialName)
+        {
+            var stem = StripInstance(materialName);
+            if (string.IsNullOrEmpty(stem) || stem.Length < 4)
+            {
+                return null;
+            }
+
+            Material best = null;
+            var bestScore = 0;
+            foreach (var kv in MaterialsByName)
+            {
+                if (kv.Key.IndexOf(stem, System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || stem.IndexOf(kv.Key, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    var score = MaterialQuality(kv.Value);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        best = kv.Value;
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        private static string StripInstance(string name)
+        {
+            const string suffix = " (Instance)";
+            if (name != null && name.EndsWith(suffix, System.StringComparison.Ordinal))
+            {
+                return name.Substring(0, name.Length - suffix.Length);
+            }
+
+            return name;
+        }
+
+        internal static int RelinkSceneMaterials(bool includeInactive)
+        {
+            if (MaterialsByName.Count == 0)
+            {
+                return 0;
+            }
+
+            var relinked = 0;
+            foreach (var r in Object.FindObjectsOfType<Renderer>(includeInactive))
+            {
+                if (r == null || r is ParticleSystemRenderer || r.GetComponentInParent<Canvas>() != null)
+                {
+                    continue;
+                }
+
+                var shared = r.sharedMaterials;
+                if (shared == null || shared.Length == 0)
+                {
+                    continue;
+                }
+
+                var changed = false;
+                for (var i = 0; i < shared.Length; i++)
+                {
+                    var m = shared[i];
+                    if (m == null)
+                    {
+                        continue;
+                    }
+
+                    var needsRelink = RetailMaterialVisuals.IsBrokenShader(m.shader) || !MaterialHasAnyTexture(m);
+                    if (!needsRelink)
+                    {
+                        continue;
+                    }
+
+                    var src = TryGetBundleMaterial(m.name) ?? TryGetBundleMaterialFuzzy(m.name);
+                    if (src == null || RetailMaterialVisuals.IsBrokenShader(src.shader) || !MaterialHasAnyTexture(src))
+                    {
+                        continue;
+                    }
+
+                    RetailMaterialVisuals.CopyTexturesAndShader(m, src);
+                    if (!MaterialHasAnyTexture(m) && MaterialHasAnyTexture(src))
+                    {
+                        shared[i] = src;
+                    }
+
+                    changed = true;
+                    relinked++;
+                }
+
+                if (changed)
+                {
+                    r.sharedMaterials = shared;
+                }
+            }
+
+            if (relinked > 0)
+            {
+                UltrakillLog.Info(Area, "Relinked " + relinked + " material slots from loaded retail materials");
+            }
+
+            return relinked;
+        }
+
+        internal static bool MaterialHasAnyTexture(Material m)
+        {
+            return TexturePropertyCount(m) > 0;
+        }
+
+        private static int TexturePropertyCount(Material m)
+        {
+            if (m == null)
+            {
+                return 0;
+            }
+
+            var n = 0;
+            try
+            {
+                foreach (var prop in m.GetTexturePropertyNames())
+                {
+                    if (m.GetTexture(prop) != null)
+                    {
+                        n++;
+                    }
+                }
+            }
+            catch
+            {
+                /* ignore */
+            }
+
+            return n;
+        }
+
+        private static int MaterialQuality(Material m)
+        {
+            if (m == null)
+            {
+                return 0;
+            }
+
+            var score = TexturePropertyCount(m) * 10;
+            var sn = m.shader != null ? m.shader.name : "";
+            if (sn.StartsWith("ULTRAKILL", System.StringComparison.OrdinalIgnoreCase))
+            {
+                score += 100;
+            }
+
+            return score;
         }
     }
 }

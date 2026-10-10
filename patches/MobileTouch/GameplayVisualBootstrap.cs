@@ -136,13 +136,30 @@ namespace UltrakillIOS
                 return;
             }
 
-            if (cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Nothing)
+            if (IosSceneMode.IsMainMenuScene())
             {
-                cam.clearFlags = CameraClearFlags.SolidColor;
+                if (cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Nothing)
+                {
+                    cam.clearFlags = CameraClearFlags.SolidColor;
+                }
+
+                if (cam.clearFlags == CameraClearFlags.SolidColor)
+                {
+                    cam.backgroundColor = DiagnosticClear;
+                }
+
+                return;
             }
 
-            // Match Playable diagnostic cyan — if user sees this, clear works and geo is missing.
-            if (cam.clearFlags == CameraClearFlags.SolidColor)
+            // Gameplay: use skybox when we have one; only fix pure-black solid clears.
+            if (RenderSettings.skybox != null)
+            {
+                cam.clearFlags = CameraClearFlags.Skybox;
+                return;
+            }
+
+            if (cam.clearFlags == CameraClearFlags.SolidColor
+                && cam.backgroundColor.maxColorComponent < 0.12f)
             {
                 cam.backgroundColor = DiagnosticClear;
             }
@@ -566,8 +583,21 @@ namespace UltrakillIOS
                 main.depth = 0f;
                 main.cullingMask = ~0;
                 main.useOcclusionCulling = false;
-                main.clearFlags = CameraClearFlags.SolidColor;
-                main.backgroundColor = DiagnosticClear;
+                if (IosSceneMode.IsMainMenuScene())
+                {
+                    main.clearFlags = CameraClearFlags.SolidColor;
+                    main.backgroundColor = DiagnosticClear;
+                }
+                else if (RenderSettings.skybox != null)
+                {
+                    main.clearFlags = CameraClearFlags.Skybox;
+                }
+                else
+                {
+                    main.clearFlags = CameraClearFlags.SolidColor;
+                    main.backgroundColor = DiagnosticClear;
+                }
+
                 main.allowHDR = false;
                 main.targetTexture = null;
                 if (main.nearClipPlane > 0.05f)

@@ -1,12 +1,11 @@
 #if ULTRAKILL_FULL_PORT
-using System;
 using System.IO;
 using UnityEngine;
 
 namespace UltrakillIOS
 {
     /// <summary>
-    /// Loads every Shader asset from the retail shaders.bundle so Addressables materials can resolve.
+    /// Load retail shaders.bundle via LoadFromFile (121 UK stubs). Safe before Addressables — do NOT preload materials/textures bundles.
     /// </summary>
     internal static class ShadersBundleWarmup
     {
@@ -59,7 +58,6 @@ namespace UltrakillIOS
             }
 
             var shaders = ab.LoadAllAssets<Shader>();
-            LoadedShaderCount = shaders != null ? shaders.Length : 0;
             var supported = 0;
             if (shaders != null)
             {
@@ -67,13 +65,26 @@ namespace UltrakillIOS
                 {
                     if (s != null && s.isSupported)
                     {
+                        RetailShaderRegistry.Register(s);
                         supported++;
                     }
                 }
             }
 
-            UltrakillLog.Info(Area, "Loaded " + LoadedShaderCount + " shaders from bundle (" + supported + " supported)");
             ab.Unload(false);
+            LoadedShaderCount = RetailShaderRegistry.Count;
+            UltrakillLog.Info(Area, "Loaded " + supported + " shaders from bundle (" + supported + " supported)");
+        }
+
+        internal static void RefreshCounts()
+        {
+            RetailShaderRegistry.RefreshFromMemory();
+            LoadedShaderCount = RetailShaderRegistry.Count;
+        }
+
+        internal static void LoadShadersBundleFromDisk()
+        {
+            TryWarmup();
         }
     }
 }

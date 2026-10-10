@@ -50,6 +50,7 @@ namespace UltrakillIOS
             }
 
             ProbeOneBundle(aa);
+            LogTutorialBundleSize(aa);
 
             SetStatus("Initializing Addressables");
             var init = Addressables.InitializeAsync(false);
@@ -65,7 +66,7 @@ namespace UltrakillIOS
             UltrakillLog.Info(Area, "Catalog loaded: locator '" + locator.LocatorId + "', keys=" + locator.Keys.Count());
             Addressables.Release(init);
             ShadersBundleWarmup.TryWarmup();
-            RetailContentWarmup.WarmupRetailBundles();
+            ShadersBundleWarmup.RefreshCounts();
             UkMasterShaderBootstrap.EnsureReady();
 
             var sceneKey = BootSceneKeys.FirstOrDefault(k => locator.Locate(k, typeof(SceneInstance), out _));
@@ -149,6 +150,32 @@ namespace UltrakillIOS
             }
 
             return true;
+        }
+
+        private static void LogTutorialBundleSize(string aa)
+        {
+            var files = Directory.GetFiles(aa, "*tutorial*.bundle", SearchOption.AllDirectories);
+            if (files.Length == 0)
+            {
+                UltrakillLog.Warn(Area, "No *tutorial*.bundle under aa — StaticSceneOptimizer bake likely missing");
+                return;
+            }
+
+            foreach (var path in files)
+            {
+                var len = new FileInfo(path).Length;
+                var mb = Math.Round(len / (1024.0 * 1024.0), 2);
+                var rel = path.Replace(aa, "").TrimStart('\\', '/');
+                if (len < 8_000_000)
+                {
+                    UltrakillLog.Warn(Area, "Tutorial bundle small (" + mb + " MB) at " + rel
+                        + " — retail ~8+ MB; legacy rebuild ~50 MB. Small bundle = empty StaticSceneData on device.");
+                }
+                else
+                {
+                    UltrakillLog.Info(Area, "Tutorial bundle " + mb + " MB at " + rel);
+                }
+            }
         }
 
         private static void ProbeOneBundle(string aa)

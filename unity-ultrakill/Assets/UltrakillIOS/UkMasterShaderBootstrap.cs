@@ -35,10 +35,11 @@ namespace UltrakillIOS
             }
 
             ShadersBundleWarmup.TryWarmup();
+            RetailShaderRegistry.RefreshFromMemory();
 
             foreach (var name in MasterShaderFindNames)
             {
-                var sh = Shader.Find(name);
+                var sh = RetailShaderRegistry.Resolve(name) ?? Shader.Find(name);
                 if (sh == null || !sh.isSupported || IsError(sh))
                 {
                     continue;
@@ -152,9 +153,35 @@ namespace UltrakillIOS
                         continue;
                     }
 
+                    var src = RetailContentWarmup.TryGetBundleMaterial(m.name);
+                    if (src != null && !IsError(src.shader))
+                    {
+                        RetailMaterialVisuals.CopyTexturesAndShader(m, src);
+                        if (!IsError(m.shader))
+                        {
+                            RetailShaderRepair.HydrateMainTexPublic(m, r, i);
+                            dirty = true;
+                            fixedN++;
+                            continue;
+                        }
+                    }
+
+                    var intended = RetailShaderRepair.TryGetIntendedShaderName(m);
+                    var resolved = intended != null ? RetailShaderRegistry.Resolve(intended) : null;
+                    if (resolved != null)
+                    {
+                        m.shader = resolved;
+                        RetailShaderRepair.HydrateMainTexPublic(m, r, i);
+                        RetailMaterialVisuals.HydrateMissingTextures(m);
+                        dirty = true;
+                        fixedN++;
+                        continue;
+                    }
+
                     var pick = r.lightmapIndex >= 0 || r.realtimeLightmapIndex >= 0 ? Stationary : Master;
                     m.shader = pick;
                     RetailShaderRepair.HydrateMainTexPublic(m, r, i);
+                    RetailMaterialVisuals.HydrateMissingTextures(m);
                     dirty = true;
                     fixedN++;
                 }

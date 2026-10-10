@@ -499,6 +499,30 @@ namespace UltrakillIOS
                 }
             }
 
+            if (mainPick == null)
+            {
+                foreach (var t in Resources.FindObjectsOfTypeAll<Texture2D>())
+                {
+                    if (t != null && string.Equals(t.name, "Texture2D_2", StringComparison.Ordinal))
+                    {
+                        mainPick = t;
+                        break;
+                    }
+                }
+            }
+
+            if (blendPick == null)
+            {
+                foreach (var t in Resources.FindObjectsOfTypeAll<Texture2D>())
+                {
+                    if (t != null && string.Equals(t.name, "Texture2D_1", StringComparison.Ordinal))
+                    {
+                        blendPick = t;
+                        break;
+                    }
+                }
+            }
+
             if (mainPick != null)
             {
                 mainF.SetValue(data, mainPick);
@@ -508,6 +532,7 @@ namespace UltrakillIOS
             if (blendPick != null && blendF != null)
             {
                 blendF.SetValue(data, blendPick);
+                UltrakillLog.Info(Area, "Hydrated blendTexAtlas from '" + blendPick.name + "'");
             }
         }
 
