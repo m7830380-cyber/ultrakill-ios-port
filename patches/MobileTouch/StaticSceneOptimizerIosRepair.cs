@@ -65,6 +65,7 @@ namespace UltrakillIOS
         }
 
         private static string _lastStateLog;
+        private static int _kickPasses;
 
         private static void TryBindBakedData(object optimizer, Type optType, BindingFlags flags)
         {
@@ -110,8 +111,12 @@ namespace UltrakillIOS
                 EnsureBatchMaterials(optimizer, optType, flags);
 
                 optType.GetMethod("FixPosition", flags)?.Invoke(optimizer, null);
-                optType.GetMethod("SetupMaterial", flags)?.Invoke(optimizer, new object[] { false });
-                optType.GetMethod("SetupMeshes", flags)?.Invoke(optimizer, null);
+                if (_kickPasses < 2)
+                {
+                    optType.GetMethod("SetupMaterial", flags)?.Invoke(optimizer, new object[] { false });
+                    optType.GetMethod("SetupMeshes", flags)?.Invoke(optimizer, null);
+                    _kickPasses++;
+                }
 
                 LogState(optimizer, optType, flags);
             }
@@ -192,6 +197,8 @@ namespace UltrakillIOS
                     return;
                 }
 
+                _kickPasses = 0;
+                _lastStateLog = null;
                 StartCoroutine(KickAfterStart());
             }
 

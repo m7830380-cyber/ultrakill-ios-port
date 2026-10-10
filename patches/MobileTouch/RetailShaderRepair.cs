@@ -104,27 +104,7 @@ namespace UltrakillIOS
 
         private static bool MaterialHasAnyTexture(Material m)
         {
-            if (m == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                foreach (var prop in m.GetTexturePropertyNames())
-                {
-                    if (m.GetTexture(prop) != null)
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch
-            {
-                /* ignore */
-            }
-
-            return false;
+            return RetailContentWarmup.MaterialHasAnyTexture(m);
         }
 
         private static bool HydrateMainTex(Material mat, Renderer r, int submesh)
@@ -228,6 +208,7 @@ namespace UltrakillIOS
         {
             ShadersBundleWarmup.TryWarmup();
             RetailContentWarmup.WarmupRetailBundles();
+            var relinked = RetailContentWarmup.RelinkSceneMaterials(includeInactive);
             UkMasterShaderBootstrap.EnsureReady();
             var recovered = UkMasterShaderBootstrap.RecoverInternalErrorMaterials(includeInactive);
             RebindAndHydrateStubMaterials(includeInactive);
@@ -282,7 +263,12 @@ namespace UltrakillIOS
             }
 
             ApplyLightmapFallbackShaders(includeInactive);
-            return recovered + remapped;
+            if (relinked == 0)
+            {
+                RetailContentWarmup.RelinkSceneMaterials(includeInactive);
+            }
+
+            return recovered + remapped + relinked;
         }
 
         private static void ApplyLightmapFallbackShaders(bool includeInactive)
