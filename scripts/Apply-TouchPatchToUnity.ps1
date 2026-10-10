@@ -11,7 +11,9 @@ if (-not $RetailManaged) {
 
 $touchDest = Join-Path $UnityProject "Assets\UltrakillIOS"
 New-Item -ItemType Directory -Force -Path $touchDest | Out-Null
-Get-ChildItem (Join-Path $root "patches\MobileTouch\*.cs") | Copy-Item -Destination $touchDest -Force
+Get-ChildItem (Join-Path $root "patches\MobileTouch\*.cs") |
+    Where-Object { $_.Name -notlike "*.Engine.cs" } |
+    Copy-Item -Destination $touchDest -Force
 
 $editorDest = Join-Path $UnityProject "Assets\Editor"
 New-Item -ItemType Directory -Force -Path $editorDest | Out-Null
