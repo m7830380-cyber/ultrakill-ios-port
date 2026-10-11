@@ -60,8 +60,8 @@ static class Program
                 if (!m.IsPInvokeImpl || m.PInvokeInfo == null)
                     continue;
                 string lib = m.PInvokeInfo.Module.Name;
-                m.IsPInvokeImpl = false;
-                m.PInvokeInfo = null;
+                m.PInvokeInfo = null;     // Cecil's setter turns IsPInvokeImpl back on,
+                m.IsPInvokeImpl = false;  // so clear the flag afterwards
                 m.IsPreserveSig = false;
                 m.ImplAttributes &= ~MethodImplAttributes.PreserveSig;
                 m.ImplAttributes |= MethodImplAttributes.IL | MethodImplAttributes.Managed;
