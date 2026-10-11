@@ -11,7 +11,8 @@ $repo = Resolve-Path "$PSScriptRoot\.."
 $OutRoot = [System.IO.Path]::GetFullPath($OutRoot)
 $aaOut = Join-Path $OutRoot "ULTRAKILL_Data\StreamingAssets\aa"
 $bundleOut = Join-Path $aaOut "iOS"
-$mapPath = Join-Path $repo "artifacts\catalog-map.json"
+$mapPath = Join-Path $repo "ci\catalog-map.json"
+if (-not (Test-Path $mapPath)) { $mapPath = Join-Path $repo "artifacts\catalog-map.json" }
 $shaderOut = Join-Path $env:TEMP "ultrakill-ios-shaders-out"
 
 python (Join-Path $repo "scripts\decode_catalog.py") (Join-Path $RetailAa "catalog.json") $mapPath
@@ -98,11 +99,14 @@ New-Item -ItemType Directory -Force -Path $shaderOut | Out-Null
 
 $log = Join-Path $repo "artifacts\ios-shaders.log"
 Write-Host "Building shaders.bundle only (Unity batch)..."
-& $Unity -batchmode -nographics -quit -buildTarget iOS -projectPath $ExportProject -logFile $log `
-    -executeMethod IosRetailBundleBuild.Build `
-    -catalogMap $mapPath -outDir $shaderOut `
-    -onlyBundle "assets_assets_assets/shaders.bundle"
-if ($LASTEXITCODE -ne 0) { throw "Unity shader bundle build failed (exit $LASTEXITCODE); see $log" }
+$p = Start-Process -FilePath $Unity -ArgumentList @(
+    "-batchmode", "-nographics", "-quit", "-buildTarget", "iOS",
+    "-projectPath", $ExportProject, "-logFile", $log,
+    "-executeMethod", "IosRetailBundleBuild.Build",
+    "-catalogMap", $mapPath, "-outDir", $shaderOut,
+    "-onlyBundle", "assets_assets_assets/shaders.bundle"
+) -Wait -PassThru -NoNewWindow
+if ($p.ExitCode -ne 0) { throw "Unity shader bundle build failed (exit $($p.ExitCode)); see $log" }
 
 $built = Get-ChildItem $shaderOut -Recurse -File -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -eq "shaders.bundle" } |

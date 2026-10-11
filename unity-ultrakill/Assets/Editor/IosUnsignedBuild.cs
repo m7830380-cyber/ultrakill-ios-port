@@ -11,9 +11,6 @@ public static class IosUnsignedBuild
     /// </summary>
     public static void Build()
     {
-        DisableBurstCompilation();
-        EnsureIosPlayerSettings();
-
         var scenes = EditorBuildSettings.scenes
             .Where(s => s.enabled)
             .Select(s => s.path)
@@ -23,9 +20,6 @@ public static class IosUnsignedBuild
         {
             scenes = new[] { "Assets/Scenes/Bootstrap.unity" };
         }
-
-        Debug.Log("Build scenes: " + string.Join(", ", scenes));
-        Debug.Log("Extra scripting defines: " + string.Join(";", PlayerDefines));
 
         var output = Path.Combine("build", "iOS");
         if (Directory.Exists(output))
@@ -38,8 +32,7 @@ public static class IosUnsignedBuild
             scenes = scenes,
             locationPathName = output,
             target = BuildTarget.iOS,
-            options = BuildOptions.Development,
-            extraScriptingDefines = PlayerDefines
+            options = BuildOptions.Development
         };
 
         var report = BuildPipeline.BuildPlayer(options);
@@ -50,37 +43,5 @@ public static class IosUnsignedBuild
         }
 
         Debug.Log("iOS Xcode project exported to " + output);
-    }
-
-    private const string IosBundleId = "com.ultrakill.ios.port";
-
-    // ProjectSettings.asset in this repo is a stub that Unity does not apply on CI, so defines are passed per build.
-    private static readonly string[] PlayerDefines = { "ULTRAKILL_FULL_PORT" };
-
-    private static void EnsureIosPlayerSettings()
-    {
-        // Retail code and Addressables rely on reflection; keep the linker as conservative as IL2CPP allows.
-        PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.iOS, ManagedStrippingLevel.Minimal);
-        Debug.Log("Managed stripping level: " + PlayerSettings.GetManagedStrippingLevel(BuildTargetGroup.iOS));
-
-        PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.iOS, IosBundleId);
-        if (string.IsNullOrEmpty(PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.iOS)))
-        {
-            Debug.LogError("iOS bundle identifier is empty after SetApplicationIdentifier.");
-            EditorApplication.Exit(1);
-        }
-
-        Debug.Log("Using iOS bundle identifier: " + PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.iOS));
-    }
-
-    private static void DisableBurstCompilation()
-    {
-        var burst = System.Type.GetType("Unity.Burst.BurstCompiler, Unity.Burst");
-        burst?.GetProperty("DisableCompilation", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-            ?.SetValue(null, true);
-
-        var burstEditor = System.Type.GetType("Unity.Burst.Editor.BurstCompiler, Unity.Burst.Editor");
-        var options = burstEditor?.GetProperty("Options", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.GetValue(null);
-        options?.GetType().GetProperty("EnableBurstCompilation")?.SetValue(options, false);
     }
 }

@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 if (-not (Test-Path $Bundle)) {
-    throw "Missing $Bundle — run scripts/Build-IosBundles.ps1 first."
+    throw "Missing $Bundle. Run scripts/Build-IosBundles.ps1 first."
 }
 
 $bytes = [System.IO.File]::ReadAllBytes($Bundle)
@@ -21,7 +21,7 @@ foreach ($m in $markers) {
     Write-Host "  marker '$m' = $found"
 }
 if ($bytes.Length -lt $MinBytes) {
-    throw "Bundle too small — bake data likely still missing."
+    throw "Bundle too small; bake data likely still missing."
 }
 foreach ($m in $markers) {
     if (-not $ascii.Contains($m)) {

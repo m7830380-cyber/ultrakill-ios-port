@@ -9,18 +9,35 @@
 3. In **Files → On My iPhone → ULTRAKILL**, create **`ULTRAKILL-Content`** and put **`ULTRAKILL_Data`** inside it (same layout as the zip root).
 4. Launch the app — it uses that folder directly (no in-app unzip) and remaps `StreamingAssets` / Addressables paths.
 
-## Build content zip (Windows, needs Steam ULTRAKILL)
+## Build content for iPhone (Windows + Steam ULTRAKILL)
+
+**Use this for the port** (iOS Addressables + `catalog.json` with `iOS` paths). `Build-ContentZip.ps1` alone copies **PC** `StandaloneWindows64` bundles and is wrong for the phone.
 
 ```powershell
-$env:ULTRAKILL_RIP = "C:\Users\v0id\Downloads\cockadoodledo\fdadsfsadfff"   # optional AssetRipper scripts merge
-.\scripts\Build-ContentZip.ps1
-# → artifacts\ULTRAKILL-Content.zip
+# 1) Rebuild iOS bundles from AssetRipper export (hours for all ~81 bundles; tutorial-only is faster):
+.\scripts\Build-IosShaders.ps1          # stub shaders.bundle (~0.65 MB, 121 shaders)
+.\scripts\Build-IosBundles.ps1          # all bundles → artifacts\ios-content\...
+#    .\scripts\Build-IosBundles.ps1 -OnlyBundle tutorial   # just Tutorial scene bundle
+
+# 2) Package for copy/unzip on the phone:
+.\scripts\Package-IosContentForDevice.ps1 -Mode overlay
+# → %USERPROFILE%\Downloads\ULTRAKILL-Content-for-iPhone.zip
+
+# Full Steam tree + iOS aa overlay (~3.5 GB):
+.\scripts\Package-IosContentForDevice.ps1 -Mode merged
 ```
 
-Zip layout at extract:
+Phone layout after unpack:
 
-- `ULTRAKILL_Data/` — full Steam `ULTRAKILL_Data` tree  
-- `manifest.json` — build metadata  
+- `ULTRAKILL-Content/ULTRAKILL_Data/` — game data (you can use a slim tree; Addressables must live under `StreamingAssets/aa/`)
+- `ULTRAKILL-Content/filelist.txt` — optional completeness check on device
+- `ULTRAKILL-Content/manifest.json` — build metadata
+
+Legacy PC-only zip (not for iOS port):
+
+```powershell
+.\scripts\Build-ContentZip.ps1   # → artifacts\ULTRAKILL-Content.zip (Windows aa)
+```
 
 ## Full port (decompiled scripts + dnSpy path)
 
