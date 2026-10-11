@@ -24,7 +24,7 @@ python tools/convert_data.py --game "C:/Program Files (x86)/Steam/steamapps/comm
 python tools/package_ipa.py --work work          # downloads the latest shell IPA from CI
 ```
 
-Result: `work/ULTRAKILL.ipa` (~200 MB) and `work/ULTRAKILL-Content` (~3.4 GB).
+Result: `work/ULTRAKILL.ipa` (~95 MB) and `work/ULTRAKILL-Content` (~3 GB).
 
 ## Installing on the device
 
