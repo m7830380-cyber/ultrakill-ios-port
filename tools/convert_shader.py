@@ -5,7 +5,7 @@ from ukblob import *
 from dx2metal import merge_params, prep_dxbc
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-HLSLCC = os.path.join(HERE, '..', 'hlslcc', 'build', 'Release', 'hlslcc_cli.exe')
+HLSLCC = os.environ.get('HLSLCC_CLI') or os.path.join(HERE, 'hlslcc_cli', 'build', 'Release', 'hlslcc_cli.exe')
 BLOB_VERSION = 202012090
 DX_TYPES = set(range(15, 23))
 DX_VS = {15, 16}
@@ -126,7 +126,7 @@ def build_metal_params(refl, msl, P, cbname_map):
             if ot is None:
                 raise ConvertError('unknown texture %s' % r['name'])
             samp = r['sampler'] if r['sampler'] >= 0 else -1
-            binds.append(dict(kind='tex', name=r['name'], index=r['index'], sampler=samp & 0xffffffff if samp >= 0 else 0xffffffff,
+            binds.append(dict(kind='tex', name=r['name'], index=r['index'], sampler=samp,
                               extra=(ot['dim'] << 1) | (ot['ms'] & 1)))
         elif k == 'buf':
             if r['uav']:
@@ -289,7 +289,7 @@ def convert_shader(tt, blob, workdir, log=print):
             segs.append(write_sub(msub))
             results[key] = (len(segs) - 1, pidx)
             stats['ok'] += 1
-        except (ConvertError, KeyError, TypeError) as ex:
+        except Exception as ex:
             stats['fail'] += 1
             results[key] = None
             log('  [%s] build failed: %s' % (name, ex))

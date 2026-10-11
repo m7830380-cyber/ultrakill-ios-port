@@ -1,0 +1,32 @@
+name: Check converted Metal shaders
+
+# Compiles every translated Metal source with Apple's compiler. The sources are attached to the
+# "msl-check" release by tools/extract_msl.py output (msl.tar.gz).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: macos-14
+    steps:
+      - name: Fetch sources
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download msl-check -R ${{ github.repository }} -p msl.tar.gz && tar xzf msl.tar.gz
+      - name: Compile
+        run: |
+          set -u
+          ls msl | wc -l
+          find msl -name '*.metal' > files.txt
+          wc -l files.txt
+          cat files.txt | xargs -P 8 -I{} sh -c 'xcrun -sdk iphoneos metal -std=ios-metal2.2 -mios-version-min=14.0 -c "{}" -o /dev/null 2> "{}.err" || echo "{}" >> failed.txt'
+          touch failed.txt
+          echo "failed: $(wc -l < failed.txt)"
+          head -n 40 failed.txt
+          for f in $(head -n 25 failed.txt); do echo "== $f"; head -n 12 "$f.err"; done
+          mkdir -p report && cp failed.txt report/ && for f in $(cat failed.txt); do cp "$f" "$f.err" report/ 2>/dev/null || true; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: msl-failures
+          path: report
