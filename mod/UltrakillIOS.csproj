@@ -9,10 +9,12 @@
     <AssemblyName>UltrakillIOS</AssemblyName>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <ManagedDir Condition="'$(ManagedDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\ULTRAKILL\ULTRAKILL_Data\Managed</ManagedDir>
+    <!-- patched Assembly-CSharp (adds UltrakillIOS.IosCursor etc.) -->
+    <GameAsmDir Condition="'$(GameAsmDir)' == ''">$(MSBuildThisFileDirectory)..\shell\Assets\Plugins\Game</GameAsmDir>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Assembly-CSharp"><HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(GameAsmDir)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine"><HintPath>$(ManagedDir)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(ManagedDir)\UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>

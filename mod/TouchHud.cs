@@ -54,6 +54,12 @@ namespace UltrakillIOS
         Vector2 m_ScrollLast;
         Vector2 m_Scroll;
         bool m_PauseRequested;
+        // intro "[Y/N]" questions: on-screen YES / NO (sent as gamepad south / east, which the game accepts)
+        IntroText[] m_IntroTexts = new IntroText[0];
+        int m_IntroScan;
+        bool m_Prompt;
+        Rect m_YesRect, m_NoRect;
+        bool m_PulseSouth, m_PulseEast;
         Texture2D m_Circle, m_Ring;
         GUIStyle m_Label;
 
@@ -140,9 +146,8 @@ namespace UltrakillIOS
             if (nm == null || !nm.isActiveAndEnabled) return false;
             var om = MonoSingleton<OptionsManager>.Instance;
             if (om != null && (om.paused || om.mainMenu)) return false;
-            // terminals, cheat menu etc. free the cursor
-            var gsm = GameStateManager.Instance;
-            if (gsm != null && !gsm.CursorLocked) return false;
+            // the game showed a cursor (calibration window, terminals, cheat menu...): touch = mouse
+            if (IosCursor.Version > 0 && IosCursor.Visible && IosCursor.LockState != (int)CursorLockMode.Locked) return false;
             return true;
         }
 
@@ -159,6 +164,7 @@ namespace UltrakillIOS
             }
             // legacy Input (used by the game's UI module) also sees the pointer finger as the mouse
             Input.simulateMouseWithTouches = !m_Visible;
+            UpdatePrompt();
             if (m_Visible) ProcessTouches();
             else ProcessPointer();
             if (m_PauseRequested)
@@ -172,6 +178,33 @@ namespace UltrakillIOS
                 catch (Exception e) { Log.Error("pause: " + e.Message); }
             }
             PushState();
+        }
+
+        void UpdatePrompt()
+        {
+            if (--m_IntroScan <= 0)
+            {
+                m_IntroScan = 15;
+                try { m_IntroTexts = FindObjectsOfType<IntroText>(); } catch { m_IntroTexts = new IntroText[0]; }
+            }
+            m_Prompt = false;
+            foreach (var it in m_IntroTexts)
+                if (it != null && it.isActiveAndEnabled && it.waitingForInput) { m_Prompt = true; break; }
+            if (!m_Prompt) return;
+            float h = Screen.height, w = Screen.width, bw = h * 0.32f, bh = h * 0.16f;
+            // GUI coordinates (top-left origin)
+            m_YesRect = new Rect(w * 0.5f - bw - h * 0.04f, h * 0.72f, bw, bh);
+            m_NoRect = new Rect(w * 0.5f + h * 0.04f, h * 0.72f, bw, bh);
+            var ts = Touchscreen.current;
+            if (ts == null) return;
+            foreach (var t in ts.touches)
+            {
+                if (!t.press.wasPressedThisFrame) continue;
+                Vector2 p = t.position.ReadValue();
+                var gp = new Vector2(p.x, h - p.y);
+                if (m_YesRect.Contains(gp)) m_PulseSouth = true;
+                else if (m_NoRect.Contains(gp)) m_PulseEast = true;
+            }
         }
 
         void ReleaseAll()
@@ -384,17 +417,32 @@ namespace UltrakillIOS
                 }
                 gs.leftStick = v.magnitude < 0.12f ? Vector2.zero : v;
             }
+            if (m_PulseSouth) { gs = gs.WithButton(GamepadButton.South, true); m_PulseSouth = false; }
+            if (m_PulseEast) { gs = gs.WithButton(GamepadButton.East, true); m_PulseEast = false; }
             InputSystem.QueueStateEvent(m_Pad, gs);
         }
 
         void OnGUI()
         {
-            if (!m_Visible || Event.current.type != EventType.Repaint) return;
+            if (Event.current.type != EventType.Repaint) return;
             if (m_Label == null)
             {
                 m_Label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             }
             m_Label.fontSize = Mathf.RoundToInt(Screen.height * 0.028f);
+            if (m_Prompt)
+            {
+                var c = GUI.color;
+                GUI.color = new Color(0.2f, 0.8f, 0.2f, 0.6f);
+                GUI.DrawTexture(m_YesRect, Texture2D.whiteTexture);
+                GUI.color = new Color(0.85f, 0.15f, 0.15f, 0.6f);
+                GUI.DrawTexture(m_NoRect, Texture2D.whiteTexture);
+                GUI.color = Color.white;
+                GUI.Label(m_YesRect, "YES", m_Label);
+                GUI.Label(m_NoRect, "NO", m_Label);
+                GUI.color = c;
+            }
+            if (!m_Visible) return;
             float h = Screen.height;
             var prev = GUI.color;
             foreach (var b in m_Buttons)

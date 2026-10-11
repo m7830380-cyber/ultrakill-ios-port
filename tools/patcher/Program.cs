@@ -178,6 +178,80 @@ static class Program
             swap.Body.GetILProcessor().Emit(OpCodes.Ret);
             n++;
         }
+
+        n += PatchCursor(mod, coreModule);
+
+        // --- IntroText.waitingForInput public, so the touch HUD can show YES / NO buttons ---
+        var introText = mod.GetType("IntroText");
+        var waiting = introText?.Fields.FirstOrDefault(f => f.Name == "waitingForInput");
+        if (waiting != null)
+        {
+            waiting.Attributes = (waiting.Attributes & ~FieldAttributes.FieldAccessMask) | FieldAttributes.Public;
+            n++;
+        }
+        return n;
+    }
+
+    // Cursor.lockState / Cursor.visible don't mean anything on iOS (and may not read back what was set),
+    // but they are how the game says "a cursor UI is up". Route the game's setters through
+    // UltrakillIOS.IosCursor, which remembers the values for the touch HUD and then calls Unity.
+    static int PatchCursor(ModuleDefinition mod, AssemblyNameReference coreModule)
+    {
+        int n = 0;
+        var cursorType = new TypeReference("UnityEngine", "Cursor", mod, coreModule);
+        var lockModeType = new TypeReference("UnityEngine", "CursorLockMode", mod, coreModule) { IsValueType = true };
+        var setLock = new MethodReference("set_lockState", mod.TypeSystem.Void, cursorType);
+        setLock.Parameters.Add(new ParameterDefinition(lockModeType));
+        var setVisible = new MethodReference("set_visible", mod.TypeSystem.Void, cursorType);
+        setVisible.Parameters.Add(new ParameterDefinition(mod.TypeSystem.Boolean));
+
+        var shim = new TypeDefinition("UltrakillIOS", "IosCursor",
+            TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
+            mod.TypeSystem.Object);
+        mod.Types.Add(shim);
+        var fs = FieldAttributes.Public | FieldAttributes.Static;
+        var fLock = new FieldDefinition("LockState", fs, mod.TypeSystem.Int32);
+        var fVisible = new FieldDefinition("Visible", fs, mod.TypeSystem.Boolean);
+        var fFrame = new FieldDefinition("Version", fs, mod.TypeSystem.Int32);   // bumps on every set
+        shim.Fields.Add(fLock);
+        shim.Fields.Add(fVisible);
+        shim.Fields.Add(fFrame);
+
+        MethodDefinition Make(string name, TypeReference param, FieldDefinition field, MethodReference target)
+        {
+            var m = new MethodDefinition(name, MethodAttributes.Public | MethodAttributes.Static | MethodAttributes.HideBySig, mod.TypeSystem.Void);
+            m.Parameters.Add(new ParameterDefinition("value", ParameterAttributes.None, param));
+            shim.Methods.Add(m);
+            var il = m.Body.GetILProcessor();
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Stsfld, field);
+            il.Emit(OpCodes.Ldsfld, fFrame);
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Add);
+            il.Emit(OpCodes.Stsfld, fFrame);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, target);
+            il.Emit(OpCodes.Ret);
+            return m;
+        }
+        var shimLock = Make("SetLockState", lockModeType, fLock, setLock);
+        var shimVisible = Make("SetVisible", mod.TypeSystem.Boolean, fVisible, setVisible);
+
+        foreach (var t in AllTypes(mod))
+        {
+            if (t == shim) continue;
+            foreach (var m in t.Methods)
+            {
+                if (!m.HasBody) continue;
+                foreach (var ins in m.Body.Instructions)
+                {
+                    if (ins.OpCode != OpCodes.Call || !(ins.Operand is MethodReference mr) ||
+                        mr.DeclaringType.FullName != "UnityEngine.Cursor") continue;
+                    if (mr.Name == "set_lockState") { ins.Operand = shimLock; n++; }
+                    else if (mr.Name == "set_visible") { ins.Operand = shimVisible; n++; }
+                }
+            }
+        }
         return n;
     }
 }
