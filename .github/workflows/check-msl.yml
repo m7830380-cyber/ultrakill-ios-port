@@ -20,7 +20,11 @@ jobs:
           ls msl | wc -l
           find msl -name '*.metal' > files.txt
           wc -l files.txt
-          cat files.txt | xargs -P 8 -I{} sh -c 'xcrun -sdk iphoneos metal -std=ios-metal2.2 -mios-version-min=14.0 -c "{}" -o /dev/null 2> "{}.err" || echo "{}" >> failed.txt'
+          cat > one.sh <<'SH'
+          f="$1"
+          xcrun -sdk iphoneos metal -std=ios-metal2.2 -mios-version-min=14.0 -c "$f" -o /dev/null 2> "$f.err" || echo "$f" >> failed.txt
+          SH
+          xargs -P 8 -L 1 sh one.sh < files.txt
           touch failed.txt
           echo "failed: $(wc -l < failed.txt)"
           head -n 40 failed.txt
