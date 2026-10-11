@@ -123,6 +123,26 @@ static class Program
             }
         }
 
+        // --- report no compute support: the game then uses its non-compute fallbacks (the two compute
+        //     shaders it ships only have DX11/GL/Vulkan kernels) -------------------------------------
+        foreach (var t in AllTypes(mod))
+        {
+            foreach (var m in t.Methods)
+            {
+                if (!m.HasBody) continue;
+                foreach (var ins in m.Body.Instructions)
+                {
+                    if (ins.OpCode == OpCodes.Call && ins.Operand is MethodReference mr &&
+                        mr.Name == "get_supportsComputeShaders" && mr.DeclaringType.FullName == "UnityEngine.SystemInfo")
+                    {
+                        ins.OpCode = OpCodes.Ldc_I4_0;
+                        ins.Operand = null;
+                        n++;
+                    }
+                }
+            }
+        }
+
         // --- AudioSourceExtensions.IsPaused: read native m_pause -> managed approximation -------
         var ase = mod.GetType("AudioSourceExtensions");
         var isPaused = ase?.Methods.FirstOrDefault(m => m.Name == "IsPaused");

@@ -134,4 +134,5 @@
   <assembly fullname="UnityEngine.VideoModule" preserve="all"/>
   <assembly fullname="UnityEngine.WindModule" preserve="all"/>
   <assembly fullname="UnityEngine.XRModule" preserve="all"/>
+  <assembly fullname="UltrakillIOS" preserve="all"/>
 </linker>

@@ -4,7 +4,7 @@
 
 Produces
   work/Data/      -> goes into ULTRAKILL.app/Data (player data, small)
-  work/Content/   -> copied to the app's Documents folder (Addressables bundles, ~3.5 GB)
+  work/ULTRAKILL-Content/ -> copied into the app's Documents folder (Addressables bundles, ~3.5 GB)
 
 For every serialized file / asset bundle:
   * the target-platform tag is changed from StandaloneWindows64 (19) to iOS (9)
@@ -104,6 +104,18 @@ def process_player_file(src, dst, cache_dir, work_dir):
     return n, report
 
 
+def fix_catalog(out_content):
+    """Windows-built catalog uses backslash separators (a plain filename character on iOS)."""
+    cat = os.path.join(out_content, 'aa', 'catalog.json')
+    c = json.load(open(cat, encoding='utf8'))
+    c['m_InternalIds'] = [i.replace('\\', '/') for i in c['m_InternalIds']]
+    json.dump(c, open(cat, 'w', encoding='utf8'), separators=(',', ':'))
+    st = os.path.join(out_content, 'aa', 'settings.json')
+    s = json.load(open(st, encoding='utf8'))
+    s['m_buildTarget'] = 'iOS'
+    json.dump(s, open(st, 'w', encoding='utf8'), separators=(',', ':'))
+
+
 def job(kind, src, dst, cache_dir, work_dir):
     try:
         if kind == 'bundle':
@@ -124,7 +136,7 @@ def main():
 
     data = os.path.join(a.game, 'ULTRAKILL_Data')
     out_data = os.path.join(a.out, 'Data')
-    out_content = os.path.join(a.out, 'Content')
+    out_content = os.path.join(a.out, 'ULTRAKILL-Content')
     cache_dir = os.path.join(a.out, 'cache', 'shaders')
     work_dir = os.path.join(a.out, 'tmp')
     os.makedirs(cache_dir, exist_ok=True)
@@ -145,6 +157,7 @@ def main():
             else:
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copyfile(src, dst)
+    fix_catalog(out_content)
     if a.only:
         jobs = [j for j in jobs if a.only in j[1]]
     if a.skip_existing:
