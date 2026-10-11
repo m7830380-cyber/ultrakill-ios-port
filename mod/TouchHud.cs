@@ -46,6 +46,13 @@ namespace UltrakillIOS
         Vector2 m_LookLast;
         Vector2 m_LookAccum;
         bool m_Visible;
+        // menu / free-cursor screens: the first finger is the mouse pointer and holds the left button
+        int m_PointerFinger = -1;
+        Vector2 m_PointerPos = new Vector2(-100, -100);
+        Vector2 m_PointerDelta;
+        int m_ScrollFinger = -1;
+        Vector2 m_ScrollLast;
+        Vector2 m_Scroll;
         bool m_PauseRequested;
         Texture2D m_Circle, m_Ring;
         GUIStyle m_Label;
@@ -133,6 +140,9 @@ namespace UltrakillIOS
             if (nm == null || !nm.isActiveAndEnabled) return false;
             var om = MonoSingleton<OptionsManager>.Instance;
             if (om != null && (om.paused || om.mainMenu)) return false;
+            // terminals, cheat menu etc. free the cursor
+            var gsm = GameStateManager.Instance;
+            if (gsm != null && !gsm.CursorLocked) return false;
             return true;
         }
 
@@ -147,7 +157,10 @@ namespace UltrakillIOS
                 m_Visible = active;
                 ReleaseAll();
             }
+            // legacy Input (used by the game's UI module) also sees the pointer finger as the mouse
+            Input.simulateMouseWithTouches = !m_Visible;
             if (m_Visible) ProcessTouches();
+            else ProcessPointer();
             if (m_PauseRequested)
             {
                 m_PauseRequested = false;
@@ -167,6 +180,53 @@ namespace UltrakillIOS
             m_StickFinger = -1;
             m_LookFinger = -1;
             m_LookAccum = Vector2.zero;
+            m_PointerFinger = -1;
+            m_ScrollFinger = -1;
+            m_PointerDelta = Vector2.zero;
+            m_Scroll = Vector2.zero;
+        }
+
+        void ProcessPointer()
+        {
+            var ts = Touchscreen.current;
+            bool pointerSeen = false, scrollSeen = false;
+            if (ts != null)
+            {
+                foreach (var t in ts.touches)
+                {
+                    var phase = t.phase.ReadValue();
+                    if (phase == UnityEngine.InputSystem.TouchPhase.None) continue;
+                    int id = t.touchId.ReadValue();
+                    Vector2 pos = t.position.ReadValue();
+                    bool ended = phase == UnityEngine.InputSystem.TouchPhase.Ended || phase == UnityEngine.InputSystem.TouchPhase.Canceled;
+                    if (ended) continue;
+                    if (m_PointerFinger < 0 && id != m_ScrollFinger)
+                    {
+                        m_PointerFinger = id;
+                        m_PointerPos = pos;
+                    }
+                    else if (m_ScrollFinger < 0 && id != m_PointerFinger)
+                    {
+                        m_ScrollFinger = id;
+                        m_ScrollLast = pos;
+                    }
+                    if (id == m_PointerFinger)
+                    {
+                        pointerSeen = true;
+                        m_PointerDelta += pos - m_PointerPos;
+                        m_PointerPos = pos;
+                    }
+                    else if (id == m_ScrollFinger)
+                    {
+                        // second finger drags = mouse wheel
+                        scrollSeen = true;
+                        m_Scroll += pos - m_ScrollLast;
+                        m_ScrollLast = pos;
+                    }
+                }
+            }
+            if (!pointerSeen) m_PointerFinger = -1;
+            if (!scrollSeen) m_ScrollFinger = -1;
         }
 
         void ProcessTouches()
@@ -285,7 +345,17 @@ namespace UltrakillIOS
 
             m_Keys.Clear();
             var ms = new MouseState { position = new Vector2(-100, -100) };
-            if (m_Visible)
+            if (!m_Visible)
+            {
+                // the pointer stays where the finger lifted, like a real mouse, so hover states remain
+                ms.position = m_PointerPos;
+                ms.delta = m_PointerDelta;
+                ms.scroll = new Vector2(0f, m_Scroll.y * 120f / Mathf.Max(100f, Screen.dpi > 0 ? Screen.dpi : 326f) * 3f);
+                if (m_PointerFinger >= 0) ms = ms.WithButton(MouseButton.Left, true);
+                m_PointerDelta = Vector2.zero;
+                m_Scroll = Vector2.zero;
+            }
+            else
             {
                 foreach (var b in m_Buttons)
                 {

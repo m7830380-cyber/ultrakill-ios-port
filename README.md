@@ -43,3 +43,7 @@ the top-right corner to see the latest log lines on screen.
 Left side: movement stick (appears where you touch). Right side: drag to aim. FIRE / ALT also aim
 while held. JUMP, DASH, SLIDE, PUNCH, HOOK (whiplash), VAR (next variation), ARM (change arm),
 1–5 weapon slots on top, II = pause. Look sensitivity follows the in-game mouse sensitivity option.
+
+Menus and other free-cursor screens: touch is the mouse — the finger moves the pointer and holds
+the left button (tap = click, drag = drag sliders/scroll bars); a second finger dragging up/down is
+the scroll wheel.
