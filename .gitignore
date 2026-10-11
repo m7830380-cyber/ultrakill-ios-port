@@ -1,21 +1,21 @@
-artifacts/
-unity-ultrakill/Library/
-unity-ultrakill/Logs/
-unity-ultrakill/Temp/
-unity-ultrakill/UserSettings/
-unity-ultrakill/Assets/Game/
-unity-ultrakill/Assets/Plugins/RetailManaged/
-port-sources/
+# local-only
+_old_attempt/
 .tools/
-!.tools/.gitkeep
-game-managed/
-*.user
-*.suo
-.vs/
+build/
+work/
+*.ipa
+__pycache__/
+
+# Unity
+shell/[Ll]ibrary/
+shell/[Tt]emp/
+shell/[Ll]ogs/
+shell/[Uu]serSettings/
+shell/Build/
+shell/*.csproj
+shell/*.sln
+
+# dotnet
 [Bb]in/
 [Oo]bj/
-[Ll]ibrary/
-[Tt]emp/
-[Ll]ogs/
-*.ipa
-*.dSYM.zip
+.vs/

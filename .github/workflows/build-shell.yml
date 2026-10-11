@@ -1,0 +1,78 @@
+name: Build iOS shell IPA
+
+# Builds the IL2CPP player that contains the patched game code. Game data is injected afterwards
+# on the PC by tools/package_ipa.py (it never goes through CI).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'shell/**'
+      - '.github/workflows/build-shell.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  UNITY_VERSION: 2022.3.29f1
+
+jobs:
+  shell:
+    runs-on: macos-14
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: shell/Library
+          key: shell-library-${{ hashFiles('shell/Assets/**/*.meta', 'shell/Packages/manifest.json') }}
+          restore-keys: shell-library-
+
+      - name: Unity build (Xcode project)
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          SHELL_OUT: ${{ github.workspace }}/xcode
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          projectPath: shell
+          targetPlatform: iOS
+          buildMethod: IosShellBuild.Build
+          versioning: None
+          customParameters: -nographics
+
+      - name: Xcode build (unsigned)
+        run: |
+          set -euo pipefail
+          cd xcode
+          xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release \
+            -sdk iphoneos -derivedDataPath "$PWD/dd" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" \
+            ENABLE_BITCODE=NO build | tail -n 50
+
+      - name: Package shell IPA
+        run: |
+          set -euo pipefail
+          APP="$(find xcode/dd -name '*.app' -path '*Release-iphoneos*' | head -n 1)"
+          echo "app: $APP"
+          rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
+          zip -qry ULTRAKILL-shell.ipa Payload
+          ls -lh ULTRAKILL-shell.ipa
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=shell-latest
+          NOTES="Shell IPA (no game data) from run ${{ github.run_number }} / ${{ github.sha }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" ULTRAKILL-shell.ipa --clobber
+            gh release edit "$TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" ULTRAKILL-shell.ipa --title "iOS shell (no game data)" --notes "$NOTES" --prerelease
+          fi
