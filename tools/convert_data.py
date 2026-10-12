@@ -9,7 +9,8 @@ Produces
 For every serialized file / asset bundle:
   * the target-platform tag is changed from StandaloneWindows64 (19) to iOS (9)
   * every Shader gets its DX11 programs translated to Metal (see convert_shader.py)
-Textures/audio/meshes are left untouched (Unity decompresses unsupported texture formats on load).
+  * every BCn/DXT texture is re-encoded as ASTC 4x4 (see transcode_tex.py)
+Audio/meshes are left untouched.
 """
 import argparse, hashlib, json, os, pickle, shutil, sys, time, traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -17,6 +18,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import UnityPy
 from convert_shader import convert_shader
+from transcode_tex import transcode_in
 
 IOS_PLATFORM = 9
 PLAYER_FILES = ['globalgamemanagers', 'globalgamemanagers.assets', 'level0', 'resources.assets',
@@ -81,6 +83,7 @@ def process_bundle(src, dst, cache_dir, work_dir):
         if not hasattr(sf, 'objects'):
             continue
         nshaders += convert_shaders_in(sf.objects.values(), cache_dir, work_dir, report)
+        report['textures'] = report.get('textures', 0) + transcode_in(sf.objects.values(), report)
         retag(sf)
     data = bf.save(packer='lz4')
     os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -94,6 +97,7 @@ def process_player_file(src, dst, cache_dir, work_dir):
     env = UnityPy.load(src)
     sf = list(env.files.values())[0]
     n = convert_shaders_in(sf.objects.values(), cache_dir, work_dir, report)
+    report['textures'] = transcode_in(sf.objects.values(), report)
     retag(sf)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     with open(dst, 'wb') as f:
