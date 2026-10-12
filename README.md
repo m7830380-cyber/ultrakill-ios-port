@@ -47,3 +47,5 @@ while held. JUMP, DASH, SLIDE, PUNCH, HOOK (whiplash), VAR (next variation), ARM
 Menus and other free-cursor screens: touch is the mouse — the finger moves the pointer and holds
 the left button (tap = click, drag = drag sliders/scroll bars); a second finger dragging up/down is
 the scroll wheel.
+This also applies in-level whenever the game frees the cursor (tutorial calibration window,
+terminals). When the intro text asks a [Y/N] question, big YES / NO buttons appear on screen.
